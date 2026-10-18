@@ -6,7 +6,8 @@ export const REF_BOTTOM = 0;
 export const MARKS_BELOW = new Set([0x07aa, 0x07ab]);   // ubufili and ooboofili sit under the letter
 export const GAP_TOO_FAR = 150;
 export const MARK_GAP_MIN = 24;   // a freshly drawn mark is kept at least this far clear of its letter
-export const MARK_GAP_MAX = 160;    // a mark floating further than this from its letter is flagged
+export const MARK_GAP_MAX = 160;
+export const CLEAR = 45;          // a mark keeps at least this much clear air from its letter, wherever the two overlap sideways (about 1 mm)    // a mark floating further than this from its letter is flagged
 
 export type Offset = { dx: number; dy: number };
 export type Offsets = Record<string, Offset>;
@@ -84,12 +85,40 @@ function inside(polys: Poly[], pt: Pt): boolean {
 }
 
 // ---- placement
-/** Where a letter's mark attaches before any hand adjustment. Marks above use the top, marks below the bottom. */
-export function autoAnchor(letter: Glyph, mark: Glyph): Pt | null {
+const liftCache = new WeakMap<Glyph, WeakMap<Glyph, number>>();
+
+/**
+ * How far a mark must move away from its letter so the two outlines are at least CLEAR apart.
+ * The box of the letter is not enough: a slanted letter's highest point can be off to one side, right under the mark's end.
+ * Marks above only ever move up (positive), marks below only down (negative).
+ */
+function clearanceLift(letter: Glyph, mark: Glyph, base: Pt): number {
+  let byMark = liftCache.get(letter);
+  const hit = byMark?.get(mark);
+  if (hit !== undefined) return hit;
+  const m = markAnchor(mark), below = isBelow(mark);
+  const mp = flatten(shiftContours(mark.contours, { x: base.x - m.x, y: base.y - m.y }), 8).flat();
+  const lp = flatten(letter.contours, 10).flat();
+  let lift = 0;
+  for (const p of mp) for (const q of lp) {
+    const dx = Math.abs(p.x - q.x);
+    if (dx >= CLEAR) continue;
+    const s = Math.sqrt(CLEAR * CLEAR - dx * dx);
+    lift = below ? Math.min(lift, q.y - s - p.y) : Math.max(lift, q.y + s - p.y);
+  }
+  lift = Math.round(lift);
+  if (!byMark) { byMark = new WeakMap(); liftCache.set(letter, byMark); }
+  byMark.set(mark, lift);
+  return lift;
+}
+
+/** Where a letter's mark attaches before any hand adjustment. Marks above use the top, marks below the bottom, then clear of the outline. */
+export function autoAnchor(letter: Glyph, mark: Glyph, clear = true): Pt | null {
   const b = inkBox(letter);
   if (!b) return null;
   const cx = Math.round((b.x0 + b.x1) / 2);
-  return { x: cx, y: Math.round(isBelow(mark) ? b.y0 : b.y1) };
+  const base = { x: cx, y: Math.round(isBelow(mark) ? b.y0 : b.y1) };
+  return clear && mark.contours.length ? { x: base.x, y: base.y + clearanceLift(letter, mark, base) } : base;
 }
 
 /** Where the mark lands on the letter: the anchor, the hand adjustment, and the mark's own reference point. */

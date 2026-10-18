@@ -1,4 +1,5 @@
 import { BUILDER_URL, saveBlob, type BuildFormat } from "@/lib/play";
+import { autoAnchor } from "./marks";
 import { bake } from "./spacing";
 import type { FontInfo, Project } from "./store";
 
@@ -46,10 +47,17 @@ export function buildBody(p: Project, info: FontInfo, format: BuildFormat) {
     const [left, right] = k.split("|");
     return { left, right, value };
   });
-  const mark_offsets = Object.entries(p.markOffsets ?? {}).map(([k, o]) => {
-    const [base, mark] = k.split("|");
-    return { base, mark, dx: o.dx, dy: o.dy };
-  });
+  // the builder puts a mark on the top or bottom of the letter box; the lift is the extra the page adds so the outlines do not touch
+  const drawn = Object.values(p.glyphs).filter((g) => g.contours.length);
+  const letters = drawn.filter((g) => g.cp[0] >= 0x0780 && g.cp[0] <= 0x07a5), marks = drawn.filter((g) => g.cp[0] >= 0x07a6 && g.cp[0] <= 0x07b0);
+  const mark_offsets: { base: string; mark: string; dx: number; dy: number }[] = [];
+  for (const l of letters) for (const m of marks) {
+    const a = autoAnchor(l, m), raw = autoAnchor(l, m, false), o = p.markOffsets?.[`${l.id}|${m.id}`];
+    if (!a || !raw) continue;
+    const fit = (n: number) => Math.max(-400, Math.min(400, Math.round(n)));
+    const dx = fit((o?.dx ?? 0) + a.x - raw.x), dy = fit((o?.dy ?? 0) + a.y - raw.y);
+    if (dx || dy) mark_offsets.push({ base: l.id, mark: m.id, dx, dy });
+  }
   return {
     name: cleanFontName(info.name).trim() || DEFAULT_INFO.name,
     author: info.designer.trim(),
