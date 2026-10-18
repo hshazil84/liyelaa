@@ -4,6 +4,7 @@ fastapi>=0.110
 uvicorn[standard]>=0.29
 python-multipart>=0.0.9
 pydantic>=2.6
+skia-pathops>=0.8
 # tests
 pytest>=8
 uharfbuzz>=0.39
