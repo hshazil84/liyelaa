@@ -13,14 +13,21 @@ import { layout } from "@/lib/handwriting/pipeline";
 import { HANDWRITING_STEPS } from "@/lib/handwriting/steps";
 import { loadProject, saveInfo, type FontInfo, type Project } from "@/lib/handwriting/store";
 
-type Tab = "headline" | "paragraph" | "letters";
+type Tab = "headline" | "paragraph" | "pangram" | "letters";
 const TABS: { id: Tab; label: string }[] = [
   { id: "headline", label: "Headline" },
   { id: "paragraph", label: "Paragraph" },
+  { id: "pangram", label: "Pangram" },
   { id: "letters", label: "All letters" },
 ];
 const HEADLINE = "މިއީ ފުރަތަމަ ފޮންޓް";
 const PARAGRAPH = "ދިވެހިބަސް ދިވެހިރާއްޖެ މާލެ ފޮންޓް ".repeat(4).trim();
+/** One sentence that uses most of the native letters and vowel marks, to see them together in running text. */
+const PANGRAM = "ޒުވާން ކުއްޖަކު ޗޮކްލެޓް ޕެކެޓް ހިފައިގެން، ރަށު ތެރޭގައި ޏަމްޏަމް ބިނދެ ކުޑަ ކޮތަޅަކަށް އަޅަން ދިޔައީ ސައިކަލު ޓަކި ޖަހަމުންނެވެ";
+const PANGRAM_MISSING = {
+  letters: Array.from({ length: 38 }, (_, i) => String.fromCodePoint(0x0780 + i)).filter((c) => !PANGRAM.includes(c)),
+  marks: Array.from({ length: 11 }, (_, i) => String.fromCodePoint(0x07a6 + i)).filter((c) => !PANGRAM.includes(c)),
+};
 const ALL_LETTERS = layout.sheets[0].cells.filter((c) => c.kind === "letter").map((c) => c.label).join("");
 const SIGNS = [{ cp: 0xfdfd, label: "Bismillah" }, { cp: 0xfdf2, label: "Allah" }, { cp: 0x20c2, label: "rufiyaa" }];
 
@@ -149,7 +156,7 @@ export function ExportClient() {
     `Version ${info.version.trim() || "1.000"}`,
     licence === "ofl" ? "SIL OFL 1.1" : "All rights reserved",
   ].join(" · ");
-  const sample = tab === "headline" ? HEADLINE : tab === "paragraph" ? PARAGRAPH : ALL_LETTERS;
+  const sample = tab === "headline" ? HEADLINE : tab === "paragraph" ? PARAGRAPH : tab === "pangram" ? PANGRAM : ALL_LETTERS;
   const fontStyle = family ? { fontFamily: `${family}, sans-serif` } : undefined;
 
   return (
@@ -193,6 +200,12 @@ export function ExportClient() {
               <div lang="dv" dir="rtl" className="text-ink" style={{ ...fontStyle, fontSize: size, lineHeight: 1.7, wordBreak: "break-word" }} data-testid="test-text">
                 {tab === "headline" ? <><div>{HEADLINE}</div><div style={{ fontSize: size * 0.66 }}>{PARAGRAPH.split(" ").slice(0, 3).join(" ")}</div></> : sample}
               </div>
+              {tab === "pangram" && (
+                <p className="mt-4 text-[13px] leading-relaxed text-muted" data-testid="pangram-coverage">
+                  Uses {38 - PANGRAM_MISSING.letters.length} of 38 letters and {11 - PANGRAM_MISSING.marks.length} of 11 vowel marks. Not in this sentence:{" "}
+                  <span lang="dv" dir="rtl" className="text-[22px] text-ink" style={fontStyle}>{[...PANGRAM_MISSING.letters, ...PANGRAM_MISSING.marks.map((m) => "ބ" + m)].join(" ")}</span>
+                </p>
+              )}
               {preview === "building" && <p role="status" className="absolute bottom-3 left-5 text-[13px] text-muted">Building your font…</p>}
               {preview === "error" && <p role="alert" className="absolute bottom-3 left-5 right-5 text-[13px] text-coral">{previewError}</p>}
             </div>
