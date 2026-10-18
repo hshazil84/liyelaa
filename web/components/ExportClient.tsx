@@ -23,7 +23,7 @@ const TABS: { id: Tab; label: string }[] = [
 const HEADLINE = "މިއީ ފުރަތަމަ ފޮންޓް";
 const PARAGRAPH = "ދިވެހިބަސް ދިވެހިރާއްޖެ މާލެ ފޮންޓް ".repeat(4).trim();
 /** One sentence that uses most of the native letters and vowel marks, to see them together in running text. */
-const PANGRAM = "ޒުވާން ކުއްޖަކު ޗޮކްލެޓް ޕެކެޓް ހިފައިގެން، ރަށު ތެރޭގައި ޏަމްޏަމް ބިނދެ ކުޑަ ކޮތަޅަކަށް އަޅަން ދިޔައީ ސައިކަލު ޓަކި ޖަހަމުންނެވެ";
+const PANGRAM = "ބޮޑު ބާޒާރުގައި ހުންނަ މޮޅު އެއްޗެތީގައި ސިލްޖަހަންޏާ ޕޯސްޓް އޮފީހުގެ ވެރިޔަކު ވާނީ ދާށެވެ.";
 const PANGRAM_MISSING = {
   letters: Array.from({ length: 38 }, (_, i) => String.fromCodePoint(0x0780 + i)).filter((c) => !PANGRAM.includes(c)),
   marks: Array.from({ length: 11 }, (_, i) => String.fromCodePoint(0x07a6 + i)).filter((c) => !PANGRAM.includes(c)),
