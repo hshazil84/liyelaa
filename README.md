@@ -25,6 +25,7 @@ python3 e2e/synthetic_photo.py           # fake phone photos of the filled-in te
 python3 e2e/handwriting_flow.py e2e/out  # photo page: finds the sheet, traces the letters
 python3 e2e/letters_flow.py e2e/out      # clean-up editor: drag, add and delete points, pen, undo
 python3 e2e/build_font_flow.py e2e/out   # traced letters -> builder -> font, rendered in the browser (needs the builder too)
+python3 e2e/level_flow.py e2e/out        # level letters to the AK Rasmee baseline: snap, half strength, exact undo
 python3 e2e/anchors_flow.py e2e/out      # vowel marks: drag the anchor, nudge one letter and mark pair, saved and built
 python3 e2e/export_flow.py e2e/out       # spacing, then designer details and download of the zip
 python3 e2e/parity_flow.py e2e/out       # the page's preview must match the exported font to a few units
@@ -38,7 +39,7 @@ Config (see `.env.example`): `NEXT_PUBLIC_BUILDER_URL` for the web app, `ALLOWED
 | Path | State |
 | --- | --- |
 | Play with a font (weight, width, slant, spacing, two starting fonts) | Done. Live preview matches the built font. |
-| Make a font from handwriting | Photo to outlines, clean-up editor, vowel marks placed per letter and mark pair (`/handwriting/anchors`), spacing with per-letter space, pair kerning and an even-out button (`/handwriting/spacing`), and test and export with designer, website, description, version and licence written into the font (`/handwriting/export`). `POST /handwriting/build` builds the font. Not built yet: ligatures, punctuation and symbols screens (the builder already supports them). |
+| Make a font from handwriting | Photo to outlines, clean-up editor, letters levelled to the AK Rasmee baseline (`/handwriting/level`; `tools/make_reference.py` keeps only two numbers per letter, lowest and highest ink, no outlines), vowel marks placed per letter and mark pair (`/handwriting/anchors`), spacing with per-letter space, pair kerning and an even-out button (`/handwriting/spacing`), and test and export with designer, website, description, version and licence written into the font (`/handwriting/export`). `POST /handwriting/build` builds the font. Not built yet: ligatures, punctuation and symbols screens (the builder already supports them). |
 | Draw or import (pen tool, SVG) | After handwriting; shares the clean-up editor (the pen already works there). |
 | Ligatures, RTL punctuation, mark anchors, Bismillah / Allah / rufiyaa | Proven in `builder` prototypes; to be wired into the handwriting build. |
 | Login (Google, Microsoft) and cloud save | Later. Everything is local-first, so login only adds sync. |

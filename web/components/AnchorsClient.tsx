@@ -113,7 +113,7 @@ export function AnchorsClient() {
     <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <Logo />
-        <Stepper steps={HANDWRITING_STEPS} current={3} />
+        <Stepper steps={HANDWRITING_STEPS} current={4} />
         <span className="flex items-center gap-2 text-sm text-muted">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>

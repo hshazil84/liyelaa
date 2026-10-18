@@ -60,6 +60,8 @@ def main():
             pg.wait_for_selector("[data-testid=saved-summary]")
         pg.get_by_test_id("continue-letters").click()
         pg.wait_for_url("**/handwriting/letters")
+        pg.get_by_test_id("continue-level").click()
+        pg.wait_for_url("**/handwriting/level")
         pg.get_by_test_id("continue-anchors").click()
         pg.wait_for_url("**/handwriting/anchors")
         pg.wait_for_selector("[data-testid=anchor-dot]")

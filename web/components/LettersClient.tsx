@@ -221,11 +221,11 @@ export function LettersClient() {
             <p className="text-sm leading-normal">Draw between Top and Baseline so vowel marks have room above and below.</p>
           </div>
           <Link
-            href="/handwriting/anchors"
-            data-testid="continue-anchors"
+            href="/handwriting/level"
+            data-testid="continue-level"
             className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark"
           >
-            Place the vowel marks <span aria-hidden>→</span>
+            Level the letters <span aria-hidden>→</span>
           </Link>
         </aside>
       </main>

@@ -1,4 +1,5 @@
 import { del, get, set } from "idb-keyval";
+import type { Levelled } from "./level";
 import type { Offsets } from "./marks";
 import type { Spacing } from "./spacing";
 import type { Glyph } from "./types";
@@ -8,6 +9,7 @@ const KEY = "dfm.handwriting.v1";
 export type Project = {
   v: 1; glyphs: Record<string, Glyph>; updatedAt: number;
   originals?: Record<string, Glyph>;     // the traced version of a letter, kept when it is first edited
+  levelled?: Levelled;                   // how far each letter was moved by Level your letters, so it can be undone
   markOffsets?: Offsets;                 // hand adjustments, one per letter and vowel mark pair
   spacing?: Spacing;                     // letter spacing and pair adjustments
   info?: FontInfo;                       // name, designer and so on, for the export step
@@ -29,6 +31,7 @@ export async function saveGlyphs(glyphs: Glyph[]): Promise<Project> {
   for (const g of glyphs) {
     p.glyphs[g.id] = { ...g, source: "photo" };
     if (p.originals) delete p.originals[g.id];      // a fresh photo replaces the old trace
+    if (p.levelled) delete p.levelled[g.id];
   }
   p.updatedAt = Date.now();
   try { await set(KEY, p); } catch {}
@@ -54,6 +57,16 @@ export async function removeGlyph(id: string): Promise<Project> {
   const p = await loadProject();
   delete p.glyphs[id];
   if (p.originals) delete p.originals[id];
+  p.updatedAt = Date.now();
+  try { await set(KEY, p); } catch {}
+  return p;
+}
+
+/** Save letters that were moved to the baseline, with how far each moved. Marks keep their own offsets, which follow the letter. */
+export async function saveLevelled(glyphs: Record<string, Glyph>, levelled: Levelled): Promise<Project> {
+  const p = await loadProject();
+  for (const id of Object.keys(levelled).concat(Object.keys(p.levelled ?? {}))) if (glyphs[id]) p.glyphs[id] = glyphs[id];
+  p.levelled = levelled;
   p.updatedAt = Date.now();
   try { await set(KEY, p); } catch {}
   return p;
