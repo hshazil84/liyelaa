@@ -1,20 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { Stepper } from "@/components/Stepper";
 import {
-  BuildFormat, DEFAULTS, LIMITS, PRESETS, PlaySettings,
-  buildFont, changes, cleanName, previewStyle, saveBlob,
+  BASES, BaseId, BuildFormat, DEFAULTS, LIMITS, PRESETS, PlaySettings,
+  baseOf, buildFont, changes, cleanName, loadPreviewFace, previewStyle, saveBlob,
 } from "@/lib/play";
 
 const STORAGE_KEY = "dfm.play.v1";
 const SAMPLE = "ދިވެހިބަސް";
 const STEPS = [{ label: "Start", href: "/" }, { label: "Play" }, { label: "Save your font" }];
 
+type PreviewState = "idle" | "loading" | "ready" | "error";
+
 function Slider({
-  label, value, onChange, min, max, step, format,
-}: { label: string; value: number; onChange: (v: number) => void; min: number; max: number; step: number; format: (v: number) => string }) {
+  label, value, onChange, min, max, step, format, hint,
+}: {
+  label: string; value: number; onChange: (v: number) => void; min: number; max: number; step: number;
+  format: (v: number) => string; hint?: string;
+}) {
   const id = `s-${label.toLowerCase()}`;
   return (
     <div className="flex flex-col gap-2">
@@ -23,6 +28,7 @@ function Slider({
         <span className="text-sm tabular-nums text-muted">{format(value)}</span>
       </div>
       <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+      {hint && <p className="text-[13px] leading-snug text-muted">{hint}</p>}
     </div>
   );
 }
@@ -33,17 +39,50 @@ export function PlayClient() {
   const [step, setStep] = useState<1 | 2>(1);
   const [busy, setBusy] = useState<BuildFormat | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [builtFamily, setBuiltFamily] = useState<string | null>(null);
+  const [previewState, setPreviewState] = useState<PreviewState>("idle");
+  const faceRef = useRef<FontFace | null>(null);
+
+  const base = baseOf(s.base);
 
   // Settings live in this browser only. No account needed.
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setS({ ...DEFAULTS, ...JSON.parse(raw) });
+      if (raw) {
+        const saved = { ...DEFAULTS, ...JSON.parse(raw) } as PlaySettings;
+        if (!BASES.some((b) => b.id === saved.base)) saved.base = DEFAULTS.base;
+        setS(saved);
+      }
     } catch {}
   }, []);
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {}
   }, [s]);
+
+  // A one-weight base cannot be restyled by CSS, so its preview is the real font made by the builder.
+  useEffect(() => {
+    if (base.variable) {
+      setBuiltFamily(null);
+      setPreviewState("idle");
+      return;
+    }
+    const ctrl = new AbortController();
+    setPreviewState("loading");
+    const timer = setTimeout(async () => {
+      try {
+        const { family, face } = await loadPreviewFace(s, ctrl.signal);
+        if (ctrl.signal.aborted) { document.fonts.delete(face); return; }
+        if (faceRef.current) document.fonts.delete(faceRef.current);
+        faceRef.current = face;
+        setBuiltFamily(family);
+        setPreviewState("ready");
+      } catch {
+        if (!ctrl.signal.aborted) setPreviewState("error");
+      }
+    }, 180);
+    return () => { clearTimeout(timer); ctrl.abort(); };
+  }, [base.variable, s.base, s.weight, s.width, s.slant, s.spacing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = <K extends keyof PlaySettings>(k: K, v: PlaySettings[K]) => setS((p) => ({ ...p, [k]: v }));
 
@@ -61,10 +100,20 @@ export function PlayClient() {
   }
 
   const sample = (
-    <div className="flex min-h-[260px] items-center justify-center overflow-x-auto rounded-[20px] bg-white p-6" aria-label="Preview">
-      <div lang="dv" dir="rtl" className="text-ink" style={{ ...previewStyle(s), fontSize: 96, lineHeight: 1.6 }}>
+    <div
+      className="relative flex min-h-[260px] items-center justify-center overflow-x-auto rounded-[20px] bg-white p-6"
+      aria-label="Preview"
+      data-testid="preview"
+      data-preview-state={previewState}
+    >
+      <div lang="dv" dir="rtl" className="text-ink" style={{ ...previewStyle(s, builtFamily), fontSize: 96, lineHeight: 1.6 }} data-testid="preview-text">
         {text || SAMPLE}
       </div>
+      {!base.variable && previewState === "error" && (
+        <p role="status" className="absolute bottom-3 left-4 right-4 text-[13px] text-coral">
+          Could not reach the font builder, so this preview is out of date.
+        </p>
+      )}
     </div>
   );
 
@@ -95,11 +144,18 @@ export function PlayClient() {
                 </button>
               ))}
             </div>
-            <Slider label="Weight" value={s.weight} onChange={(v) => set("weight", v)} {...LIMITS.weight} format={(v) => String(v)} />
+            <Slider
+              label="Weight"
+              value={s.weight}
+              onChange={(v) => set("weight", v)}
+              {...LIMITS.weight}
+              format={(v) => String(v)}
+              hint={base.variable ? undefined : `${base.label} has one weight. Lighter and bolder are made by thinning or thickening every letter.`}
+            />
             <Slider label="Width" value={s.width} onChange={(v) => set("width", v)} {...LIMITS.width} format={(v) => `${v}%`} />
             <Slider label="Slant" value={s.slant} onChange={(v) => set("slant", v)} {...LIMITS.slant} format={(v) => `${v}°`} />
             <Slider label="Spacing" value={s.spacing} onChange={(v) => set("spacing", v)} {...LIMITS.spacing} format={(v) => (v > 0 ? `+${v}` : String(v))} />
-            <button type="button" onClick={() => setS({ ...DEFAULTS, name: s.name })} className="h-10 rounded-[10px] border border-[#B6C2BF] text-sm font-bold hover:bg-paper">
+            <button type="button" onClick={() => setS({ ...DEFAULTS, name: s.name, base: s.base })} className="h-10 rounded-[10px] border border-[#B6C2BF] text-sm font-bold hover:bg-paper">
               Reset
             </button>
           </section>
@@ -119,10 +175,28 @@ export function PlayClient() {
           </section>
 
           <aside className="flex w-full flex-col gap-4 lg:w-[300px]">
-            <div className="flex flex-col gap-1.5 rounded-3xl border border-line bg-white p-5">
-              <span className="text-[13px] text-muted">Starting font</span>
-              <span className="text-base font-bold">Noto Sans Thaana</span>
-              <span className="text-[13px] text-muted">Open Font License</span>
+            <div className="flex flex-col gap-2.5 rounded-3xl border border-line bg-white p-5">
+              <span id="base-label" className="text-[13px] text-muted">Starting font</span>
+              <div role="radiogroup" aria-labelledby="base-label" className="flex flex-col gap-2.5">
+                {BASES.map((b) => {
+                  const on = s.base === b.id;
+                  return (
+                    <button
+                      key={b.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={() => set("base", b.id as BaseId)}
+                      className={`flex flex-col gap-0.5 rounded-2xl text-left ${on ? "border-2 border-teal bg-teal-soft p-[13px]" : "border border-line bg-white p-3.5 hover:bg-paper"}`}
+                    >
+                      <span lang="dv" dir="rtl" className={`w-full text-[30px] leading-[1.5] ${b.variable ? "font-noto" : "font-sangu"}`}>{SAMPLE}</span>
+                      <span className="text-[15px] font-bold">{b.label}</span>
+                      <span className="text-[13px] text-muted">{b.blurb}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="text-[13px] leading-snug text-muted">Open Font License. {base.credit}.</span>
             </div>
             <button
               type="button"
@@ -169,7 +243,7 @@ export function PlayClient() {
           </div>
           {error && <p role="alert" className="rounded-xl bg-coral-soft px-4 py-3 text-sm font-medium text-ink">{error}</p>}
           <p className="text-sm leading-normal text-muted">
-            Based on Noto Sans Thaana (SIL Open Font License). Your font keeps that licence and needs its own name.
+            Based on {base.credit} (SIL Open Font License). Your font keeps that licence and needs its own name.
             To install it, open the .ttf file and choose Install.
           </p>
           <div>

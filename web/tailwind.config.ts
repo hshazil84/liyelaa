@@ -17,7 +17,8 @@ const config: Config = {
         display: ["'Bricolage Grotesque Variable'", "system-ui", "sans-serif"],
         sans: ["'DM Sans Variable'", "system-ui", "sans-serif"],
         thaana: ["AKRasmee", "NotoThaana", "sans-serif"],
-        noto: ["NotoThaana", "sans-serif"],       // variable weight, used where the weight is being shown off
+        noto: ["NotoThaana", "sans-serif"],
+        sangu: ["SanguSuruhee", "sans-serif"],       // variable weight, used where the weight is being shown off
       },
     },
   },

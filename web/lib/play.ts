@@ -1,4 +1,14 @@
+export type BaseId = "noto" | "sangu";
+
+export const BASES: { id: BaseId; label: string; blurb: string; credit: string; variable: boolean }[] = [
+  { id: "noto", label: "Noto Sans Thaana", blurb: "Clean and simple · 9 weights", credit: "Noto Sans Thaana", variable: true },
+  { id: "sangu", label: "Sangu Suruhee", blurb: "Bold and calligraphic · one weight", credit: "Sangu Suruhee by Thaana Type Foundry", variable: false },
+];
+
+export const baseOf = (id: BaseId) => BASES.find((b) => b.id === id) ?? BASES[0];
+
 export type PlaySettings = {
+  base: BaseId;
   weight: number;   // 100..900
   width: number;    // percent, 70..140
   slant: number;    // degrees, -15..15
@@ -6,7 +16,7 @@ export type PlaySettings = {
   name: string;
 };
 
-export const DEFAULTS: PlaySettings = { weight: 400, width: 100, slant: 0, spacing: 0, name: "My Dhivehi Font" };
+export const DEFAULTS: PlaySettings = { base: "noto", weight: 400, width: 100, slant: 0, spacing: 0, name: "My Dhivehi Font" };
 
 export const PRESETS: { label: string; weight: number }[] = [
   { label: "Thin", weight: 100 },
@@ -41,7 +51,12 @@ export function weightName(w: number): string {
 }
 
 /** What the live preview should look like. The real font is built by the builder with the same numbers. */
-export function previewStyle(s: PlaySettings): React.CSSProperties {
+export function previewStyle(s: PlaySettings, builtFamily?: string | null): React.CSSProperties {
+  if (!baseOf(s.base).variable) {
+    // A one-weight font cannot be thinned or thickened by CSS, so the builder makes the preview font.
+    // It already has width, slant and spacing in it, so nothing is applied here.
+    return { fontFamily: `${builtFamily ?? "SanguSuruhee"}, sans-serif`, display: "inline-block", whiteSpace: "nowrap" };
+  }
   const sx = s.width / 100;
   return {
     fontFamily: "NotoThaana, sans-serif",
@@ -55,7 +70,7 @@ export function previewStyle(s: PlaySettings): React.CSSProperties {
 }
 
 export function changes(s: PlaySettings): string[] {
-  const out = [`${weightName(s.weight)} (${s.weight})`];
+  const out = [baseOf(s.base).label, `${weightName(s.weight)} (${s.weight})`];
   if (s.width !== 100) out.push(`Width ${s.width}%`);
   if (s.slant !== 0) out.push(`Slant ${s.slant}°`);
   if (s.spacing !== 0) out.push(`Spacing ${s.spacing > 0 ? "+" : ""}${s.spacing}`);
@@ -64,9 +79,10 @@ export function changes(s: PlaySettings): string[] {
 
 export type BuildFormat = "zip" | "ttf" | "woff2";
 
-export async function buildFont(s: PlaySettings, format: BuildFormat): Promise<{ blob: Blob; filename: string }> {
+export async function buildFont(s: PlaySettings, format: BuildFormat, signal?: AbortSignal): Promise<{ blob: Blob; filename: string }> {
   const res = await fetch(`${BUILDER_URL}/play/build`, {
     method: "POST",
+    signal,
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ ...s, name: cleanName(s.name).trim() || DEFAULTS.name, format }),
   });
@@ -85,4 +101,16 @@ export function saveBlob(blob: Blob, filename: string) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+let faceCounter = 0;
+
+/** Ask the builder for the real font with these settings and load it for the preview. */
+export async function loadPreviewFace(s: PlaySettings, signal: AbortSignal): Promise<{ family: string; face: FontFace }> {
+  const { blob } = await buildFont(s, "woff2", signal);
+  const family = `PlayPreview${++faceCounter}`;
+  const face = new FontFace(family, await blob.arrayBuffer());
+  await face.load();
+  document.fonts.add(face);
+  return { family, face };
 }
