@@ -77,3 +77,16 @@ def test_handwriting_build_rejects_bad_requests():
     assert client.post("/handwriting/build", json={"glyphs": [{"id": "x", "cp": [5], "contours": [], "adv": 1}]}).status_code == 422
     assert client.post("/handwriting/build", json={"glyphs": "nope"}).status_code == 422
     assert client.post("/handwriting/build", json=_hw_payload(format="exe")).status_code == 422
+
+
+def test_a_visitor_who_builds_too_often_is_told_to_wait(monkeypatch):
+    import app.main as m
+    monkeypatch.setattr(m, "RATE_PER_MIN", 3)
+    m._hits.clear()
+    body = {"name": "T", "format": "ttf", "glyphs": []}
+    hdr = {"x-forwarded-for": "203.0.113.9"}
+    codes = [client.post("/handwriting/build", json=body, headers=hdr).status_code for _ in range(5)]
+    assert codes[3:] == [429, 429], codes
+    assert client.post("/handwriting/build", json=body, headers={"x-forwarded-for": "203.0.113.10"}).status_code != 429, "another visitor is not affected"
+    assert client.get("/health", headers=hdr).status_code == 200, "reading is never limited"
+    m._hits.clear()

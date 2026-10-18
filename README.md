@@ -32,7 +32,13 @@ python3 e2e/parity_flow.py e2e/out       # the page's preview must match the exp
 cd web && npx tsx scripts/test-edit.ts   # outline editing maths
 ```
 
-Config (see `.env.example`): `NEXT_PUBLIC_BUILDER_URL` for the web app, `ALLOWED_ORIGINS` for the builder.
+Config (see `.env.example`): `NEXT_PUBLIC_BUILDER_URL` for the web app, `ALLOWED_ORIGINS` and `RATE_LIMIT_PER_MIN` for the builder.
+
+### Deploying
+
+1. **Builder on Railway.** New project from this repo, root directory `builder` (it has a `Dockerfile` and `railway.json`; the health check is `/health`). Set `ALLOWED_ORIGINS` to the website's address, for example `https://yoursite.com`, with several separated by commas. Generate a public domain for the service.
+2. **Website on Vercel.** Root directory `web`. Set `NEXT_PUBLIC_BUILDER_URL` to the Railway domain, then redeploy, because the value is fixed at build time.
+3. Open `/handwriting/export` on the live site and download a font to check the two are talking.
 
 ## Status
 
