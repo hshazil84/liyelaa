@@ -49,13 +49,17 @@ function ringArea(r: number[][]): number {
  * d3-contour finds the edge at sub-pixel precision; paper.js fits Bezier curves through it with few points.
  * Both are permissively licensed (ISC and MIT), unlike potrace.
  */
-export async function traceField(field: Float32Array, w: number, h: number, level: number, opts?: { tolerance?: number; minArea?: number }): Promise<PxSeg[][]> {
+export async function traceField(field: Float32Array, w: number, h: number, level: number, opts?: { tolerance?: number; minArea?: number; relMinArea?: number; relBelow?: number }): Promise<PxSeg[][]> {
   const tol = opts?.tolerance ?? 0.9, minArea = opts?.minArea ?? 6;
   const paper = await getPaper();
   const polys = d3contours().size([w, h]).thresholds([level])(Array.from(field))[0]?.coordinates ?? [];
   const out: PxSeg[][] = [];
+  const biggest = Math.max(0, ...polys.map((q) => (q.length ? ringArea(q[0]) : 0)));
+  const relMin = (opts?.relMinArea ?? 0) * biggest;                    // a piece far smaller than the main ink is dust, up to relBelow px
+  const relCap = opts?.relBelow ?? Infinity;
   for (const poly of polys) {
     if (!poly.length || ringArea(poly[0]) < minArea) continue;          // drop specks
+    if (polys.length > 1 && ringArea(poly[0]) < relMin && ringArea(poly[0]) < relCap) continue;
     for (const ring of poly) {
       if (ringArea(ring) < minArea) continue;
       const path = new paper.Path({ segments: ring.slice(0, -1).map((q) => new paper.Point(q[0], q[1])), closed: true, insert: false });

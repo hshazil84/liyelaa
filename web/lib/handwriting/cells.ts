@@ -1,8 +1,10 @@
 import { lum } from "./image";
+import { snapMark } from "./marks";
 import { boxBlur3, traceField, type PxSeg } from "./trace";
 import { LSB, UNITS_PER_MM, type CellResult, type Contour, type Glyph, type Layout, type LayoutCell } from "./types";
 
 const INSET = 1.0;   // mm kept clear of the box border
+const SPECK_MM2 = 0.3; // ink smaller than this (a printed tick, a grain of dust) is not part of the letter
 
 function percentile(vals: Float32Array, p: number): number {
   const hist = new Uint32Array(256);
@@ -95,7 +97,7 @@ async function extractCell(sheet: ImageData, flat: Float32Array, cell: LayoutCel
 
   const dark = new Float32Array(w * h);
   for (let i = 0; i < dark.length; i++) dark[i] = Math.max(0, paper - L[i]);
-  const rings = await traceField(boxBlur3(dark, w, h), w, h, paper - T);
+  const rings = await traceField(boxBlur3(dark, w, h), w, h, paper - T, { minArea: SPECK_MM2 * ppm * ppm, relMinArea: 0.02, relBelow: 1.2 * ppm * ppm });
   if (!rings.length) return { ...base, status: "empty" };
 
   const glyph = toGlyph(cell, rings, x0, y0, ppm, layout);
@@ -117,8 +119,9 @@ function toGlyph(cell: LayoutCell, rings: PxSeg[][], x0: number, y0: number, ppm
     hi: { x: r1((s.hix / ppm) * K), y: r1((-s.hiy / ppm) * K) },
     ho: { x: r1((s.hox / ppm) * K), y: r1((-s.hoy / ppm) * K) },
   })));
-  return {
+  const glyph: Glyph = {
     id: cell.id, cp: cell.cp, kind: cell.kind, contours,
     adv: isMark ? 0 : Math.round((maxX - minX) * K + 2 * LSB),
   };
+  return isMark ? snapMark(glyph) : glyph;
 }

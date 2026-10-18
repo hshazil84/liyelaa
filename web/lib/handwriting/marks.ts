@@ -4,7 +4,9 @@ import type { Contour, Glyph, Pt } from "./types";
 export const REF_TOP = 342;        // top of the dotted box on the template (9 mm)
 export const REF_BOTTOM = 0;
 export const MARKS_BELOW = new Set([0x07aa, 0x07ab]);   // ubufili and ooboofili sit under the letter
-export const GAP_TOO_FAR = 150;    // a mark floating further than this from its letter is flagged
+export const GAP_TOO_FAR = 150;
+export const MARK_GAP_MIN = 24;   // a freshly drawn mark is kept at least this far clear of its letter
+export const MARK_GAP_MAX = 160;    // a mark floating further than this from its letter is flagged
 
 export type Offset = { dx: number; dy: number };
 export type Offsets = Record<string, Offset>;
@@ -117,4 +119,19 @@ export function checkPair(letter: Glyph, mark: Glyph, off?: Offset): Check {
   const gap = isBelow(mark) ? lb.y0 - y1 : y0 - lb.y1;
   if (gap > GAP_TOO_FAR) return { ok: false, why: "far" };
   return { ok: true };
+}
+
+/**
+ * People do not write a mark exactly where the template shows it: low in its box, on the wrong side of the baseline, or touching it.
+ * Move the drawing up or down so it sits just clear of where the letter will be (above the top, or below the bottom),
+ * keeping the gap the person drew when it is a sensible one. Sideways position is left as drawn.
+ */
+export function snapMark(mark: Glyph): Glyph {
+  const b = inkBox(mark);
+  if (!b) return mark;
+  const below = isBelow(mark);
+  const drawn = below ? REF_BOTTOM - b.y1 : b.y0 - REF_TOP;      // gap between the drawing and the reference line, if it is on the right side
+  const gap = Math.min(MARK_GAP_MAX, Math.max(MARK_GAP_MIN, drawn));
+  const dy = below ? REF_BOTTOM - gap - b.y1 : REF_TOP + gap - b.y0;
+  return Math.abs(dy) < 0.5 ? mark : { ...mark, contours: shiftContours(mark.contours, { x: 0, y: Math.round(dy * 10) / 10 }) };
 }
