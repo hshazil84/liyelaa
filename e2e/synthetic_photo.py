@@ -19,7 +19,7 @@ OUT = Path(sys.argv[1] if len(sys.argv) > 1 else ROOT / "e2e/out")
 OUT.mkdir(parents=True, exist_ok=True)
 LAYOUT = json.loads((ROOT / "web/lib/template-layout.json").read_text())
 FONT_WOFF = ROOT / "web/public/fonts/NotoSansThaana-Variable.woff2"
-INK = "#1a2a6c"
+INK = os.environ.get("INK", "#1a2a6c")
 PALE = "#b9b9b9"
 FONT_SIZE = 26          # mm, makes the letters fill the box like real handwriting
 SPECIAL_LIGHT = "0786"  # drawn in very pale ink
@@ -55,7 +55,7 @@ def overlay(sheet, cmap):
         cx, by = c["x"] + c["w"] / 2, c["y"] + LAYOUT["guides"]["baseY"]
         # people write marks and punctuation smaller than letters; keep them inside their boxes
         size = FONT_SIZE * {"FDFD": 0.62, "FDF2": 0.6}.get(c["id"], 0.5 if c["kind"] != "letter" else 1.0)
-        color, stroke = INK, 0.25
+        color, stroke = INK, float(os.environ.get("STROKE", "0.25"))
         status = "ok"
         if c["id"] == SPECIAL_LIGHT: color, status = PALE, "light"
         if c["id"] == SPECIAL_EDGE: size, status = FONT_SIZE * 1.9, "ok+edge"
@@ -104,7 +104,7 @@ def render_sheets():
     return pngs, {"1": t1, "2": t2}
 
 
-def simulate(flat_path, out_path, rot, canvas, tilt, seed):
+def simulate(flat_path, out_path, rot, canvas, tilt, seed, hard=False):
     r = np.random.RandomState(seed)
     img = cv2.imread(str(flat_path))
     h, w = img.shape[:2]
@@ -130,9 +130,14 @@ def simulate(flat_path, out_path, rot, canvas, tilt, seed):
     light = 1.05 - 0.28 * (xx / cw) - 0.12 * (yy / ch)                                    # uneven lighting
     shadow = 1 - 0.18 * np.exp(-(((xx - cw * 0.25) ** 2 + (yy - ch * 0.7) ** 2) / (2 * (cw * 0.2) ** 2)))
     comp *= (light * shadow)[..., None]
-    comp = cv2.GaussianBlur(comp, (0, 0), 1.1)                                             # soft focus
-    comp += r.randn(ch, cw, 3).astype(np.float32) * 3.5                                    # sensor noise
-    cv2.imwrite(str(out_path), np.clip(comp, 0, 255).astype(np.uint8), [cv2.IMWRITE_JPEG_QUALITY, 78])
+    if hard:
+        # a hand's shadow cutting across one side of the page, dim room light, and a page that is not quite flat
+        edge = (xx - cw * 0.55) + 0.35 * (yy - ch * 0.2)
+        comp *= (1 - 0.42 * (1 / (1 + np.exp(-edge / 40))))[..., None]
+        comp *= 0.8
+    comp = cv2.GaussianBlur(comp, (0, 0), 2.2 if hard else 1.1)                           # soft focus
+    comp += r.randn(ch, cw, 3).astype(np.float32) * (7 if hard else 3.5)                   # sensor noise
+    cv2.imwrite(str(out_path), np.clip(comp, 0, 255).astype(np.uint8), [cv2.IMWRITE_JPEG_QUALITY, 60 if hard else 78])
 
 
 if __name__ == "__main__":
@@ -141,5 +146,8 @@ if __name__ == "__main__":
     simulate(pngs[0], OUT / "sheet1_sideways.jpg", 94, (4032, 3024), 0.7, 2)
     simulate(pngs[0], OUT / "sheet1_upside.jpg", 183, (3024, 4032), 0.7, 3)
     simulate(pngs[1], OUT / "sheet2_tilt.jpg", -5, (3024, 4032), 1.0, 4)
+    if os.environ.get("HARD"):
+        for f in ("sheet1_tilt", "sheet2_tilt"):
+            simulate(pngs[0 if f.startswith("sheet1") else 1], OUT / f"{f}.jpg", 6 if f.startswith("sheet1") else -5, (3024, 4032), 1.2, 9, hard=True)
     (OUT / "truth.json").write_text(json.dumps(truth, indent=1))
     print("wrote", sorted(p.name for p in OUT.glob("*.jpg")))

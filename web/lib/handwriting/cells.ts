@@ -12,21 +12,70 @@ function percentile(vals: Float32Array, p: number): number {
   return 255;
 }
 
-/** Cut every box out of the straightened sheet, decide whether it holds ink, and trace it. */
-export async function extractCells(sheet: ImageData, layout: Layout, sheetId: number, ppm = 8): Promise<CellResult[]> {
-  const cells = layout.sheets.find((s) => s.id === sheetId)!.cells;
-  const out: CellResult[] = [];
-  for (const cell of cells) out.push(await extractCell(sheet, cell, layout, ppm));
+/**
+ * Even out the light across the sheet, so a shadow (a hand, a phone) is not mistaken for ink.
+ * The paper brightness is read from every 5 mm block of the page (ink is thin, so most of a block is paper),
+ * smoothed, and every pixel is measured against it.
+ */
+export function flatLuminance(sheet: ImageData, block = 40): Float32Array {
+  const W = sheet.width, H = sheet.height;
+  const gw = Math.ceil(W / block), gh = Math.ceil(H / block);
+  const grid = new Float32Array(gw * gh);
+  const hist = new Uint32Array(256);
+  for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+    hist.fill(0);
+    let n = 0;
+    for (let y = gy * block; y < Math.min(H, (gy + 1) * block); y += 2) for (let x = gx * block; x < Math.min(W, (gx + 1) * block); x += 2) {
+      hist[Math.max(0, Math.min(255, Math.round(lum(sheet.data, (y * W + x) * 4))))]++; n++;
+    }
+    let acc = 0, v = 255;
+    for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc >= 0.85 * n) { v = i; break; } }
+    grid[gy * gw + gx] = v;
+  }
+  const sorted = Array.from(grid).sort((a, b) => a - b);
+  const floor = 0.5 * sorted[Math.floor(sorted.length * 0.9)];        // a block that is all ink (a corner square) must not set the paper level
+  for (let i = 0; i < grid.length; i++) grid[i] = Math.max(grid[i], floor);
+  const smooth = new Float32Array(grid.length);
+  for (let pass = 0; pass < 2; pass++) {
+    for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+      let s = 0, c = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const x = gx + dx, y = gy + dy;
+        if (x < 0 || y < 0 || x >= gw || y >= gh) continue;
+        s += grid[y * gw + x]; c++;
+      }
+      smooth[gy * gw + gx] = s / c;
+    }
+    grid.set(smooth);
+  }
+  const out = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) {
+    const fy = Math.min(gh - 1, Math.max(0, (y + 0.5) / block - 0.5)), y0 = Math.floor(fy), y1 = Math.min(gh - 1, y0 + 1), ty = fy - y0;
+    for (let x = 0; x < W; x++) {
+      const fx = Math.min(gw - 1, Math.max(0, (x + 0.5) / block - 0.5)), x0 = Math.floor(fx), x1 = Math.min(gw - 1, x0 + 1), tx = fx - x0;
+      const bg = (grid[y0 * gw + x0] * (1 - tx) + grid[y0 * gw + x1] * tx) * (1 - ty) + (grid[y1 * gw + x0] * (1 - tx) + grid[y1 * gw + x1] * tx) * ty;
+      out[y * W + x] = Math.min(255, (lum(sheet.data, (y * W + x) * 4) / bg) * 235);
+    }
+  }
   return out;
 }
 
-async function extractCell(sheet: ImageData, cell: LayoutCell, layout: Layout, ppm: number): Promise<CellResult> {
+/** Cut every box out of the straightened sheet, decide whether it holds ink, and trace it. */
+export async function extractCells(sheet: ImageData, layout: Layout, sheetId: number, ppm = 8): Promise<CellResult[]> {
+  const cells = layout.sheets.find((s) => s.id === sheetId)!.cells;
+  const flat = flatLuminance(sheet);
+  const out: CellResult[] = [];
+  for (const cell of cells) out.push(await extractCell(sheet, flat, cell, layout, ppm));
+  return out;
+}
+
+async function extractCell(sheet: ImageData, flat: Float32Array, cell: LayoutCell, layout: Layout, ppm: number): Promise<CellResult> {
   const base = { id: cell.id, cp: cell.cp, kind: cell.kind, label: cell.label };
   const x0 = Math.round((cell.x + INSET) * ppm), x1 = Math.round((cell.x + cell.w - INSET) * ppm);
   const y0 = Math.round((cell.y + 0.8) * ppm), y1 = Math.round((cell.y + cell.h - layout.guides.labelH - 0.4) * ppm);
   const w = x1 - x0, h = y1 - y0;
   const L = new Float32Array(w * h);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) L[y * w + x] = lum(sheet.data, ((y0 + y) * sheet.width + x0 + x) * 4);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) L[y * w + x] = flat[(y0 + y) * sheet.width + x0 + x];
 
   const paper = percentile(L, 0.8);
   const darkest = percentile(L, 0.002);
