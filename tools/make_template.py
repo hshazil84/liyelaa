@@ -107,7 +107,7 @@ def build_html(overlay1="", overlay2=""):
             "<b>baseline</b>; tall parts can reach the top dashed line. Keep the sheet flat, in daylight, and don't cover "
             "the four black squares in the corners.")
     tip2 = ("Write only the vowel mark (fili) where it would sit on the dotted letter-box: <b>above</b> the baseline for most, "
-            "<b>below</b> for the 5th and 6th marks (ubufili and ooboofili). Extras are optional - skip any you don't want.")
+            "<b>below</b> for ibifili and eebeefili (the 3rd and 4th marks). Extras are optional - skip any you don't want.")
     sec = f'<div class="sec" style="top:{GY + 2 * CELL_H + 1}mm">Extras (optional)</div>'
     return (f"<!doctype html><meta charset=utf-8><style>{CSS}</style>"
             + page("Letters", tip1, "".join(map(cell_html, s1)) + overlay1, 1)

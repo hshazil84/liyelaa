@@ -36,12 +36,12 @@ def G(cp, contours, adv=400):
 
 
 BA, KA = 0x0784, 0x0785
-FILI_A, UBU = 0x07A6, 0x07AA
+FILI_A, IBI = 0x07A6, 0x07A8
 BASE_GLYPHS = [
     G(BA, [rect(40, 0, 300, 400)], 380),
     G(KA, [rect(40, -60, 300, 300)], 380),
     G(FILI_A, [rect(-30, 350, 30, 400)], 0),          # drawn 8 units above the template box (top at 342)
-    G(UBU, [rect(-30, -80, 30, -30)], 0),             # drawn 30 units below the baseline
+    G(IBI, [rect(-30, -80, 30, -30)], 0),             # drawn 30 units below the baseline
 ]
 
 
@@ -86,7 +86,7 @@ def test_font_is_valid_and_has_the_drawn_glyphs():
     font, report = build()
     cmap = font.getBestCmap()
     assert cmap[BA] == "uni0784" and cmap[FILI_A] == "uni07A6" and cmap[0x20] == "space"
-    assert report["drawn"] == ["0784", "0785", "07A6", "07AA"] and report["filled_from_starter"] == []
+    assert report["drawn"] == ["0784", "0785", "07A6", "07A8"] and report["filled_from_starter"] == []
     with tempfile.TemporaryDirectory() as d:
         src, dst = os.path.join(d, "a.ttf"), os.path.join(d, "b.ttf")
         open(src, "wb").write(font_bytes(font, None))
@@ -144,8 +144,8 @@ def test_mark_above_follows_the_letter_top():
 def test_mark_below_follows_the_letter_bottom():
     font, _ = build()
     for base in (BA, KA):
-        out = placed(font, chr(base) + chr(UBU))
-        mark = next(b for n, b, _ in out if n == "uni07AA")
+        out = placed(font, chr(base) + chr(IBI))
+        mark = next(b for n, b, _ in out if n == "uni07A8")
         letter = next(b for n, b, _ in out if n == f"uni{base:04X}")
         assert mark[3] - letter[1] == pytest.approx(-30, abs=1.5)
         assert (mark[0] + mark[2]) / 2 == pytest.approx((letter[0] + letter[2]) / 2, abs=1.5)
@@ -172,12 +172,12 @@ def test_offset_moves_one_mark_on_one_letter_only():
 
 
 def test_offset_for_one_mark_leaves_the_other_marks_alone():
-    font, _ = build(mark_offsets=[MarkOffsetIn(base="0784", mark="07AA", dx=0, dy=-50)])
+    font, _ = build(mark_offsets=[MarkOffsetIn(base="0784", mark="07A8", dx=0, dy=-50)])
     plain, _ = build()
     def box(f, mark):
         out = placed(f, chr(BA) + chr(mark))
         return next(b for n, b, _ in out if n == f"uni{mark:04X}")
-    assert box(font, UBU)[1] - box(plain, UBU)[1] == pytest.approx(-50, abs=1.5)
+    assert box(font, IBI)[1] - box(plain, IBI)[1] == pytest.approx(-50, abs=1.5)
     assert box(font, FILI_A) == box(plain, FILI_A)
 
 
@@ -267,8 +267,8 @@ def test_starter_font_fills_missing_letters_and_marks_attach():
     assert mark[1] >= letter[3] + 20
     assert (mark[0] + mark[2]) / 2 == pytest.approx((letter[0] + letter[2]) / 2, abs=2)
     # and a starter-font mark below
-    out = placed(font, chr(0x0786) + chr(0x07AB))
-    mark = next(b for n, b, _ in out if n == "uni07AB")
+    out = placed(font, chr(0x0786) + chr(0x07A9))
+    mark = next(b for n, b, _ in out if n == "uni07A9")
     letter = next(b for n, b, _ in out if n == "uni0786")
     assert mark[3] <= letter[1] - 20
 

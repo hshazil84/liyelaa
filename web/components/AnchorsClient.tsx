@@ -92,7 +92,7 @@ export function AnchorsClient() {
   // ---- the editor canvas
   const lb = letter ? inkBox(letter) : null;
   const auto = letter && mark ? autoAnchor(letter, mark) : null;
-  const other = letter && mark ? autoAnchor(letter, { ...mark, cp: [isBelow(mark) ? 0x07a6 : 0x07aa] }, false) : null;
+  const other = letter && mark ? autoAnchor(letter, { ...mark, cp: [isBelow(mark) ? 0x07a6 : 0x07a8] }, false) : null;
   const dot = auto ? { x: auto.x + current.dx, y: auto.y + current.dy } : null;
   const shift = letter && mark ? markShift(letter, mark, current) : null;
   const adv = letter ? Math.max(letter.adv, 420) : 500;

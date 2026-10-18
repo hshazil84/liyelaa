@@ -3,7 +3,7 @@ import type { Contour, Glyph, Pt } from "./types";
 /** Where vowel marks attach, in font units. This mirrors the builder, so the preview matches the exported font. */
 export const REF_TOP = 342;        // top of the dotted box on the template (9 mm)
 export const REF_BOTTOM = 0;
-export const MARKS_BELOW = new Set([0x07aa, 0x07ab]);   // ubufili and ooboofili sit under the letter
+export const MARKS_BELOW = new Set([0x07a8, 0x07a9]);   // ibifili and eebeefili sit under the letter; ubufili and ooboofili are above
 export const GAP_TOO_FAR = 150;
 export const MARK_GAP_MIN = 24;   // a freshly drawn mark is kept at least this far clear of its letter
 export const MARK_GAP_MAX = 160;

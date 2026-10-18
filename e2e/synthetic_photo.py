@@ -64,11 +64,11 @@ def overlay(sheet, cmap):
         attrs = (f'font-family="Hand" font-weight="520" font-size="{size}" text-anchor="middle" '
                  f'stroke-linejoin="round" {tf}')
         if c["kind"] == "fili":
-            # people write a mark above (or, for the 5th and 6th, below) the dotted letter box, at normal size
+            # people write a mark above (or, for ibifili and eebeefili, below) the dotted letter box, at normal size
             y0, y1 = mark_extent(cp)
             size = FONT_SIZE
             box_top = by - mt.PH["h"]
-            ty = (box_top - 0.4 + y0 * size / 1000) if cp not in (0x07AA, 0x07AB) else (by + 0.4 + y1 * size / 1000)
+            ty = (box_top - 0.4 + y0 * size / 1000) if cp not in (0x07A8, 0x07A9) else (by + 0.4 + y1 * size / 1000)
             attrs = (f'font-family="Hand" font-weight="520" font-size="{size}" text-anchor="middle" '
                      f'stroke-linejoin="round" transform="rotate({rot:.2f} {cx + jx:.2f} {ty + jy:.2f})"')
             parts.append(f'<text x="{cx + jx}" y="{ty + jy}" fill="{color}" stroke="{color}" stroke-width="{stroke}" {attrs}>{ch}</text>')

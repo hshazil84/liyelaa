@@ -36,7 +36,7 @@ NOTO_OFL = ASSETS / "OFL-NotoSansThaana.txt"
 
 UPEM = 1000
 MARK_RANGE = range(0x07A6, 0x07B1)           # the 11 vowel signs (fili) and sukun
-MARKS_BELOW = {0x07AA, 0x07AB}               # ubufili and ooboofili sit under the letter
+MARKS_BELOW = {0x07A8, 0x07A9}               # ibifili and eebeefili sit under the letter; ubufili and ooboofili are above
 REF_TOP = 342                                # top of the dotted box on the template, in font units (9 mm)
 REF_BOTTOM = 0
 FALLBACK_GAP = 40                            # space kept between a starter-font mark and its letter
