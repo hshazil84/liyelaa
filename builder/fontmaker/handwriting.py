@@ -385,11 +385,11 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
     ps = re.sub(r"[^A-Za-z0-9]", "", name) or "MyHandwriting"
     lic = (f"Copyright (c) {year} {author}. This Font Software is licensed under the SIL Open Font License, Version 1.1."
            if req.licence == "ofl" else f"Copyright (c) {year} {author}. All rights reserved.")
-    desc = req.description.strip() or "Made with Dhivehi Font Maker from handwriting."
+    desc = req.description.strip() or "Made with Liyelaa from handwriting."
     if filled:
         desc += " Letters that were not drawn come from Noto Sans Thaana (SIL OFL 1.1)."
     names = {
-        "familyName": name, "styleName": "Regular", "uniqueFontIdentifier": f"{ps}-{req.version}-Regular;dhivehi-font-maker",
+        "familyName": name, "styleName": "Regular", "uniqueFontIdentifier": f"{ps}-{req.version}-Regular;liyelaa",
         "fullName": f"{name} Regular", "psName": f"{ps}-Regular", "version": f"Version {req.version}",
         "copyright": lic.split(". ")[0], "licenseDescription": lic, "description": desc,
     }
@@ -492,7 +492,7 @@ def build_zip(req: BuildRequest) -> tuple[bytes, str, dict]:
             + (f"Designed by {req.author.strip()}\n" if req.author.strip() else "")
             + (f"{req.website}\n" if req.website else "")
             + ("\n" if req.author.strip() or req.website else "")
-            + "A font made from handwriting with Dhivehi Font Maker.\n"
+            + "A font made from handwriting with Liyelaa.\n"
             "Install the .ttf on your computer, or use the .woff2 on a website.\n"
             "Typing the Latin keys , ; ? gives the Arabic comma, semicolon and question mark.\n"
             + ("Letters that were not drawn come from Noto Sans Thaana (SIL Open Font License 1.1).\n" if filled else "")

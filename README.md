@@ -1,4 +1,4 @@
-# Dhivehi Font Maker
+# Liyelaa
 
 Make a Dhivehi (Thaana) font: restyle an open one, or build one from your own handwriting.
 No account needed. Projects are kept in the user's own browser.

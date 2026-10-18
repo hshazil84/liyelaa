@@ -10,7 +10,7 @@ export function Logo() {
       >
         ހ
       </span>
-      <span className="font-display text-lg font-bold">Dhivehi Font Maker</span>
+      <span className="font-display text-lg font-bold">Liyelaa</span>
     </Link>
   );
 }

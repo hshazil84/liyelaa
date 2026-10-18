@@ -4,7 +4,7 @@ import "@fontsource-variable/dm-sans";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Dhivehi Font Maker",
+  title: "Liyelaa",
   description: "Make a Dhivehi (Thaana) font from your handwriting, or restyle an open one.",
 };
 
