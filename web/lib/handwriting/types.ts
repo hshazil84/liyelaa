@@ -26,6 +26,8 @@ export type Glyph = {
   kind: CellKind;
   contours: Contour[];   // font units, y up, baseline at y = 0
   adv: number;           // advance width (0 for marks)
+  source?: "photo" | "drawn";   // traced from a photo, or drawn with the pen
+  checked?: boolean;     // the person has looked at this one in the clean-up step
 };
 
 export type CellStatus = "ok" | "empty" | "light";

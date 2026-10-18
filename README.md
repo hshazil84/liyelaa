@@ -21,6 +21,10 @@ cd web && npm install && npm run dev
 # 3. tests
 cd builder && python3 -m pytest          # font logic + API
 python3 e2e/play_flow.py                 # browser flow, needs both servers running and `pip install playwright`
+python3 e2e/synthetic_photo.py           # fake phone photos of the filled-in template, written to e2e/out
+python3 e2e/handwriting_flow.py e2e/out  # photo page: finds the sheet, traces the letters
+python3 e2e/letters_flow.py e2e/out      # clean-up editor: drag, add and delete points, pen, undo
+cd web && npx tsx scripts/test-edit.ts   # outline editing maths
 ```
 
 Config (see `.env.example`): `NEXT_PUBLIC_BUILDER_URL` for the web app, `ALLOWED_ORIGINS` for the builder.
@@ -29,9 +33,9 @@ Config (see `.env.example`): `NEXT_PUBLIC_BUILDER_URL` for the web app, `ALLOWED
 
 | Path | State |
 | --- | --- |
-| Play with a font (weight, width, slant, spacing) | Done. Live preview matches the built font. |
-| Make a font from handwriting | Next. Proofs done: template, photo to outlines in the browser, outlines to a valid TTF. |
-| Draw or import (pen tool, SVG) | After handwriting; shares its editor. |
+| Play with a font (weight, width, slant, spacing, two starting fonts) | Done. Live preview matches the built font. |
+| Make a font from handwriting | In progress. Done: print template, photo to outlines in the browser, clean-up editor (move points, pen, eraser, undo). Next: anchors, spacing, extras, build and export. |
+| Draw or import (pen tool, SVG) | After handwriting; shares the clean-up editor (the pen already works there). |
 | Ligatures, RTL punctuation, mark anchors, Bismillah / Allah / rufiyaa | Proven in `builder` prototypes; to be wired into the handwriting build. |
 | Login (Google, Microsoft) and cloud save | Later. Everything is local-first, so login only adds sync. |
 

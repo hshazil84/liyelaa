@@ -1,15 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { GlyphTile } from "@/components/GlyphTile";
 import { Logo } from "@/components/Logo";
 import { Stepper } from "@/components/Stepper";
 import { layout, processPhoto, type PhotoOutcome } from "@/lib/handwriting/pipeline";
+import { HANDWRITING_STEPS } from "@/lib/handwriting/steps";
 import { clearProject, loadProject, saveGlyphs } from "@/lib/handwriting/store";
 
-const STEPS = [
-  { label: "Start", href: "/" }, { label: "Letters" }, { label: "Anchors" }, { label: "Spacing and extras" }, { label: "Test and export" },
-];
 
 const letterCount = layout.sheets[0].cells.length;
 const filiCount = layout.sheets[1].cells.filter((c) => c.kind === "fili").length;
@@ -60,7 +59,7 @@ export function HandwritingPhoto() {
     <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <Logo />
-        <Stepper steps={STEPS} current={1} />
+        <Stepper steps={HANDWRITING_STEPS} current={1} />
         <span className="flex items-center gap-2 text-sm text-muted">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>
@@ -111,6 +110,9 @@ export function HandwritingPhoto() {
             <div className="flex flex-col gap-2 rounded-3xl border border-line bg-white p-5" data-testid="saved-summary">
               <h2 className="font-display text-lg font-bold">Saved so far</h2>
               <p className="text-sm text-muted">{saved.letters} of {letterCount} letters · {saved.fili} of {filiCount} vowel marks · {saved.symbols} extras</p>
+              <Link href="/handwriting/letters" data-testid="continue-letters" className="flex h-12 items-center justify-center rounded-xl bg-teal text-base font-bold text-white hover:bg-teal-dark">
+                Clean up my letters
+              </Link>
               <button type="button" onClick={async () => { await clearProject(); await refresh(); }} className="self-start text-sm font-bold text-teal underline underline-offset-4">
                 Start again
               </button>
