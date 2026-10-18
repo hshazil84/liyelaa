@@ -1,0 +1,9 @@
+node_modules/
+.next/
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
+.env.local
+.DS_Store
+e2e/out/

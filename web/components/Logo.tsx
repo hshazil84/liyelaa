@@ -1,0 +1,16 @@
+import Link from "next/link";
+
+export function Logo() {
+  return (
+    <Link href="/" className="flex items-center gap-3">
+      <span
+        lang="dv"
+        className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-teal font-thaana text-[22px] leading-none text-white"
+        aria-hidden
+      >
+        ހ
+      </span>
+      <span className="font-display text-lg font-bold">Dhivehi Font Maker</span>
+    </Link>
+  );
+}
