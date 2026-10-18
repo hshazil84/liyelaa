@@ -137,7 +137,7 @@ export function AnchorsClient() {
             <>
               <div className="flex flex-col gap-2">
                 <span id="letter-label" className="text-sm font-medium">Letter</span>
-                <div role="radiogroup" aria-labelledby="letter-label" className="flex flex-wrap gap-1.5">
+                <div role="radiogroup" aria-labelledby="letter-label" dir="rtl" className="flex flex-wrap gap-1.5">
                   {letters.map((c) => {
                     const on = c.id === letterId;
                     const bad = marks.some((m) => flagged.out.some((f) => f.l.id === c.id && f.m.id === m.id));
@@ -162,7 +162,7 @@ export function AnchorsClient() {
 
               <div className="flex flex-col gap-2">
                 <span id="mark-label" className="text-sm font-medium">Vowel mark</span>
-                <div role="radiogroup" aria-labelledby="mark-label" className="flex flex-wrap gap-1.5">
+                <div role="radiogroup" aria-labelledby="mark-label" dir="rtl" className="flex flex-wrap gap-1.5">
                   {marks.map((c) => {
                     const on = c.id === markId;
                     return (

@@ -164,7 +164,7 @@ export function LettersClient() {
               </button>
             ))}
           </div>
-          <div className="grid grid-cols-6 justify-between gap-1.5" data-testid="grid">
+          <div dir="rtl" className="grid grid-cols-6 justify-between gap-1.5" data-testid="grid">
             {cells.map((c) => (
               <Tile key={c.id} cell={c} glyph={glyphs[c.id]} open={c.id === cell.id} onPick={() => setSelId(c.id)} />
             ))}

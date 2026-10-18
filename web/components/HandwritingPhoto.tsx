@@ -147,7 +147,7 @@ export function HandwritingPhoto() {
                 {result.counts.edge > 0 && <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-coral" />{result.counts.edge} touching the box edge</span>}
                 <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full border-[1.5px] border-dashed border-[#B6C2BF]" />{result.counts.empty} empty</span>
               </div>
-              <ul className="grid grid-cols-[repeat(auto-fill,minmax(74px,1fr))] gap-2" aria-label="Letters found">
+              <ul dir="rtl" className="grid grid-cols-[repeat(auto-fill,minmax(74px,1fr))] gap-2" aria-label="Letters found">
                 {result.cells.map((c) => <GlyphTile key={c.id} cell={c} />)}
               </ul>
               {problems.length > 0 && (
