@@ -1,4 +1,6 @@
 import { del, get, set } from "idb-keyval";
+import type { Offsets } from "./marks";
+import type { Spacing } from "./spacing";
 import type { Glyph } from "./types";
 
 const KEY = "dfm.handwriting.v1";
@@ -6,6 +8,13 @@ const KEY = "dfm.handwriting.v1";
 export type Project = {
   v: 1; glyphs: Record<string, Glyph>; updatedAt: number;
   originals?: Record<string, Glyph>;     // the traced version of a letter, kept when it is first edited
+  markOffsets?: Offsets;                 // hand adjustments, one per letter and vowel mark pair
+  spacing?: Spacing;                     // letter spacing and pair adjustments
+  info?: FontInfo;                       // name, designer and so on, for the export step
+};
+
+export type FontInfo = {
+  name: string; designer: string; website: string; description: string; version: string; licence: "ofl" | "private";
 };
 
 const empty = (): Project => ({ v: 1, glyphs: {}, updatedAt: Date.now() });
@@ -45,6 +54,30 @@ export async function removeGlyph(id: string): Promise<Project> {
   const p = await loadProject();
   delete p.glyphs[id];
   if (p.originals) delete p.originals[id];
+  p.updatedAt = Date.now();
+  try { await set(KEY, p); } catch {}
+  return p;
+}
+
+export async function saveMarkOffsets(markOffsets: Offsets): Promise<Project> {
+  const p = await loadProject();
+  p.markOffsets = markOffsets;
+  p.updatedAt = Date.now();
+  try { await set(KEY, p); } catch {}
+  return p;
+}
+
+export async function saveSpacing(spacing: Spacing): Promise<Project> {
+  const p = await loadProject();
+  p.spacing = spacing;
+  p.updatedAt = Date.now();
+  try { await set(KEY, p); } catch {}
+  return p;
+}
+
+export async function saveInfo(info: FontInfo): Promise<Project> {
+  const p = await loadProject();
+  p.info = info;
   p.updatedAt = Date.now();
   try { await set(KEY, p); } catch {}
   return p;

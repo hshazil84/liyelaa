@@ -220,6 +220,13 @@ export function LettersClient() {
             <h2 className="font-display text-base font-bold text-teal">Keep it on the guides</h2>
             <p className="text-sm leading-normal">Draw between Top and Baseline so vowel marks have room above and below.</p>
           </div>
+          <Link
+            href="/handwriting/anchors"
+            data-testid="continue-anchors"
+            className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark"
+          >
+            Place the vowel marks <span aria-hidden>→</span>
+          </Link>
         </aside>
       </main>
     </div>

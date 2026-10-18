@@ -10,7 +10,7 @@ from fontTools.pens.areaPen import AreaPen
 from fontTools.ttLib import TTFont
 
 from fontmaker.handwriting import (
-    BuildRequest, GlyphIn, KernIn, LigatureIn, Pt, Seg, build_handwriting_font, build_zip,
+    BuildRequest, GlyphIn, KernIn, LigatureIn, MarkOffsetIn, Pt, Seg, build_handwriting_font, build_zip,
 )
 from fontmaker.play import font_bytes
 
@@ -160,6 +160,34 @@ def test_anchor_override_moves_the_mark():
     assert mark[1] == pytest.approx(420 + 8, abs=1.5)
 
 
+def test_offset_moves_one_mark_on_one_letter_only():
+    font, _ = build(mark_offsets=[MarkOffsetIn(base="0784", mark="07A6", dx=40, dy=25)])
+    plain, _ = build()
+    def mark_box(f, base):
+        out = placed(f, chr(base) + chr(FILI_A))
+        return next(b for n, b, _ in out if n == "uni07A6")
+    moved, ref = mark_box(font, BA), mark_box(plain, BA)
+    assert moved[0] - ref[0] == pytest.approx(40, abs=1.5) and moved[1] - ref[1] == pytest.approx(25, abs=1.5)
+    assert mark_box(font, KA) == mark_box(plain, KA), "the other letter is untouched"
+
+
+def test_offset_for_one_mark_leaves_the_other_marks_alone():
+    font, _ = build(mark_offsets=[MarkOffsetIn(base="0784", mark="07AA", dx=0, dy=-50)])
+    plain, _ = build()
+    def box(f, mark):
+        out = placed(f, chr(BA) + chr(mark))
+        return next(b for n, b, _ in out if n == f"uni{mark:04X}")
+    assert box(font, UBU)[1] - box(plain, UBU)[1] == pytest.approx(-50, abs=1.5)
+    assert box(font, FILI_A) == box(plain, FILI_A)
+
+
+def test_offsets_for_unknown_glyphs_are_ignored():
+    font, _ = build(mark_offsets=[MarkOffsetIn(base="FFFF", mark="07A6", dx=90, dy=90),
+                                  MarkOffsetIn(base="0784", mark="0785", dx=90, dy=90)])
+    plain, _ = build()
+    assert placed(font, chr(BA) + chr(FILI_A)) == placed(plain, chr(BA) + chr(FILI_A))
+
+
 # ----------------------------------------------------------------------------- features
 def test_ligature_replaces_a_sequence():
     lig = LigatureIn(id="ba-sukun", sequence=[BA, 0x07B0], contours=[rect(0, 0, 500, 300)], adv=540)
@@ -185,13 +213,38 @@ def test_latin_comma_semicolon_question_show_the_arabic_forms():
     assert cmap[0x2C] == "uni060C" and cmap[0x3F] == "uni061F" and 0x3B not in cmap
 
 
-def test_kerning_pair_changes_the_advance():
+def test_kerning_pair_changes_the_gap_between_the_two_letters_only():
+    """Right-to-left: the typed order is first letter on the right. Only the gap inside the pair may change."""
+    text = chr(BA) + chr(KA) + chr(BA)           # on screen, left to right: BA KA BA
     plain, _ = build()
-    kerned, report = build(kerning=[KernIn(left="0784", right="0785", value=-30)])
-    a = {n: adv for n, _, adv in placed(plain, chr(BA) + chr(KA))}
-    b = {n: adv for n, _, adv in placed(kerned, chr(BA) + chr(KA))}
-    assert b["uni0784"] == a["uni0784"] - 30 and b["uni0785"] == a["uni0785"]
+    kerned, report = build(kerning=[KernIn(left="0785", right="0784", value=-30)])
+    def gaps(font):
+        boxes = [b for _, b, _ in placed(font, text)]          # shaped order is left to right on screen
+        return [boxes[1][0] - boxes[0][2], boxes[2][0] - boxes[1][2]]      # left gap, right gap
+    pg, kg = gaps(plain), gaps(kerned)
+    assert kg[0] - pg[0] == -30, "gap inside the pair moved"
+    assert kg[1] - pg[1] == 0, "the other gap is untouched"
     assert report["kern_pairs"] == 1
+
+
+def test_kerning_works_through_a_vowel_mark_and_the_mark_follows_its_letter():
+    text = chr(BA) + chr(FILI_A) + chr(KA)           # a letter, its vowel mark, then the next letter
+    plain, _ = build()
+    kerned, _ = build(kerning=[KernIn(left="0784", right="0785", value=50)])
+    p, k = placed(plain, text), placed(kerned, text)
+    letter = lambda o, n: next(b for name, b, _ in o if name == n)
+    assert letter(k, "uni0784")[0] - letter(p, "uni0784")[0] == 50 and letter(k, "uni0785") == letter(p, "uni0785")
+    mark_p, mark_k = letter(p, "uni07A6"), letter(k, "uni07A6")
+    assert mark_k[0] - mark_p[0] == 50, "the mark stays on its letter"
+
+
+def test_positive_kerning_opens_the_gap_and_the_line_grows_by_that_much():
+    plain, _ = build()
+    kerned, _ = build(kerning=[KernIn(left="0784", right="0785", value=45)])
+    p, k = placed(plain, chr(BA) + chr(KA)), placed(kerned, chr(BA) + chr(KA))
+    gap = lambda o: o[1][1][0] - o[0][1][2]
+    assert gap(k) - gap(p) == 45
+    assert sum(a for *_, a in k) - sum(a for *_, a in p) == 45
 
 
 def test_spacing_adds_to_letters_not_marks():
@@ -238,6 +291,39 @@ def test_name_is_cleaned_and_font_is_renamed():
     font, _ = build(name="  <b>Mine</b> ހ ", author="Ali")
     assert font["name"].getDebugName(1) == "bMineb"
     assert "Ali" in font["name"].getDebugName(13)
+
+
+def test_designer_details_reach_the_name_table_and_version():
+    font, _ = build(name="Ali Hand", author="Ali  Rasheed\n", website="ali.mv", description="Round and friendly.", version="2.5")
+    n = font["name"]
+    assert n.getDebugName(9) == "Ali Rasheed"
+    assert n.getDebugName(12) == "https://ali.mv"
+    assert n.getDebugName(10) == "Round and friendly."
+    assert n.getDebugName(5) == "Version 2.500"
+    assert font["head"].fontRevision == pytest.approx(2.5)
+    assert n.getDebugName(0).startswith("Copyright (c)") and "Ali Rasheed" in n.getDebugName(0)
+
+
+def test_designer_details_are_optional():
+    font, _ = build()
+    assert font["name"].getDebugName(12) is None
+    assert font["name"].getDebugName(5) == "Version 1.000"
+    assert "Made with Dhivehi Font Maker" in font["name"].getDebugName(10)
+
+
+@pytest.mark.parametrize("kw", [{"website": "not a site"}, {"website": "ftp://x.mv"}, {"website": "nodots"}, {"version": "v2"}, {"version": "1.2345"}])
+def test_bad_designer_details_are_rejected(kw):
+    with pytest.raises(ValueError):
+        BuildRequest(glyphs=BASE_GLYPHS, **kw)
+
+
+def test_zip_readme_and_licence_carry_the_designer_details():
+    data, _, _ = build_zip(BuildRequest(glyphs=BASE_GLYPHS, name="Ali Hand", author="Ali", website="ali.mv",
+                                        description="Round and friendly.", version="1.2", fallback="none"))
+    z = zipfile.ZipFile(io.BytesIO(data))
+    readme, ofl = z.read("README.txt").decode(), z.read("OFL.txt").decode()
+    assert "Ali Hand 1.200" in readme and "Designed by Ali" in readme and "https://ali.mv" in readme and "Round and friendly." in readme
+    assert "https://ali.mv" in ofl
 
 
 # ----------------------------------------------------------------------------- download

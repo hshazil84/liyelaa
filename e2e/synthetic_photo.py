@@ -32,6 +32,16 @@ def font_info():
     return f.getBestCmap()
 
 
+def mark_extent(cp):
+    """Lowest and highest ink of a vowel mark in the hand font, in 1/1000 em, so a mark can be written above or below the box."""
+    from fontTools.pens.boundsPen import BoundsPen
+    f = TTFont(str(FONT_WOFF))
+    gs = f.getGlyphSet()
+    bp = BoundsPen(gs)
+    gs[f.getBestCmap()[cp]].draw(bp)
+    return bp.bounds[1], bp.bounds[3]
+
+
 def overlay(sheet, cmap):
     parts = ['<style>@font-face{font-family:Hand;src:url(thaana.woff2);font-weight:100 900}</style>',
              '<svg style="position:absolute;left:0;top:0" width="210mm" height="297mm" viewBox="0 0 210 297">']
@@ -54,9 +64,14 @@ def overlay(sheet, cmap):
         attrs = (f'font-family="Hand" font-weight="520" font-size="{size}" text-anchor="middle" '
                  f'stroke-linejoin="round" {tf}')
         if c["kind"] == "fili":
-            base = "ބ"                       # a base letter, painted over so only the mark stays
-            parts.append(f'<text x="{cx + jx}" y="{by + jy}" fill="{color}" stroke="{color}" stroke-width="{stroke}" {attrs}>{base}{ch}</text>')
-            parts.append(f'<text x="{cx + jx}" y="{by + jy}" fill="#fff" stroke="#fff" stroke-width="0.9" {attrs}>{base}</text>')
+            # people write a mark above (or, for the 5th and 6th, below) the dotted letter box, at normal size
+            y0, y1 = mark_extent(cp)
+            size = FONT_SIZE
+            box_top = by - mt.PH["h"]
+            ty = (box_top - 0.4 + y0 * size / 1000) if cp not in (0x07AA, 0x07AB) else (by + 0.4 + y1 * size / 1000)
+            attrs = (f'font-family="Hand" font-weight="520" font-size="{size}" text-anchor="middle" '
+                     f'stroke-linejoin="round" transform="rotate({rot:.2f} {cx + jx:.2f} {ty + jy:.2f})"')
+            parts.append(f'<text x="{cx + jx}" y="{ty + jy}" fill="{color}" stroke="{color}" stroke-width="{stroke}" {attrs}>{ch}</text>')
         else:
             parts.append(f'<text x="{cx + jx}" y="{by + jy}" fill="{color}" stroke="{color}" stroke-width="{stroke}" {attrs}>{ch}</text>')
         truth[c["id"]] = status

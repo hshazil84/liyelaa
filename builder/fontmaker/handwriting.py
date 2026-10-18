@@ -109,17 +109,65 @@ class KernIn(BaseModel):
     value: int = Field(ge=-500, le=500)
 
 
+class MarkOffsetIn(BaseModel):
+    """A hand adjustment for one vowel mark on one letter, in font units (x right, y up), on top of the automatic anchor."""
+    base: str = Field(max_length=12)         # glyph id of the letter
+    mark: str = Field(max_length=12)         # glyph id of the vowel mark
+    dx: int = Field(0, ge=-400, le=400)
+    dy: int = Field(0, ge=-400, le=400)
+
+
+def _one_line(v: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"[\x00-\x1f\x7f]", " ", v)).strip()
+
+
 class BuildRequest(BaseModel):
     name: str = Field("My Handwriting", max_length=60)
-    author: str = Field("", max_length=80)
+    author: str = Field("", max_length=80)               # the designer; also the copyright holder
+    website: str = Field("", max_length=120)
+    description: str = Field("", max_length=200)
+    version: str = "1.000"
     glyphs: list[GlyphIn] = Field(max_length=200)
     ligatures: list[LigatureIn] = Field(default_factory=list, max_length=60)
     anchors: dict[str, AnchorIn] = Field(default_factory=dict)
     kerning: list[KernIn] = Field(default_factory=list, max_length=2000)
+    mark_offsets: list[MarkOffsetIn] = Field(default_factory=list, max_length=700)
     fallback: Literal["noto", "none"] = "noto"
     licence: Literal["ofl", "private"] = "ofl"
     spacing: int = Field(0, ge=-100, le=200)
     space_width: int = Field(SPACE_ADVANCE, ge=100, le=800)
+
+    @field_validator("author", "description", mode="before")
+    @classmethod
+    def _text(cls, v):
+        return _one_line(v) if isinstance(v, str) else v
+
+    @field_validator("website", mode="before")
+    @classmethod
+    def _site(cls, v):
+        if not isinstance(v, str):
+            return v
+        v = v.strip()
+        if not v:
+            return ""
+        if re.search(r"\s", v):
+            raise ValueError("The website cannot have spaces in it")
+        if "://" in v:
+            if not re.match(r"^https?://", v, re.I):
+                raise ValueError("The website must start with http:// or https://")
+        else:
+            v = "https://" + v
+        if "." not in v.split("://", 1)[1]:
+            raise ValueError("That does not look like a website address")
+        return v
+
+    @field_validator("version", mode="before")
+    @classmethod
+    def _version(cls, v):
+        m = re.fullmatch(r"(\d{1,3})(?:\.(\d{1,3}))?", str(v).strip() or "1.000")
+        if not m:
+            raise ValueError("Version looks like 1.000 or 2.1")
+        return f"{int(m.group(1))}.{(m.group(2) or '0').ljust(3, '0')}"
 
 
 @dataclass
@@ -174,7 +222,8 @@ def outline_to_glyph(contours: Contours):
         path.draw(Cu2QuPen(tt, max_err=1.0, reverse_direction=False))
     glyph = tt.glyph()
     glyph.recalcBounds(None)
-    bounds = (glyph.xMin, glyph.yMin, glyph.xMax, glyph.yMax) if glyph.numberOfContours else None
+    # the ink box of the curves themselves; the glyph's own box counts off-curve points and overshoots by a few units
+    bounds = tuple(float(v) for v in path.bounds) if glyph.numberOfContours else None
     return glyph, bounds
 
 
@@ -259,6 +308,11 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
         if g.contours:
             user[cp] = _item(gname(cp), [cp], g.contours, g.adv, cp in MARK_RANGE)
     ids_by_cp = {g.cp[0]: g.id for g in req.glyphs}
+    cp_by_id = {g.id: g.cp[0] for g in req.glyphs}
+    offsets: dict[tuple[int, int], tuple[int, int]] = {}
+    for o in req.mark_offsets:
+        if o.base in cp_by_id and o.mark in cp_by_id and cp_by_id[o.mark] in MARK_RANGE:
+            offsets[(cp_by_id[o.base], cp_by_id[o.mark])] = (o.dx, o.dy)
 
     # 2. fill gaps from the starter font
     filled: list[int] = []
@@ -331,22 +385,26 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
     ps = re.sub(r"[^A-Za-z0-9]", "", name) or "MyHandwriting"
     lic = (f"Copyright (c) {year} {author}. This Font Software is licensed under the SIL Open Font License, Version 1.1."
            if req.licence == "ofl" else f"Copyright (c) {year} {author}. All rights reserved.")
+    desc = req.description.strip() or "Made with Dhivehi Font Maker from handwriting."
+    if filled:
+        desc += " Letters that were not drawn come from Noto Sans Thaana (SIL OFL 1.1)."
     names = {
-        "familyName": name, "styleName": "Regular", "uniqueFontIdentifier": f"{ps}-Regular;dhivehi-font-maker",
-        "fullName": f"{name} Regular", "psName": f"{ps}-Regular", "version": "Version 1.000", "copyright": lic.split(". ")[0],
-        "licenseDescription": lic, "description": "Made with Dhivehi Font Maker from handwriting.",
+        "familyName": name, "styleName": "Regular", "uniqueFontIdentifier": f"{ps}-{req.version}-Regular;dhivehi-font-maker",
+        "fullName": f"{name} Regular", "psName": f"{ps}-Regular", "version": f"Version {req.version}",
+        "copyright": lic.split(". ")[0], "licenseDescription": lic, "description": desc,
     }
     if req.licence == "ofl":
         names["licenseInfoURL"] = "https://openfontlicense.org"
-    if filled:
-        names["description"] += " Letters that were not drawn come from Noto Sans Thaana (SIL OFL 1.1)."
     if req.author.strip():
         names["designer"] = req.author.strip()
+    if req.website:
+        names["designerURL"] = req.website
     fb.setupNameTable(names)
     fb.setupOS2(sTypoAscender=ascent, sTypoDescender=descent, sTypoLineGap=0, usWinAscent=ascent, usWinDescent=-descent,
                 usWeightClass=400, fsType=0, achVendID="DFMK")
     fb.setupPost()
     font = fb.font
+    font["head"].fontRevision = float(req.version)
 
     # 6. OpenType features
     glyph_of = {cp: it.name for cp, it in items.items()}
@@ -355,21 +413,21 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
     lig_names = [it.name for _, it in ligs]
     fea = ["languagesystem DFLT dflt;", "languagesystem thaa dflt;"]
     if marks:
-        top = [(items[cp], cp) for cp in sorted(items) if items[cp].is_mark and cp not in MARKS_BELOW]
-        bot = [(items[cp], cp) for cp in sorted(items) if items[cp].is_mark and cp in MARKS_BELOW]
-        for it, _ in top:
-            fea.append(f"markClass {it.name} <anchor {it.mark_anchor[0]} {it.mark_anchor[1]}> @MC_top;")
-        for it, _ in bot:
-            fea.append(f"markClass {it.name} <anchor {it.mark_anchor[0]} {it.mark_anchor[1]}> @MC_bottom;")
+        mark_cps = [cp for cp in sorted(items) if items[cp].is_mark]
+        for cp in mark_cps:
+            it = items[cp]
+            fea.append(f"markClass {it.name} <anchor {it.mark_anchor[0]} {it.mark_anchor[1]}> @MC_{it.name};")
         lines = []
         for cp in sorted(items):
             it = items[cp]
             if it.is_mark or not it.bounds:
                 continue
-            if top and it.anchor_top:
-                lines.append(f"    pos base {it.name} <anchor {it.anchor_top[0]} {it.anchor_top[1]}> mark @MC_top;")
-            if bot and it.anchor_bottom:
-                lines.append(f"    pos base {it.name} <anchor {it.anchor_bottom[0]} {it.anchor_bottom[1]}> mark @MC_bottom;")
+            for mcp in mark_cps:
+                anchor = it.anchor_bottom if mcp in MARKS_BELOW else it.anchor_top
+                if not anchor:
+                    continue
+                dx, dy = offsets.get((cp, mcp), (0, 0))
+                lines.append(f"    pos base {it.name} <anchor {anchor[0] + dx} {anchor[1] + dy}> mark @MC_{items[mcp].name};")
         if lines:
             fea += ["feature mark {"] + lines + ["} mark;"]
     if ligs:
@@ -387,7 +445,10 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
     pairs = [(glyph_of[by_id[k.left]], glyph_of[by_id[k.right]], k.value) for k in req.kerning
              if k.left in by_id and k.right in by_id and by_id[k.left] in glyph_of and by_id[k.right] in glyph_of and k.value]
     if pairs:
-        fea += ["feature kern {"] + [f"    pos {a} {b} {v};" for a, b, v in pairs] + ["} kern;"]
+        # Right-to-left: the first letter of a pair is the right-hand one. Moving it right by v and widening it by v
+        # opens (or closes) the gap between the two letters and leaves every other gap alone.
+        # Vowel marks sit between two letters in the text, so a pair has to see through them.
+        fea += ["feature kern {", "    lookupflag IgnoreMarks;"] + [f"    pos {a} <{v} 0 {v} 0> {b} <0 0 0 0>;" for a, b, v in pairs] + ["} kern;"]
     classes = f"[{' '.join(bases)}]", f"[{' '.join(lig_names)}]" if lig_names else "[]", f"[{' '.join(marks)}]" if marks else "[]"
     fea += ["table GDEF {", f"    GlyphClassDef {classes[0]}, {classes[1]}, {classes[2]}, ;", "} GDEF;"]
     addOpenTypeFeaturesFromString(font, "\n".join(fea))
@@ -407,7 +468,7 @@ def _ofl_text(req: BuildRequest, filled: bool) -> str:
     year = date.today().year
     author = req.author.strip() or "the author"
     ofl = NOTO_OFL.read_text().split("\n", 1)[1]            # the licence text without its Noto copyright line
-    head = f"Copyright (c) {year} {author}\n"
+    head = f"Copyright (c) {year} {author}\n" + (f"{req.website}\n" if req.website else "")
     if filled:
         head += "Includes outlines from Noto Sans Thaana. Copyright 2022 The Noto Project Authors (https://github.com/notofonts/thaana)\n"
     return head + ofl
@@ -426,7 +487,12 @@ def build_zip(req: BuildRequest) -> tuple[bytes, str, dict]:
             z.writestr("OFL.txt", _ofl_text(req, filled))
         z.writestr(
             "README.txt",
-            f"{name}\n\nA font made from handwriting with Dhivehi Font Maker.\n"
+            f"{name} {req.version}\n\n"
+            + (f"{req.description.strip()}\n\n" if req.description.strip() else "")
+            + (f"Designed by {req.author.strip()}\n" if req.author.strip() else "")
+            + (f"{req.website}\n" if req.website else "")
+            + ("\n" if req.author.strip() or req.website else "")
+            + "A font made from handwriting with Dhivehi Font Maker.\n"
             "Install the .ttf on your computer, or use the .woff2 on a website.\n"
             "Typing the Latin keys , ; ? gives the Arabic comma, semicolon and question mark.\n"
             + ("Letters that were not drawn come from Noto Sans Thaana (SIL Open Font License 1.1).\n" if filled else "")
