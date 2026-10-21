@@ -69,6 +69,7 @@ export function GlyphEditor({
   const [notice, setNotice] = useState<string | null>(null);
   const [px, setPx] = useState(VB_W);       // width of the canvas in screen pixels
   const [cam, setCam] = useState({ z: 1, cx: 0, cy: VB_Y + VB_H / 2 });     // zoom and the middle of what is shown (svg space)
+  const [ghostS, setGhostS] = useState(1);   // shrinks the grey hint when a joined letter and its mark would run past the top or bottom line
   const spaceDown = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
@@ -78,6 +79,21 @@ export function GlyphEditor({
   const vw = VB_W / cam.z, vh = VB_H / cam.z;
   const vbx = (cam.z === 1 ? cx : cam.cx) - vw / 2, vby = (cam.z === 1 ? VB_Y + VB_H / 2 : cam.cy) - vh / 2;
   const u = vw / px;          // font units per screen pixel, so points and lines stay the same size on screen when zoomed
+
+  useEffect(() => {
+    if (cell.kind === "fili") return;
+    let stop = false;
+    (async () => {
+      try { await document.fonts.load("1000px AKRasmee", cell.label); } catch { /* the hint just stays full size */ }
+      const ctx = document.createElement("canvas").getContext("2d");
+      if (!ctx || stop) return;
+      ctx.font = "1000px AKRasmee, NotoThaana, sans-serif";
+      const m = ctx.measureText(cell.label);
+      const fit = Math.min(1, m.actualBoundingBoxAscent > 0 ? (TOP - 20) / m.actualBoundingBoxAscent : 1, m.actualBoundingBoxDescent > 0 ? (-DESC - 20) / m.actualBoundingBoxDescent : 1);
+      setGhostS(Math.max(0.2, fit));
+    })();
+    return () => { stop = true; };
+  }, [cell.label, cell.kind]);
 
   useEffect(() => {
     const el = svgRef.current;
@@ -403,7 +419,7 @@ export function GlyphEditor({
 
             {/* the starter letter, only as a hint for a letter that has no drawing yet */}
             {!hasShape && !pen && (
-              <text transform="scale(1,-1)" x={cx} y={0} textAnchor="middle" fontSize={1000} fontFamily="AKRasmee, NotoThaana, sans-serif" fill={INK} opacity={0.1} aria-hidden>
+              <text transform={`translate(${cx} 0) scale(${ghostS} ${-ghostS}) translate(${-cx} 0)`} x={cx} y={0} textAnchor="middle" fontSize={1000} fontFamily="AKRasmee, NotoThaana, sans-serif" fill={INK} opacity={0.1} aria-hidden>
                 {cell.label}
               </text>
             )}
