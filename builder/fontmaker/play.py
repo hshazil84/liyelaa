@@ -36,6 +36,8 @@ BASES: dict[str, Base] = {
                   "Sangu Suruhee by Thaana Type Foundry", False),
     "haluvidhaa": Base("haluvidhaa", "Haluvidhaa", ASSETS / "Haluvidhaa.ttf", ASSETS / "OFL-Haluvidhaa.txt",
                        "Haluvidhaa by Thaana Type Foundry", False),
+    "hawwa": Base("hawwa", "Hawwa", ASSETS / "Hawwa.ttf", ASSETS / "OFL-Hawwa.txt",
+                  "Hawwa by Thaana Type Foundry", False),
 }
 DEFAULT_BASE = "noto"
 

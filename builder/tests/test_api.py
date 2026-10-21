@@ -55,6 +55,12 @@ def test_haluvidhaa_base_builds_with_its_licence_credit():
     assert "Haluvidhaa" in f["name"].getDebugName(10)
 
 
+def test_hawwa_base_builds_with_its_licence_credit():
+    r = client.post("/play/build", json={"base": "hawwa", "weight": 700, "format": "woff2"})
+    assert r.status_code == 200
+    assert "Hawwa" in TTFont(io.BytesIO(r.content))["name"].getDebugName(10)
+
+
 # ----------------------------------------------------------------------------- handwriting build
 def _hw_payload(**extra):
     sq = lambda x0, y0, x1, y1: [{"p": {"x": x, "y": y}, "hi": {"x": 0, "y": 0}, "ho": {"x": 0, "y": 0}} for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))]

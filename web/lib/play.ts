@@ -1,9 +1,10 @@
-export type BaseId = "noto" | "sangu" | "haluvidhaa";
+export type BaseId = "noto" | "sangu" | "haluvidhaa" | "hawwa";
 
 export const BASES: { id: BaseId; label: string; blurb: string; credit: string; variable: boolean; family: string }[] = [
   { id: "noto", label: "Noto Sans Thaana", blurb: "Clean and simple · 9 weights", credit: "Noto Sans Thaana", variable: true, family: "NotoThaana" },
   { id: "sangu", label: "Sangu Suruhee", blurb: "Bold and calligraphic · one weight", credit: "Sangu Suruhee by Thaana Type Foundry", variable: false, family: "SanguSuruhee" },
   { id: "haluvidhaa", label: "Haluvidhaa", blurb: "Light and tight · one weight", credit: "Haluvidhaa by Thaana Type Foundry", variable: false, family: "Haluvidhaa" },
+  { id: "hawwa", label: "Hawwa", blurb: "Wide and flowing · one weight", credit: "Hawwa by Thaana Type Foundry", variable: false, family: "Hawwa" },
 ];
 
 export const baseOf = (id: BaseId) => BASES.find((b) => b.id === id) ?? BASES[0];
