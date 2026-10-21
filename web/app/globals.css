@@ -21,6 +21,27 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "DemocratsSample";
+  src: url("/fonts/DemocratsAkuru-Regular-sample.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "DemocratsSample";
+  src: url("/fonts/DemocratsAkuru-Bold-sample.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "DemocratsSample";
+  src: url("/fonts/DemocratsAkuru-Black-sample.woff2") format("woff2");
+  font-weight: 900;
+  font-display: swap;
+}
+
 @layer base {
   html { background: #eef2f1; color: #10211f; }
   body { font-family: "DM Sans Variable", system-ui, sans-serif; min-height: 100vh; }

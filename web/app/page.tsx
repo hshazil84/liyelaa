@@ -59,8 +59,8 @@ export default function Home() {
             href="/play"
             tone="bg-sand"
           >
-            {[200, 500, 900].map((w) => (
-              <span key={w} lang="dv" dir="rtl" className="font-noto text-[40px] leading-[1.4]" style={{ fontVariationSettings: `"wght" ${w}` }}>
+            {[400, 700, 900].map((w) => (
+              <span key={w} lang="dv" dir="rtl" className="text-[40px] leading-[1.4]" style={{ fontFamily: "DemocratsSample, NotoThaana, sans-serif", fontWeight: w }}>
                 ދިވެހި
               </span>
             ))}
