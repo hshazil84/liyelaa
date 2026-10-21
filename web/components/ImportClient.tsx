@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { GlyphSvg } from "@/components/GlyphTile";
+import { FontSwitcher } from "@/components/FontSwitcher";
 import { Logo } from "@/components/Logo";
 import { Stepper } from "@/components/Stepper";
 import { layout } from "@/lib/handwriting/pipeline";
 import { DRAW_STEPS } from "@/lib/handwriting/steps";
-import { clearProject, loadProject, saveGlyphs, setPath } from "@/lib/handwriting/store";
+import { MixPrompt } from "@/components/MixPrompt";
+import { clearProject, createFont, fontTitle, loadProject, saveGlyphs, setPath, sourceMix } from "@/lib/handwriting/store";
 import {
   extractSvg, idFromName, importFiles, importSheet, summarise, type ImportItem, type ImportReport, type SizeMode, type SourceFile,
 } from "@/lib/handwriting/svgimport";
@@ -63,6 +65,7 @@ export function ImportClient() {
   const [pasteFor, setPasteFor] = useState("0780");
   const [saved, setSaved] = useState<number | null>(null);
   const [existing, setExisting] = useState(0);
+  const [ask, setAsk] = useState<{ font: string; have: number } | null>(null);
 
   const refresh = useCallback(async () => {
     const p = await loadProject();
@@ -162,16 +165,26 @@ export function ImportClient() {
   const otherFixes = fixes.filter((c) => !report!.items[c.id]?.strokes);
   const usable = report ? Object.values(report.items).filter((i) => i.status === "ok" && i.glyph) : [];
 
-  async function useThem() {
+  async function save(inNewFont: boolean) {
+    setAsk(null);
+    if (inNewFont) await createFont("Drawn letters", "draw");
     await saveGlyphs(usable.map((i) => i.glyph!), "drawn");
     setSaved(usable.length);
     await refresh();
   }
 
+  // letters traced from a photo are already in this font: ask before putting drawn ones beside them
+  async function useThem() {
+    const p = await loadProject();
+    const mix = sourceMix(p);
+    if (mix.photo > 0) { setAsk({ font: fontTitle(p), have: mix.photo }); return; }
+    await save(false);
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
-        <Logo />
+        <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={DRAW_STEPS} current={1} />
         <span className="flex items-center gap-4 text-sm text-muted">
           <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser</span>
@@ -349,6 +362,10 @@ export function ImportClient() {
           )}
         </section>
       </main>
+      {ask && (
+        <MixPrompt fontName={ask.font} have={ask.have} haveKind="photo" adding={`${usable.length} ${usable.length === 1 ? "shape" : "shapes"}`}
+          onAdd={() => save(false)} onNew={() => save(true)} onCancel={() => setAsk(null)} />
+      )}
     </div>
   );
 }

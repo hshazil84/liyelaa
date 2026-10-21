@@ -6,6 +6,8 @@ import type { Spacing } from "./spacing";
 import type { Glyph } from "./types";
 
 const KEY = "dfm.handwriting.v1";
+/** Tells the header, if it is on screen, that the list of fonts or a count changed. */
+const changed = () => { if (typeof window !== "undefined") window.dispatchEvent(new Event("myakuru-fonts")); };
 
 export type Project = {
   v: 1; glyphs: Record<string, Glyph>; updatedAt: number;
@@ -17,6 +19,8 @@ export type Project = {
   path?: "photo" | "draw";               // which way in this project started, so the steps are named right
   ligatures?: Ligature[];                // letter combinations drawn as one shape
   extras?: Extras;                       // choices about signs and punctuation
+  fontId?: string;                       // which of the person's fonts this is
+  title?: string;                        // what the person calls it, shown in the header and on My fonts
 };
 
 export type FontInfo = {
@@ -43,8 +47,13 @@ export async function saveGlyphs(glyphs: Glyph[], source: "photo" | "drawn" = "p
   return p;
 }
 
+/** Start over: the letters go, the font keeps its name. */
 export async function clearProject(): Promise<void> {
-  try { await del(KEY); } catch {}
+  try {
+    const p = await get<Project>(KEY);
+    if (p?.fontId || p?.title) await set(KEY, { v: 1, glyphs: {}, updatedAt: Date.now(), fontId: p.fontId, title: p.title } as Project);
+    else await del(KEY);
+  } catch {}
 }
 
 /** Save one edited letter. The first time a traced letter is edited its traced version is kept, so it can be restored. */
@@ -64,6 +73,7 @@ export async function removeGlyph(id: string): Promise<Project> {
   if (p.originals) delete p.originals[id];
   p.updatedAt = Date.now();
   try { await set(KEY, p); } catch {}
+  changed();
   return p;
 }
 
@@ -134,4 +144,153 @@ export async function removeLigature(id: string): Promise<Project> {
   p.updatedAt = Date.now();
   try { await set(KEY, p); } catch {}
   return p;
+}
+
+
+// ---------------------------------------------------------------- several fonts
+/*
+ * The font being worked on always lives under KEY, so every function above works on it without knowing about the others.
+ * The other fonts are parked under their own keys, and a small index lists them in the order they were made.
+ * Switching parks the open font and brings the chosen one into KEY.
+ */
+const INDEX = "dfm.fonts.v1";
+const fontKey = (id: string) => `dfm.font.${id}`;
+type Index = { v: 1; ids: string[] };
+
+export const DEFAULT_TITLE = "My font";
+export type FontMeta = { id: string; title: string; count: number; path?: "photo" | "draw"; updatedAt: number; active: boolean };
+
+const newId = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
+const readIndex = async (): Promise<Index> => { try { return (await get<Index>(INDEX)) ?? { v: 1, ids: [] }; } catch { return { v: 1, ids: [] }; } };
+const writeIndex = async (idx: Index) => { try { await set(INDEX, idx); } catch {} };
+
+/** A font nobody has touched: no letters, no name, no joined letters. */
+export const isBlank = (p: Project) => !Object.keys(p.glyphs).length && !p.title && !p.ligatures?.length && !p.info;
+export const fontTitle = (p: Project) => p.title?.trim() || p.info?.name?.trim() || DEFAULT_TITLE;
+
+const metaOf = (p: Project, id: string, active: boolean): FontMeta =>
+  ({ id, title: fontTitle(p), count: Object.values(p.glyphs).filter((g) => g.kind === "letter").length, path: p.path, updatedAt: p.updatedAt, active });
+
+/** The open font, with an id so it can be told apart from the others. */
+async function ensureActive(): Promise<Project> {
+  const p = await loadProject();
+  if (!p.fontId) { p.fontId = newId(); try { await set(KEY, p); } catch {} }
+  const idx = await readIndex();
+  if (!idx.ids.includes(p.fontId)) await writeIndex({ ...idx, ids: [...idx.ids, p.fontId] });
+  return p;
+}
+
+/** Put the open font away, or drop it if nothing was ever done in it. */
+async function parkOrDrop(cur: Project) {
+  const idx = await readIndex();
+  if (isBlank(cur)) { await writeIndex({ ...idx, ids: idx.ids.filter((i) => i !== cur.fontId) }); return; }
+  try { await set(fontKey(cur.fontId!), cur); } catch {}
+}
+
+async function bringIn(p: Project, id: string) {
+  try { await set(KEY, { ...p, fontId: id }); } catch {}
+  const idx = await readIndex();
+  if (!idx.ids.includes(id)) await writeIndex({ ...idx, ids: [...idx.ids, id] });
+}
+
+export async function listFonts(): Promise<FontMeta[]> {
+  const cur = await loadProject();
+  const idx = await readIndex();
+  const curId = cur.fontId ?? "current";
+  const out: FontMeta[] = [];
+  const ids = idx.ids.includes(curId) ? idx.ids : [curId, ...idx.ids];
+  for (const id of ids) {
+    if (id === curId) { out.push(metaOf(cur, id, true)); continue; }
+    try { const p = await get<Project>(fontKey(id)); if (p) out.push(metaOf(p, id, false)); } catch {}
+  }
+  return out;
+}
+
+export async function switchFont(id: string): Promise<boolean> {
+  const cur = await ensureActive();
+  if (cur.fontId === id) return true;
+  let target: Project | undefined;
+  try { target = await get<Project>(fontKey(id)); } catch {}
+  if (!target) return false;
+  await parkOrDrop(cur);
+  await bringIn(target, id);
+  try { await del(fontKey(id)); } catch {}
+  changed();
+  return true;
+}
+
+export async function createFont(title: string, path: "photo" | "draw"): Promise<string> {
+  const cur = await ensureActive();
+  await parkOrDrop(cur);
+  const id = newId();
+  await bringIn({ v: 1, glyphs: {}, updatedAt: Date.now(), title: title.trim() || DEFAULT_TITLE, path }, id);
+  changed();
+  return id;
+}
+
+export async function renameFont(id: string, title: string): Promise<void> {
+  const name = title.trim().slice(0, 60);
+  if (!name) return;
+  try {
+    const cur = await get<Project>(KEY);
+    if (cur && (cur.fontId === id || (!cur.fontId && id === "current"))) { await set(KEY, { ...cur, title: name }); changed(); return; }
+    const p = await get<Project>(fontKey(id));
+    if (p) await set(fontKey(id), { ...p, title: name });
+  } catch {}
+  changed();
+}
+
+export async function deleteFont(id: string): Promise<void> {
+  const idx = await readIndex();
+  const rest = idx.ids.filter((i) => i !== id);
+  let cur: Project | undefined;
+  try { cur = await get<Project>(KEY); } catch {}
+  const isOpen = !!cur && (cur.fontId === id || (!cur.fontId && id === "current"));
+  try { await del(fontKey(id)); } catch {}
+  await writeIndex({ ...idx, ids: rest });
+  if (isOpen) {
+    let done = false;
+    for (const other of rest) {
+      let p: Project | undefined;
+      try { p = await get<Project>(fontKey(other)); } catch {}
+      if (p) { await bringIn(p, other); try { await del(fontKey(other)); } catch {} done = true; break; }
+    }
+    if (!done) { try { await del(KEY); } catch {} }
+  }
+  changed();
+}
+
+/** One font as text, to keep as a backup file. */
+export async function exportFont(id: string): Promise<{ filename: string; text: string } | null> {
+  let p: Project | undefined;
+  try {
+    const cur = await get<Project>(KEY);
+    p = cur && (cur.fontId === id || (!cur.fontId && id === "current")) ? cur : await get<Project>(fontKey(id));
+  } catch {}
+  if (!p) return null;
+  const title = fontTitle(p);
+  const text = JSON.stringify({ app: "myakuru", kind: "font", v: 1, title, project: { ...p, fontId: undefined } });
+  return { filename: `${title.replace(/[\\/:*?"<>|]+/g, "").trim().replace(/\s+/g, "-") || "font"}.myakuru`, text };
+}
+
+/** Open a backup file as a new font. The open font is put away first. */
+export async function importFont(text: string): Promise<{ ok: true; title: string } | { ok: false; reason: string }> {
+  let data: { app?: string; kind?: string; title?: string; project?: Project };
+  try { data = JSON.parse(text); } catch { return { ok: false, reason: "That is not a MyAkuru backup file." }; }
+  if (data.app !== "myakuru" || data.kind !== "font" || !data.project || typeof data.project.glyphs !== "object") {
+    return { ok: false, reason: "That is not a MyAkuru backup file." };
+  }
+  const cur = await ensureActive();
+  await parkOrDrop(cur);
+  const title = (data.title || data.project.title || DEFAULT_TITLE).slice(0, 60);
+  await bringIn({ ...data.project, title, updatedAt: Date.now() }, newId());
+  changed();
+  return { ok: true, title };
+}
+
+/** How many of the letters in a font came from a photo and how many were drawn or imported. */
+export function sourceMix(p: Project): { photo: number; drawn: number } {
+  let photo = 0, drawn = 0;
+  for (const g of Object.values(p.glyphs)) { if (g.source === "drawn") drawn++; else photo++; }
+  return { photo, drawn };
 }

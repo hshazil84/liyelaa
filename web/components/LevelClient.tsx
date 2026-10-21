@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { FontSwitcher } from "@/components/FontSwitcher";
 import { Logo } from "@/components/Logo";
 import { Stepper } from "@/components/Stepper";
 import { applyLevel, planLevel, type Levelled } from "@/lib/handwriting/level";
@@ -58,7 +59,7 @@ export function LevelClient() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
-        <Logo />
+        <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={steps} current={3} />
         <span className="flex items-center gap-2 text-sm text-muted">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser

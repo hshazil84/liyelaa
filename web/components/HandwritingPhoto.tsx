@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { GlyphTile } from "@/components/GlyphTile";
+import { FontSwitcher } from "@/components/FontSwitcher";
 import { Logo } from "@/components/Logo";
 import { Stepper } from "@/components/Stepper";
 import { layout, processPhoto, type PhotoOutcome } from "@/lib/handwriting/pipeline";
 import { useSteps } from "@/lib/handwriting/steps";
-import { clearProject, loadProject, saveGlyphs } from "@/lib/handwriting/store";
+import { MixPrompt } from "@/components/MixPrompt";
+import { clearProject, createFont, fontTitle, loadProject, saveGlyphs, sourceMix } from "@/lib/handwriting/store";
 
 
 const letterCount = layout.sheets[0].cells.length;
@@ -16,6 +18,7 @@ const filiCount = layout.sheets[1].cells.filter((c) => c.kind === "fili").length
 export function HandwritingPhoto() {
   const steps = useSteps();
   const [sheet, setSheet] = useState<1 | 2>(1);
+  const [ask, setAsk] = useState<{ font: string; have: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<PhotoOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,11 +50,22 @@ export function HandwritingPhoto() {
     }
   }
 
-  async function useLetters() {
+  async function saveLetters(inNewFont: boolean) {
     if (!result || !result.ok) return;
+    setAsk(null);
+    if (inNewFont) await createFont("Photo letters", "photo");
     await saveGlyphs(result.cells.flatMap((c) => (c.glyph ? [c.glyph] : [])));
     await refresh();
     setResult(null);
+  }
+
+  // drawn or imported letters are already in this font: ask before putting traced ones beside them
+  async function useLetters() {
+    if (!result || !result.ok) return;
+    const p = await loadProject();
+    const mix = sourceMix(p);
+    if (mix.drawn > 0) { setAsk({ font: fontTitle(p), have: mix.drawn }); return; }
+    await saveLetters(false);
   }
 
   const problems = result && result.ok ? result.cells.filter((c) => c.status === "light" || c.warn) : [];
@@ -59,7 +73,7 @@ export function HandwritingPhoto() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
-        <Logo />
+        <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={steps} current={1} />
         <span className="flex items-center gap-2 text-sm text-muted">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
@@ -168,6 +182,10 @@ export function HandwritingPhoto() {
           )}
         </section>
       </main>
+      {ask && (
+        <MixPrompt fontName={ask.font} have={ask.have} haveKind="drawn" adding="letters traced from this photo"
+          onAdd={() => saveLetters(false)} onNew={() => saveLetters(true)} onCancel={() => setAsk(null)} />
+      )}
     </div>
   );
 }
