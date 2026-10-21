@@ -82,7 +82,7 @@ export function ExtrasClient() {
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={steps} current={5} />
-        <span className="flex items-center gap-2 text-sm text-muted"><span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser</span>
+        <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex"><span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser</span>
       </header>
       <ExtrasNav current="symbols" />
 
@@ -109,7 +109,7 @@ export function ExtrasClient() {
                         aria-current={on ? "true" : undefined}
                         data-cell={it.id}
                         data-status={drawn(it.id) ? "drawn" : "missing"}
-                        className={`flex h-[84px] w-full flex-col items-center justify-between rounded-xl px-1 py-1.5 ${on ? "border-2 border-coral bg-white" : drawn(it.id) ? "border border-[#BFDCD8] bg-teal-soft" : "border border-dashed border-[#B6C2BF] bg-[#F3F6F5]"}`}
+                        className={`flex h-[84px] w-full flex-col items-center justify-between rounded-xl px-1 py-1.5 ${on ? "border-[1.5px] border-coral bg-white" : drawn(it.id) ? "border border-[#CFE3D5] bg-teal-soft" : "border border-dashed border-[#BDCFC2] bg-[#F3F9F5]"}`}
                       >
                         <span className="flex h-[48px] w-full items-center justify-center">
                           {g?.contours.length ? <GlyphSvg glyph={g} className="h-full w-full" /> : <span lang="dv" className="font-thaana text-[26px] leading-none text-muted">{CELLS.get(it.id)?.label}</span>}
@@ -145,7 +145,7 @@ export function ExtrasClient() {
           <div className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">
             <h2 className="font-display text-lg font-bold">Preview</h2>
             {hasLetters ? (
-              <div className="flex flex-col items-start gap-1 overflow-x-auto rounded-[14px] bg-[#F3F6F5] px-4 py-3" dir="rtl">
+              <div className="flex flex-col items-start gap-1 overflow-x-auto rounded-[14px] bg-[#F3F9F5] px-4 py-3" dir="rtl">
                 {SAMPLES.map((t) => (
                   <WordSvg key={t} text={shownText(t, ex)} glyphs={glyphs} offsets={{}} spacing={sp} height={52} />
                 ))}

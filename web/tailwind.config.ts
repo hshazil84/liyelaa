@@ -5,13 +5,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#10211F",
-        teal: { DEFAULT: "#0B6B63", dark: "#095952", soft: "#D7EBE8" },
-        paper: "#EEF2F1",
-        line: "#D5DDDB",
-        muted: "#5A6B68",
-        sand: "#FFF1C2",
-        coral: { DEFAULT: "#D9482B", soft: "#FBDDD4" },
+        ink: "#264022",
+        teal: { DEFAULT: "#264022", dark: "#1A2D17", soft: "#D6EADC" },
+        paper: "#EAF5EF",
+        line: "#DCE8DF",
+        muted: "#5D797B",
+        sand: "#FFE6CC",
+        coral: { DEFAULT: "#FA7E00", soft: "#FFE9D2" },
+        plum: "#55303C",
+        edge: "#8FA894",
       },
       fontFamily: {
         display: ["'Hanken Grotesk Variable'", "system-ui", "sans-serif"],

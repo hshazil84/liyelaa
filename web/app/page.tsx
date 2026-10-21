@@ -83,10 +83,10 @@ export default function Home() {
             tone="bg-coral-soft"
           >
             <svg aria-hidden viewBox="0 0 220 100" width="200" height="90">
-              <path d="M20 70 C 60 10, 110 10, 120 50 S 170 90, 200 30" fill="none" stroke="#10211F" strokeWidth="3" strokeLinecap="round" />
-              <path d="M20 70 L 55 28 M120 50 L 150 86" stroke="#D9482B" strokeWidth="1.5" fill="none" />
+              <path d="M20 70 C 60 10, 110 10, 120 50 S 170 90, 200 30" fill="none" stroke="#264022" strokeWidth="3" strokeLinecap="round" />
+              <path d="M20 70 L 55 28 M120 50 L 150 86" stroke="#FA7E00" strokeWidth="1.5" fill="none" />
               {[[15, 65], [115, 45], [195, 25]].map(([x, y]) => (
-                <rect key={x} x={x} y={y} width="10" height="10" fill="#fff" stroke="#D9482B" strokeWidth="2" />
+                <rect key={x} x={x} y={y} width="10" height="10" fill="#fff" stroke="#FA7E00" strokeWidth="2" />
               ))}
             </svg>
           </Card>

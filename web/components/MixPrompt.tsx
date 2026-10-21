@@ -21,7 +21,7 @@ export function MixPrompt({ fontName, have, haveKind, adding, onAdd, onNew, onCa
         <p className="rounded-xl bg-sand px-4 py-3 text-sm font-medium">Adding replaces only the letters that match. The others stay as they are.</p>
         <div className="flex flex-wrap gap-2.5">
           <button type="button" data-testid="mix-add" onClick={onAdd} className="h-12 rounded-xl bg-teal px-5 text-base font-bold text-white hover:bg-teal-dark">Add to {fontName.length > 22 ? "this font" : fontName}</button>
-          <button type="button" data-testid="mix-new" onClick={onNew} className="h-12 rounded-xl border border-[#B6C2BF] px-5 text-base font-bold hover:bg-paper">Start a new font instead</button>
+          <button type="button" data-testid="mix-new" onClick={onNew} className="h-12 rounded-xl border border-[#BDCFC2] px-5 text-base font-bold hover:bg-paper">Start a new font instead</button>
         </div>
       </div>
     </div>

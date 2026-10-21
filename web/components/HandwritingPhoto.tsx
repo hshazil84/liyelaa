@@ -75,7 +75,7 @@ export function HandwritingPhoto() {
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={steps} current={1} />
-        <span className="flex items-center gap-2 text-sm text-muted">
+        <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>
       </header>
@@ -85,7 +85,7 @@ export function HandwritingPhoto() {
           <div className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">
             <h2 className="font-display text-xl font-bold">1. Print the template</h2>
             <p className="text-sm leading-normal text-muted">Two A4 pages: letters, then vowel marks and extras.</p>
-            <a href="/templates/dhivehi-handwriting-template.pdf" download className="flex h-12 items-center justify-center rounded-xl border border-[#B6C2BF] text-base font-bold hover:bg-paper">
+            <a href="/templates/dhivehi-handwriting-template.pdf" download className="flex h-12 items-center justify-center rounded-xl border border-[#BDCFC2] text-base font-bold hover:bg-paper">
               Download the template (PDF)
             </a>
           </div>
@@ -95,7 +95,7 @@ export function HandwritingPhoto() {
             <fieldset className="flex gap-2">
               <legend className="sr-only">Which sheet is it?</legend>
               {([1, 2] as const).map((n) => (
-                <label key={n} className={`flex-1 cursor-pointer rounded-xl border px-3 py-2 text-center text-sm font-bold ${sheet === n ? "border-ink bg-ink text-white" : "border-[#B6C2BF] bg-white"}`}>
+                <label key={n} className={`flex-1 cursor-pointer rounded-xl border px-3 py-2 text-center text-sm font-bold ${sheet === n ? "border-ink bg-ink text-white" : "border-[#BDCFC2] bg-white"}`}>
                   <input type="radio" name="sheet" className="sr-only" checked={sheet === n} onChange={() => setSheet(n)} />
                   {n === 1 ? "Sheet 1 · Letters" : "Sheet 2 · Marks"}
                 </label>
@@ -106,9 +106,9 @@ export function HandwritingPhoto() {
               onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
               onDragLeave={() => setDrag(false)}
               onDrop={(e) => { e.preventDefault(); setDrag(false); handleFile(e.dataTransfer.files[0]); }}
-              className={`flex h-36 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed px-4 text-center text-[15px] font-medium ${drag ? "border-teal bg-teal-soft" : "border-[#B6C2BF] bg-[#F3F6F5]"}`}
+              className={`flex h-36 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border-[1.5px] border-dashed px-4 text-center text-[15px] font-medium ${drag ? "border-teal bg-teal-soft" : "border-[#BDCFC2] bg-[#F3F9F5]"}`}
             >
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#10211F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#264022" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M14 20V6M8 12l6-6 6 6M5 23h18" />
               </svg>
               {busy ? "Reading your photo…" : "Choose a photo, or drop it here"}
@@ -156,11 +156,11 @@ export function HandwritingPhoto() {
                   <figcaption className="text-xs text-muted">Straightened</figcaption>
                 </figure>
               </div>
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl bg-[#F3F6F5] px-4 py-3 text-[15px]" data-testid="summary">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl bg-[#F3F9F5] px-4 py-3 text-[15px]" data-testid="summary">
                 <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-teal" />{result.counts.ok} found</span>
                 {result.counts.light > 0 && <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-coral" />{result.counts.light} too light</span>}
                 {result.counts.edge > 0 && <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-coral" />{result.counts.edge} touching the box edge</span>}
-                <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full border-[1.5px] border-dashed border-[#B6C2BF]" />{result.counts.empty} empty</span>
+                <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full border-[1.5px] border-dashed border-[#BDCFC2]" />{result.counts.empty} empty</span>
               </div>
               <ul dir="rtl" className="grid grid-cols-[repeat(auto-fill,minmax(74px,1fr))] gap-2" aria-label="Letters found">
                 {result.cells.map((c) => <GlyphTile key={c.id} cell={c} />)}
@@ -174,7 +174,7 @@ export function HandwritingPhoto() {
                 <button type="button" onClick={useLetters} data-testid="use-letters" className="h-14 rounded-2xl bg-teal px-6 text-lg font-bold text-white hover:bg-teal-dark">
                   Use these letters
                 </button>
-                <button type="button" onClick={() => setResult(null)} className="h-14 rounded-2xl border border-[#B6C2BF] px-6 text-base font-bold hover:bg-paper">
+                <button type="button" onClick={() => setResult(null)} className="h-14 rounded-2xl border border-[#BDCFC2] px-6 text-base font-bold hover:bg-paper">
                   Take a new photo
                 </button>
               </div>

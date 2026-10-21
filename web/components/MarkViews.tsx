@@ -10,8 +10,8 @@ export function Composed({ letter, mark, offset, className }: { letter: Glyph; m
   return (
     <svg viewBox={`-40 -780 ${Math.max(letter.adv + 80, 420)} 1180`} className={className} aria-hidden>
       <g transform="scale(1,-1)">
-        <path d={contoursToD(letter.contours)} fill="#10211F" fillRule="nonzero" />
-        {mark && shift && <path d={contoursToD(shiftContours(mark.contours, shift))} fill="#10211F" fillRule="nonzero" />}
+        <path d={contoursToD(letter.contours)} fill="#264022" fillRule="nonzero" />
+        {mark && shift && <path d={contoursToD(shiftContours(mark.contours, shift))} fill="#264022" fillRule="nonzero" />}
       </g>
     </svg>
   );
@@ -37,7 +37,7 @@ export function WordSvg({
       <g transform="scale(1,-1)">
         {children?.(line)}
         {line.parts.map((p, i) => (
-          <path key={i} transform={`translate(${p.x} ${p.y})`} d={contoursToD(p.glyph.contours)} fill="#10211F" fillRule="nonzero" pointerEvents="none" />
+          <path key={i} transform={`translate(${p.x} ${p.y})`} d={contoursToD(p.glyph.contours)} fill="#264022" fillRule="nonzero" pointerEvents="none" />
         ))}
       </g>
     </svg>

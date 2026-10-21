@@ -21,13 +21,13 @@ const LABEL = new Map(layout.sheets.flatMap((s) => s.cells).map((c) => [c.id, c.
 const PICK = layout.sheets.flatMap((s) => s.cells).map((c) => ({ id: c.id, label: `${c.label}  U+${c.id}`, kind: c.kind }));
 
 const arrowUp = (
-  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#10211F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#264022" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <path d="M14 20V6M8 12l6-6 6 6M5 23h18" />
   </svg>
 );
 
 function Tile({ id, item, onRemove }: { id: string; item?: ImportItem; onRemove?: () => void }) {
-  const cls = item?.status === "ok" ? "border-2 border-teal bg-white" : item ? "border-2 border-coral bg-white" : "border border-dashed border-[#B6C2BF] bg-[#F3F6F5]";
+  const cls = item?.status === "ok" ? "border-[1.5px] border-edge bg-white" : item ? "border-[1.5px] border-coral bg-white" : "border border-dashed border-[#BDCFC2] bg-[#F3F9F5]";
   const state = item?.status === "ok" ? "ok" : item ? "fix" : "missing";
   return (
     <li
@@ -38,12 +38,12 @@ function Tile({ id, item, onRemove }: { id: string; item?: ImportItem; onRemove?
       {item?.glyph ? (
         <GlyphSvg glyph={item.glyph} className="h-full w-full p-1" />
       ) : (
-        <span lang="dv" className={`font-thaana text-[26px] leading-none ${item ? "text-coral" : "text-[#B6C2BF]"}`}>{LABEL.get(id)}</span>
+        <span lang="dv" className={`font-thaana text-[26px] leading-none ${item ? "text-plum" : "text-[#BDCFC2]"}`}>{LABEL.get(id)}</span>
       )}
       {item && onRemove && (
         <button
           type="button" onClick={onRemove} data-testid={`remove-${id}`} aria-label={`Remove U+${id}`} title="Take this one out"
-          className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-[#B6C2BF] bg-white text-sm font-bold leading-none text-ink shadow-sm hover:bg-coral-soft focus-visible:ring-2 focus-visible:ring-teal"
+          className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-[#BDCFC2] bg-white text-sm font-bold leading-none text-ink shadow-sm hover:bg-coral-soft focus-visible:ring-2 focus-visible:ring-teal"
         >×</button>
       )}
     </li>
@@ -187,7 +187,7 @@ export function ImportClient() {
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={DRAW_STEPS} current={1} />
         <span className="flex items-center gap-4 text-sm text-muted">
-          <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser</span>
+          <span className="hidden items-center gap-2 2xl:flex"><span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser</span>
           <button type="button" onClick={async () => { await clearProject(); setSources([]); setSaved(null); await refresh(); }} className="font-bold text-ink">Start over</button>
         </span>
       </header>
@@ -212,7 +212,7 @@ export function ImportClient() {
                   onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
                   onDragLeave={() => setDrag(false)}
                   onDrop={(e) => { e.preventDefault(); setDrag(false); addFiles(e.dataTransfer.files); }}
-                  className={`flex h-36 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed px-4 text-center text-[15px] font-medium ${drag ? "border-teal bg-teal-soft" : "border-[#B6C2BF] bg-[#F3F6F5]"}`}
+                  className={`flex h-36 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border-[1.5px] border-dashed px-4 text-center text-[15px] font-medium ${drag ? "border-teal bg-teal-soft" : "border-[#BDCFC2] bg-[#F3F9F5]"}`}
                 >
                   {arrowUp}
                   {busy ? "Reading your files…" : "Drop SVG files here"}
@@ -226,7 +226,7 @@ export function ImportClient() {
                   <legend className="text-[13px] text-muted">If it is one whole page, which page?</legend>
                   <div className="flex gap-2">
                     {([1, 2] as const).map((n) => (
-                      <label key={n} className={`flex-1 cursor-pointer rounded-xl border px-3 py-1.5 text-center text-sm font-bold ${sheetId === n ? "border-ink bg-ink text-white" : "border-[#B6C2BF] bg-white"}`}>
+                      <label key={n} className={`flex-1 cursor-pointer rounded-xl border px-3 py-1.5 text-center text-sm font-bold ${sheetId === n ? "border-ink bg-ink text-white" : "border-[#BDCFC2] bg-white"}`}>
                         <input type="radio" name="sheet" className="sr-only" checked={sheetId === n} onChange={() => setSheetId(n)} />
                         {n === 1 ? "Page 1 · Letters" : "Page 2 · Marks"}
                       </label>
@@ -238,7 +238,7 @@ export function ImportClient() {
               <div className="flex flex-col gap-3">
                 <label className="flex flex-col gap-1.5 text-[13px] text-muted">
                   1. What is this artwork?
-                  <select data-testid="paste-for" value={pasteFor} onChange={(e) => setPasteFor(e.target.value)} className="h-11 rounded-xl border border-[#B6C2BF] bg-white px-3 text-base text-ink">
+                  <select data-testid="paste-for" value={pasteFor} onChange={(e) => setPasteFor(e.target.value)} className="h-11 rounded-xl border border-[#BDCFC2] bg-white px-3 text-base text-ink">
                     <option value="sheet1">The whole page 1 (letters)</option>
                     <option value="sheet2">The whole page 2 (marks and extras)</option>
                     {PICK.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
@@ -250,10 +250,10 @@ export function ImportClient() {
                 <label className="flex flex-col gap-1.5 text-[13px] text-muted">
                   SVG code
                   <textarea data-testid="paste-text" value={paste} onChange={(e) => setPaste(e.target.value)} rows={7} spellCheck={false}
-                    placeholder="<svg …>…</svg>" className="rounded-xl border border-[#B6C2BF] bg-white p-3 font-mono text-[13px] text-ink" />
+                    placeholder="<svg …>…</svg>" className="rounded-xl border border-[#BDCFC2] bg-white p-3 font-mono text-[13px] text-ink" />
                 </label>
                 <button type="button" data-testid="paste-add" onClick={() => addPasted(paste)} disabled={!paste.trim()}
-                  className="h-11 rounded-xl border border-[#B6C2BF] bg-white text-sm font-bold hover:bg-paper disabled:opacity-50">Add this artwork</button>
+                  className="h-11 rounded-xl border border-[#BDCFC2] bg-white text-sm font-bold hover:bg-paper disabled:opacity-50">Add this artwork</button>
               </div>
             )}
 
@@ -282,14 +282,14 @@ export function ImportClient() {
             <h2 className="font-display text-lg font-bold">Or draw here</h2>
             <div className="flex h-[120px] items-center justify-center rounded-2xl bg-paper">
               <svg aria-hidden viewBox="0 0 220 100" width="170" height="78">
-                <path d="M20 70 C 60 10, 110 10, 120 50 S 170 90, 200 30" fill="none" stroke="#10211F" strokeWidth="3" strokeLinecap="round" />
-                <path d="M20 70 L 55 28 M120 50 L 150 86" stroke="#D9482B" strokeWidth="1.5" fill="none" />
-                {[[15, 65], [115, 45], [195, 25]].map(([x, y]) => <rect key={x} x={x} y={y} width="10" height="10" fill="#fff" stroke="#D9482B" strokeWidth="2" />)}
+                <path d="M20 70 C 60 10, 110 10, 120 50 S 170 90, 200 30" fill="none" stroke="#264022" strokeWidth="3" strokeLinecap="round" />
+                <path d="M20 70 L 55 28 M120 50 L 150 86" stroke="#FA7E00" strokeWidth="1.5" fill="none" />
+                {[[15, 65], [115, 45], [195, 25]].map(([x, y]) => <rect key={x} x={x} y={y} width="10" height="10" fill="#fff" stroke="#FA7E00" strokeWidth="2" />)}
               </svg>
             </div>
             <p className="text-sm leading-normal text-muted">Pen tool with curve handles. Add, move, and convert points between smooth and corner.</p>
             <Link href="/handwriting/letters" data-testid="open-blank" onClick={() => setPath("draw")}
-              className="flex h-12 items-center justify-center rounded-xl border border-[#B6C2BF] bg-white text-base font-bold hover:bg-paper">
+              className="flex h-12 items-center justify-center rounded-xl border border-[#BDCFC2] bg-white text-base font-bold hover:bg-paper">
               Open a blank letter
             </Link>
             <p className="text-[13px] leading-snug text-muted">In the editor you can draw with the pen, or press Ctrl or ⌘ V to paste artwork onto the letter you picked.</p>
@@ -313,7 +313,7 @@ export function ImportClient() {
               <p className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl bg-paper px-4 py-3 text-[15px]" data-testid="import-summary">
                 <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-teal" />{summary.letters.ok} of {summary.letters.total} letters matched</span>
                 {summary.letters.fix > 0 && <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-coral" />{summary.letters.fix} need a fix</span>}
-                {summary.letters.missing > 0 && <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full border border-dashed border-[#B6C2BF]" />{summary.letters.missing} missing</span>}
+                {summary.letters.missing > 0 && <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full border border-dashed border-[#BDCFC2]" />{summary.letters.missing} missing</span>}
                 {(summary.marks.ok > 0 || summary.extras.ok > 0) && <span className="text-muted">{summary.marks.ok} of {summary.marks.total} vowel marks · {summary.extras.ok} extras</span>}
               </p>
 
@@ -325,7 +325,7 @@ export function ImportClient() {
                     . Fonts need filled shapes.
                   </span>
                   <button type="button" data-testid="outline-strokes" onClick={() => setOutline(true)}
-                    className="h-10 rounded-xl border border-[#B6C2BF] bg-white px-4 text-sm font-bold hover:bg-paper">Outline strokes for me</button>
+                    className="h-10 rounded-xl border border-[#BDCFC2] bg-white px-4 text-sm font-bold hover:bg-paper">Outline strokes for me</button>
                 </div>
               )}
               {otherFixes.map((c) => (
@@ -341,7 +341,7 @@ export function ImportClient() {
               {summary.letters.missing > 0 && (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-paper px-4 py-3 text-[15px]">
                   <span>{summary.letters.missing} letter{summary.letters.missing === 1 ? " is" : "s are"} missing. Import them later or draw them.</span>
-                  <Link href="/handwriting/letters" onClick={() => setPath("draw")} className="flex h-10 items-center rounded-xl border border-[#B6C2BF] bg-white px-4 text-sm font-bold hover:bg-paper">Draw them</Link>
+                  <Link href="/handwriting/letters" onClick={() => setPath("draw")} className="flex h-10 items-center rounded-xl border border-[#BDCFC2] bg-white px-4 text-sm font-bold hover:bg-paper">Draw them</Link>
                 </div>
               )}
 

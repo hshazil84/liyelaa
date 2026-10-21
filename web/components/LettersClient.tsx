@@ -27,10 +27,10 @@ const STATUS_WORD: Record<Status, string> = { checked: "Checked", open: "Open no
 function Tile({ cell, glyph, open, onPick }: { cell: LayoutCell; glyph?: Glyph; open: boolean; onPick: () => void }) {
   const status: Status = open ? "open" : !glyph ? "missing" : glyph.checked ? "checked" : "traced";
   const cls: Record<Status, string> = {
-    checked: "border border-[#BFDCD8] bg-teal-soft",
-    open: "border-2 border-coral bg-white",
+    checked: "border border-[#CFE3D5] bg-teal-soft",
+    open: "border-[1.5px] border-coral bg-white",
     traced: "border border-line bg-white",
-    missing: "border border-dashed border-[#B6C2BF] bg-[#F3F6F5]",
+    missing: "border border-dashed border-[#BDCFC2] bg-[#F3F9F5]",
   };
   return (
     <button
@@ -116,7 +116,7 @@ export function LettersClient() {
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={steps} current={2} />
-        <span className="flex items-center gap-2 text-sm text-muted">
+        <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>
       </header>
@@ -149,10 +149,10 @@ export function LettersClient() {
             ))}
           </div>
           <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-[13px] text-muted">
-            <li className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-[3px] border border-[#BFDCD8] bg-teal-soft" />Checked</li>
-            <li className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-[3px] border-2 border-coral bg-white" />Open now</li>
+            <li className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-[3px] border border-[#CFE3D5] bg-teal-soft" />Checked</li>
+            <li className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-[3px] border-[1.5px] border-coral bg-white" />Open now</li>
             <li className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-[3px] border border-line bg-white" />Not checked yet</li>
-            <li className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-[3px] border border-dashed border-[#B6C2BF] bg-[#F3F6F5]" />Not drawn</li>
+            <li className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-[3px] border border-dashed border-[#BDCFC2] bg-[#F3F9F5]" />Not drawn</li>
           </ul>
         </section>
           <div className="flex flex-col gap-2 rounded-3xl bg-teal-soft p-5">
@@ -188,7 +188,7 @@ export function LettersClient() {
             />
           )}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-            <button type="button" disabled={idx <= 0} onClick={() => go(idx - 1, false)} className="flex h-11 items-center gap-2 rounded-xl border border-[#B6C2BF] px-4 text-sm font-bold hover:bg-paper disabled:opacity-40">
+            <button type="button" disabled={idx <= 0} onClick={() => go(idx - 1, false)} className="flex h-11 items-center gap-2 rounded-xl border border-[#BDCFC2] px-4 text-sm font-bold hover:bg-paper disabled:opacity-40">
               <span aria-hidden>←</span>
               <span lang="dv" className="font-thaana text-xl leading-none">{idx > 0 ? cells[idx - 1].label : ""}</span>
               <span className="sr-only">Previous letter</span>

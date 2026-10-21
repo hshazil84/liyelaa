@@ -89,7 +89,7 @@ export function SpacingClient() {
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={steps} current={5} />
-        <span className="flex items-center gap-2 text-sm text-muted">
+        <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>
       </header>
@@ -99,7 +99,7 @@ export function SpacingClient() {
         <div className="flex w-full flex-col gap-6 lg:w-[320px]">
           <section aria-label="Letter spacing" className="flex flex-col gap-[18px] rounded-3xl border border-line bg-white p-5">
             <div className="flex items-center gap-3.5">
-              <div className="flex h-16 w-16 items-center justify-center rounded-[14px] border-2 border-coral">
+              <div className="flex h-16 w-16 items-center justify-center rounded-[14px] border-[1.5px] border-coral">
                 {letter ? <GlyphSvg glyph={letter} className="h-full w-full p-1" /> : <span className="text-muted">–</span>}
               </div>
               <div className="flex flex-col gap-0.5">
@@ -117,7 +117,7 @@ export function SpacingClient() {
             <button
               type="button"
               onClick={() => update((s) => evenOut(glyphs, s))}
-              className="h-11 rounded-xl border border-[#B6C2BF] bg-white text-[15px] font-bold hover:bg-paper"
+              className="h-11 rounded-xl border border-[#BDCFC2] bg-white text-[15px] font-bold hover:bg-paper"
             >
               Even out all letters
             </button>
@@ -133,15 +133,15 @@ export function SpacingClient() {
                 {look.rows.slice(0, 8).map(({ first, second, gap, value }) => {
                   const k = pairKey(first.id, second.id);
                   return (
-                    <li key={k} data-pair={k} className="flex items-center justify-between gap-2 rounded-xl bg-[#F3F6F5] py-2 pl-3.5 pr-2.5">
+                    <li key={k} data-pair={k} className="flex items-center justify-between gap-2 rounded-xl bg-[#F3F9F5] py-2 pl-3.5 pr-2.5">
                       <span className="flex items-center gap-2">
                         <WordSvg text={String.fromCodePoint(first.cp[0], second.cp[0])} glyphs={glyphs} offsets={offsets} spacing={sp} height={44} />
                         <span className="text-xs text-muted">{gap > look.usual ? "far" : "close"}</span>
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <button type="button" aria-label={`Move ${LABELS.get(first.id)}${LABELS.get(second.id)} closer`} onClick={() => setPair(first.id, second.id, value - PAIR_STEP)} className="h-9 w-9 rounded-[10px] border border-[#B6C2BF] bg-white text-lg hover:bg-paper">−</button>
+                        <button type="button" aria-label={`Move ${LABELS.get(first.id)}${LABELS.get(second.id)} closer`} onClick={() => setPair(first.id, second.id, value - PAIR_STEP)} className="h-9 w-9 rounded-[10px] border border-[#BDCFC2] bg-white text-lg hover:bg-paper">−</button>
                         <span className="w-9 text-center text-sm font-bold tabular-nums">{sign(value)}</span>
-                        <button type="button" aria-label={`Move ${LABELS.get(first.id)}${LABELS.get(second.id)} further`} onClick={() => setPair(first.id, second.id, value + PAIR_STEP)} className="h-9 w-9 rounded-[10px] border border-[#B6C2BF] bg-white text-lg hover:bg-paper">+</button>
+                        <button type="button" aria-label={`Move ${LABELS.get(first.id)}${LABELS.get(second.id)} further`} onClick={() => setPair(first.id, second.id, value + PAIR_STEP)} className="h-9 w-9 rounded-[10px] border border-[#BDCFC2] bg-white text-lg hover:bg-paper">+</button>
                       </span>
                     </li>
                   );
@@ -167,7 +167,7 @@ export function SpacingClient() {
               Nothing to space yet. <Link href="/handwriting/letters" className="font-bold text-teal underline underline-offset-4">Go back to your letters</Link>.
             </p>
           ) : (
-            <div className="flex flex-col items-start gap-2 overflow-x-auto rounded-[14px] bg-[#F3F6F5] px-7 py-4" dir="rtl">
+            <div className="flex flex-col items-start gap-2 overflow-x-auto rounded-[14px] bg-[#F3F9F5] px-7 py-4" dir="rtl">
               {WORDS.map((w, i) => (
                 <WordSvg key={w} text={w} glyphs={glyphs} offsets={offsets} spacing={sp} height={size * (i === 0 ? 1 : 0.7)}>
                   {(line) => (
@@ -176,9 +176,9 @@ export function SpacingClient() {
                         const on = l.id === sel;
                         return (
                           <g key={j}>
-                            {gaps && on && l.left > 0 && <rect x={l.x} y={-200} width={l.left} height={900} fill="#0B6B63" opacity={0.18} />}
-                            {gaps && on && l.right > 0 && <rect x={l.x + l.adv - sp.all - l.right} y={-200} width={l.right} height={900} fill="#0B6B63" opacity={0.18} />}
-                            {gaps && on && <rect x={l.x} y={-200} width={l.adv} height={900} fill="none" stroke="#D9482B" strokeWidth={5} strokeDasharray="16 10" />}
+                            {gaps && on && l.left > 0 && <rect x={l.x} y={-200} width={l.left} height={900} fill="#264022" opacity={0.18} />}
+                            {gaps && on && l.right > 0 && <rect x={l.x + l.adv - sp.all - l.right} y={-200} width={l.right} height={900} fill="#264022" opacity={0.18} />}
+                            {gaps && on && <rect x={l.x} y={-200} width={l.adv} height={900} fill="none" stroke="#FA7E00" strokeWidth={5} strokeDasharray="16 10" />}
                             <rect x={l.x} y={-200} width={l.adv} height={900} fill="transparent" className="cursor-pointer" data-letter={l.id} onClick={() => setSel(l.id)} />
                           </g>
                         );

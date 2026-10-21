@@ -116,7 +116,7 @@ export function AnchorsClient() {
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={steps} current={4} />
-        <span className="flex items-center gap-2 text-sm text-muted">
+        <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>
       </header>
@@ -152,7 +152,7 @@ export function AnchorsClient() {
                         aria-label={`Letter ${c.label}${bad ? ", needs a look" : ""}`}
                         data-letter={c.id}
                         onClick={() => setLetterId(c.id)}
-                        className={`flex h-11 w-11 items-center justify-center rounded-[10px] ${on ? "border-2 border-coral bg-white" : bad ? "border border-coral bg-coral-soft" : "border border-line bg-white hover:bg-paper"}`}
+                        className={`flex h-11 w-11 items-center justify-center rounded-[10px] ${on ? "border-[1.5px] border-coral bg-white" : bad ? "border border-coral bg-coral-soft" : "border border-line bg-white hover:bg-paper"}`}
                       >
                         <Composed letter={glyphs[c.id]} className="h-full w-full p-0.5" />
                       </button>
@@ -176,7 +176,7 @@ export function AnchorsClient() {
                         aria-label={`Vowel mark ${c.label}`}
                         data-mark={c.id}
                         onClick={() => setMarkId(c.id)}
-                        className={`flex h-[52px] w-[52px] items-center justify-center rounded-[10px] ${on ? "border-2 border-coral bg-white" : "border border-line bg-white hover:bg-paper"}`}
+                        className={`flex h-[52px] w-[52px] items-center justify-center rounded-[10px] ${on ? "border-[1.5px] border-coral bg-white" : "border border-line bg-white hover:bg-paper"}`}
                       >
                         {letter ? <Composed letter={letter} mark={glyphs[c.id]} offset={offsets[offsetKey(letter.id, c.id)]} className="h-full w-full p-0.5" /> : null}
                       </button>
@@ -185,7 +185,7 @@ export function AnchorsClient() {
                 </div>
               </div>
 
-              <div className="rounded-[18px] bg-[#F3F6F5] p-2">
+              <div className="rounded-[18px] bg-[#F3F9F5] p-2">
                 <svg
                   ref={svgRef}
                   viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
@@ -197,16 +197,16 @@ export function AnchorsClient() {
                   <g transform="scale(1,-1)">
                     {lb && (
                       <>
-                        <line x1={vb.x} x2={vb.x + vb.w} y1={lb.y1} y2={lb.y1} stroke="#B6C2BF" strokeWidth={3} strokeDasharray="14 10" />
-                        <line x1={vb.x} x2={vb.x + vb.w} y1={lb.y0} y2={lb.y0} stroke="#B6C2BF" strokeWidth={3} strokeDasharray="14 10" />
+                        <line x1={vb.x} x2={vb.x + vb.w} y1={lb.y1} y2={lb.y1} stroke="#BDCFC2" strokeWidth={3} strokeDasharray="14 10" />
+                        <line x1={vb.x} x2={vb.x + vb.w} y1={lb.y0} y2={lb.y0} stroke="#BDCFC2" strokeWidth={3} strokeDasharray="14 10" />
                       </>
                     )}
-                    <line x1={vb.x} x2={vb.x + vb.w} y1={0} y2={0} stroke="#0B6B63" strokeWidth={4} />
-                    {letter && <path d={contoursToD(letter.contours)} fill="#10211F" fillRule="nonzero" />}
+                    <line x1={vb.x} x2={vb.x + vb.w} y1={0} y2={0} stroke="#264022" strokeWidth={4} />
+                    {letter && <path d={contoursToD(letter.contours)} fill="#264022" fillRule="nonzero" />}
                     {letter && mark && shift && (
-                      <path d={contoursToD(shiftContours(mark.contours, shift))} fill={check && !check.ok ? "#D9482B" : "#10211F"} fillRule="nonzero" data-testid="placed-mark" />
+                      <path d={contoursToD(shiftContours(mark.contours, shift))} fill={check && !check.ok ? "#FA7E00" : "#264022"} fillRule="nonzero" data-testid="placed-mark" />
                     )}
-                    {other && <circle cx={other.x} cy={other.y} r={14} fill="#fff" stroke="#B6C2BF" strokeWidth={4} />}
+                    {other && <circle cx={other.x} cy={other.y} r={14} fill="#fff" stroke="#BDCFC2" strokeWidth={4} />}
                   </g>
                   {/* the dot is drawn in screen space (not flipped) so its label reads normally */}
                   {dot && (
@@ -234,15 +234,15 @@ export function AnchorsClient() {
                       }}
                     >
                       <circle r={30} fill="transparent" />
-                      <circle r={16} fill="#D9482B" stroke="#fff" strokeWidth={5} />
-                      <text x={34} y={-26} fontSize={34} fontWeight={700} fill="#10211F" paintOrder="stroke" stroke="#F3F6F5" strokeWidth={8}>
+                      <circle r={16} fill="#FA7E00" stroke="#fff" strokeWidth={5} />
+                      <text x={34} y={-26} fontSize={34} fontWeight={700} fill="#264022" paintOrder="stroke" stroke="#F3F9F5" strokeWidth={8}>
                         {mark && isBelow(mark) ? "Below anchor" : "Above anchor"}
                       </text>
                     </g>
                   )}
-                  <text x={vb.x + 14} y={lb ? -lb.y1 - 14 : 0} fontSize={32} fill="#5A6B68">Above marks</text>
-                  <text x={vb.x + 14} y={-14} fontSize={32} fontWeight={700} fill="#0B6B63">Baseline</text>
-                  <text x={vb.x + 14} y={lb ? -lb.y0 + 40 : 0} fontSize={32} fill="#5A6B68">Below marks</text>
+                  <text x={vb.x + 14} y={lb ? -lb.y1 - 14 : 0} fontSize={32} fill="#5D797B">Above marks</text>
+                  <text x={vb.x + 14} y={-14} fontSize={32} fontWeight={700} fill="#264022">Baseline</text>
+                  <text x={vb.x + 14} y={lb ? -lb.y0 + 40 : 0} fontSize={32} fill="#5D797B">Below marks</text>
                 </svg>
               </div>
 
@@ -255,19 +255,19 @@ export function AnchorsClient() {
                       type="button"
                       aria-label={`Nudge ${n.toLowerCase()}`}
                       onClick={(e) => nudge(dx, dy, e.shiftKey)}
-                      className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#B6C2BF] bg-white hover:bg-paper"
+                      className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#BDCFC2] bg-white hover:bg-paper"
                     >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#10211F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={d} /></svg>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#264022" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={d} /></svg>
                     </button>
                   ))}
                 </div>
                 <div className="flex items-center gap-3">
-                  {check && <span className={`text-sm ${check.ok ? "text-teal" : "text-coral"}`} role="status">{check.ok ? "Looks right" : WHY[check.why!]}</span>}
+                  {check && <span className={`text-sm ${check.ok ? "text-teal" : "text-plum"}`} role="status">{check.ok ? "Looks right" : WHY[check.why!]}</span>}
                   <button
                     type="button"
                     disabled={!letter || !mark || (current.dx === 0 && current.dy === 0)}
                     onClick={() => letter && mark && setOffset(letter, mark, null)}
-                    className="h-11 rounded-xl border border-[#B6C2BF] bg-white px-4 text-[15px] font-bold hover:bg-paper disabled:opacity-40"
+                    className="h-11 rounded-xl border border-[#BDCFC2] bg-white px-4 text-[15px] font-bold hover:bg-paper disabled:opacity-40"
                   >
                     Reset to auto
                   </button>
@@ -291,7 +291,7 @@ export function AnchorsClient() {
             ) : (
               <ul className="flex max-h-[420px] flex-col gap-2 overflow-y-auto" data-testid="flagged">
                 {flagged.out.slice(0, 40).map(({ l, m, why }) => (
-                  <li key={key(l, m)} className="flex items-center justify-between gap-2 rounded-xl bg-[#F3F6F5] py-1.5 pl-3 pr-2.5">
+                  <li key={key(l, m)} className="flex items-center justify-between gap-2 rounded-xl bg-[#F3F9F5] py-1.5 pl-3 pr-2.5">
                     <span className="flex items-center gap-2">
                       <Composed letter={l} mark={m} offset={offsets[key(l, m)]} className="h-12 w-12" />
                       <span className="text-[13px] text-muted">{WHY[why]}</span>
@@ -299,7 +299,7 @@ export function AnchorsClient() {
                     <button
                       type="button"
                       onClick={() => { setLetterId(l.id); setMarkId(m.id); }}
-                      className="h-9 rounded-[10px] border border-[#B6C2BF] bg-white px-3 text-sm font-bold hover:bg-paper"
+                      className="h-9 rounded-[10px] border border-[#BDCFC2] bg-white px-3 text-sm font-bold hover:bg-paper"
                     >
                       Fix
                     </button>
@@ -311,7 +311,7 @@ export function AnchorsClient() {
 
           <div className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">
             <h2 className="font-display text-xl font-bold">Real words</h2>
-            <div className="flex flex-col items-start gap-1 overflow-hidden rounded-[14px] bg-[#F3F6F5] p-3" dir="rtl">
+            <div className="flex flex-col items-start gap-1 overflow-hidden rounded-[14px] bg-[#F3F9F5] p-3" dir="rtl">
               {WORDS.map((w) => (
                 <WordSvg key={w} text={w} glyphs={glyphs} offsets={deferred} spacing={spacing} height={72} />
               ))}

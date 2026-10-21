@@ -40,7 +40,7 @@ export function FontSwitcher() {
   return (
     <div ref={box} className="relative">
       <button type="button" data-testid="font-switcher" aria-haspopup="true" aria-expanded={open} onClick={() => setOpen((o) => !o)}
-        className="flex h-[42px] max-w-[280px] items-center gap-2.5 rounded-xl border border-[#B6C2BF] bg-white px-3.5 text-[15px] font-bold hover:bg-paper">
+        className="flex h-[42px] max-w-[280px] items-center gap-2.5 rounded-xl border border-[#BDCFC2] bg-white px-3.5 text-[15px] font-bold hover:bg-paper">
         <span className="truncate">{cur.title}</span>
         <span className="hidden whitespace-nowrap text-xs font-medium text-muted sm:inline">{cur.count} of 38 letters</span>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="flex-none"><path d="M3 5l4 4 4-4" /></svg>
@@ -60,6 +60,7 @@ export function FontSwitcher() {
             <span className="w-4">+</span>New font
           </button>
           <Link href="/handwriting/fonts" role="menuitem" className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium hover:bg-paper"><span className="w-4" />Manage my fonts</Link>
+          <p className="flex items-center gap-2 px-3 pb-1 pt-2 text-xs text-muted"><span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser</p>
         </div>
       )}
       {making && <NewFontDialog onClose={() => setMaking(false)} />}

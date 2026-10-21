@@ -9,8 +9,8 @@ export function GlyphSvg({ glyph, className }: { glyph: Glyph; className?: strin
   return (
     <svg viewBox={`${x} -820 ${w} 1180`} className={className} aria-hidden>
       <g transform="scale(1,-1)">
-        <path d={contoursToD(glyph.contours)} fill="#10211F" fillRule="nonzero" />
-        <line x1={x} x2={x + w} y1={0} y2={0} stroke="#B6C2BF" strokeWidth={4} />
+        <path d={contoursToD(glyph.contours)} fill="#264022" fillRule="nonzero" />
+        <line x1={x} x2={x + w} y1={0} y2={0} stroke="#BDCFC2" strokeWidth={4} />
       </g>
     </svg>
   );
@@ -19,7 +19,7 @@ export function GlyphSvg({ glyph, className }: { glyph: Glyph; className?: strin
 const STATUS: Record<string, string> = {
   ok: "border-line bg-white",
   light: "border-coral bg-coral-soft",
-  empty: "border-dashed border-[#B6C2BF] bg-paper",
+  empty: "border-dashed border-[#BDCFC2] bg-paper",
 };
 
 export function GlyphTile({ cell }: { cell: CellResult }) {
@@ -35,7 +35,7 @@ export function GlyphTile({ cell }: { cell: CellResult }) {
         {cell.glyph ? (
           <GlyphSvg glyph={cell.glyph} className="h-full w-full" />
         ) : (
-          <span lang="dv" className="font-thaana text-[28px] leading-none text-[#B6C2BF]">{cell.label}</span>
+          <span lang="dv" className="font-thaana text-[28px] leading-none text-[#BDCFC2]">{cell.label}</span>
         )}
       </div>
       <span className="text-[10px] tabular-nums text-muted">{cell.id}</span>

@@ -97,7 +97,7 @@ export function LigaturesClient() {
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={steps} current={5} />
-        <span className="flex items-center gap-2 text-sm text-muted"><span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser</span>
+        <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex"><span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser</span>
       </header>
       <ExtrasNav current="ligatures" />
 
@@ -117,16 +117,16 @@ export function LigaturesClient() {
                   onClick={() => setSeq((s) => [...s, c.cp[0]])}
                   aria-label={`Add ${c.label}${has(c.cp[0]) ? "" : ", not drawn yet"}`}
                   data-pick={c.id}
-                  className={`flex h-10 items-center justify-center rounded-lg border text-[22px] leading-none disabled:opacity-40 ${has(c.cp[0]) ? "border-line bg-white hover:bg-paper" : "border-dashed border-[#B6C2BF] bg-[#F3F6F5] text-muted"}`}
+                  className={`flex h-10 items-center justify-center rounded-lg border text-[22px] leading-none disabled:opacity-40 ${has(c.cp[0]) ? "border-line bg-white hover:bg-paper" : "border-dashed border-[#BDCFC2] bg-[#F3F9F5] text-muted"}`}
                 >
                   <span lang="dv" className="font-thaana">{c.label}</span>
                 </button>
               ))}
             </div>
-            <div className="flex items-center justify-between gap-3 rounded-xl bg-[#F3F6F5] px-3 py-2" dir="rtl">
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-[#F3F9F5] px-3 py-2" dir="rtl">
               <span lang="dv" className="font-thaana text-[30px] leading-none" data-testid="sequence">{seq.length ? sequenceText(seq) : <span className="font-sans text-sm text-muted" dir="ltr">Tap two or more letters</span>}</span>
               <span className="flex gap-1" dir="ltr">
-                <button type="button" disabled={!seq.length} onClick={() => setSeq((s) => s.slice(0, -1))} className="h-9 rounded-lg border border-[#B6C2BF] bg-white px-3 text-sm font-bold hover:bg-paper disabled:opacity-40">Undo</button>
+                <button type="button" disabled={!seq.length} onClick={() => setSeq((s) => s.slice(0, -1))} className="h-9 rounded-lg border border-[#BDCFC2] bg-white px-3 text-sm font-bold hover:bg-paper disabled:opacity-40">Undo</button>
               </span>
             </div>
             <fieldset className="flex flex-col gap-1.5">
@@ -157,7 +157,7 @@ export function LigaturesClient() {
                       aria-current={l.id === selId ? "true" : undefined}
                       data-lig={l.id}
                       data-status={l.glyph.contours.length ? "drawn" : "missing"}
-                      className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2 text-left ${l.id === selId ? "border-2 border-coral bg-white" : l.glyph.contours.length ? "border border-[#BFDCD8] bg-teal-soft" : "border border-dashed border-[#B6C2BF] bg-[#F3F6F5]"}`}
+                      className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2 text-left ${l.id === selId ? "border-[1.5px] border-coral bg-white" : l.glyph.contours.length ? "border border-[#CFE3D5] bg-teal-soft" : "border border-dashed border-[#BDCFC2] bg-[#F3F9F5]"}`}
                     >
                       <span className="flex h-11 w-14 shrink-0 items-center justify-center">
                         {l.glyph.contours.length ? <GlyphSvg glyph={l.glyph} className="h-full w-full" /> : <span lang="dv" className="font-thaana text-[26px] leading-none text-muted">{sequenceText(l.sequence)}</span>}
@@ -167,7 +167,7 @@ export function LigaturesClient() {
                         <span className="text-[12px] text-muted">{l.glyph.contours.length ? WHEN_LABEL[l.when] : "Not drawn yet"}</span>
                       </span>
                     </button>
-                    <button type="button" onClick={() => remove(l)} aria-label={`Remove ${sequenceText(l.sequence)}`} className="h-9 w-9 shrink-0 rounded-lg border border-[#B6C2BF] bg-white text-lg hover:bg-paper">×</button>
+                    <button type="button" onClick={() => remove(l)} aria-label={`Remove ${sequenceText(l.sequence)}`} className="h-9 w-9 shrink-0 rounded-lg border border-[#BDCFC2] bg-white text-lg hover:bg-paper">×</button>
                   </li>
                 ))}
               </ul>
@@ -182,7 +182,7 @@ export function LigaturesClient() {
                 <h1 className="font-display text-xl font-bold" lang="dv"><span className="font-thaana text-[26px]">{sequenceText(sel.sequence)}</span></h1>
                 <label className="flex items-center gap-2 text-sm text-muted">
                   Join
-                  <select value={sel.when} onChange={(e) => setWhenFor(sel, e.target.value as When)} className="rounded-lg border border-[#B6C2BF] bg-white px-2 py-1 text-sm text-ink" aria-label="Where it joins">
+                  <select value={sel.when} onChange={(e) => setWhenFor(sel, e.target.value as When)} className="rounded-lg border border-[#BDCFC2] bg-white px-2 py-1 text-sm text-ink" aria-label="Where it joins">
                     {WHENS.map((w) => <option key={w} value={w}>{WHEN_LABEL[w]}</option>)}
                   </select>
                 </label>
@@ -209,9 +209,9 @@ export function LigaturesClient() {
                   dir="rtl"
                   lang="dv"
                   aria-label="Try a word"
-                  className="h-11 rounded-xl border border-[#B6C2BF] bg-white px-3 font-thaana text-xl"
+                  className="h-11 rounded-xl border border-[#BDCFC2] bg-white px-3 font-thaana text-xl"
                 />
-                <div className="flex flex-col gap-1 rounded-[14px] bg-[#F3F6F5] px-4 py-3" dir="rtl">
+                <div className="flex flex-col gap-1 rounded-[14px] bg-[#F3F9F5] px-4 py-3" dir="rtl">
                   <span className="text-[11px] font-bold uppercase tracking-wide text-muted" dir="ltr">Joined</span>
                   <WordSvg text={text} glyphs={glyphs} offsets={offsets} spacing={sp} ligatures={joined} height={72} label="Joined" />
                   <span className="mt-1 text-[11px] font-bold uppercase tracking-wide text-muted" dir="ltr">Apart</span>

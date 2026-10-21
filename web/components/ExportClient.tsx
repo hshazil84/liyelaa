@@ -43,13 +43,13 @@ function Field({ id, label, hint, error, children }: { id: string; label: string
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className="text-sm font-bold">{label}</label>
       {children}
-      {error ? <span role="alert" className="text-[12.5px] leading-snug text-coral">{error}</span>
+      {error ? <span role="alert" className="text-[12.5px] leading-snug text-plum">{error}</span>
         : hint ? <span className="text-[12.5px] leading-snug text-muted">{hint}</span> : null}
     </div>
   );
 }
 
-const inputCls = "h-11 w-full rounded-xl border border-[#B6C2BF] bg-white px-3.5 text-[15px] font-normal";
+const inputCls = "h-11 w-full rounded-xl border border-[#BDCFC2] bg-white px-3.5 text-[15px] font-normal";
 
 export function ExportClient() {
   const steps = useSteps();
@@ -177,7 +177,7 @@ export function ExportClient() {
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={steps} current={6} />
-        <span className="flex items-center gap-2 text-sm text-muted">
+        <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>
       </header>
@@ -220,7 +220,7 @@ export function ExportClient() {
                 </p>
               )}
               {preview === "building" && <p role="status" className="absolute bottom-3 left-5 text-[13px] text-muted">Building your font…</p>}
-              {preview === "error" && <p role="alert" className="absolute bottom-3 left-5 right-5 text-[13px] text-coral">{previewError}</p>}
+              {preview === "error" && <p role="alert" className="absolute bottom-3 left-5 right-5 text-[13px] text-plum">{previewError}</p>}
             </div>
           )}
         </section>
@@ -266,14 +266,14 @@ export function ExportClient() {
               ] as const).map(([id, title, text, enabled]) => {
                 const on = licence === id;
                 return (
-                  <label key={id} className={`flex gap-3 rounded-[14px] p-3 text-sm ${on ? "border-2 border-teal bg-teal-soft p-[11px]" : "border border-line"} ${enabled ? "cursor-pointer" : "opacity-60"}`}>
+                  <label key={id} className={`flex gap-3 rounded-[14px] p-3 text-sm ${on ? "border-[1.5px] border-edge bg-teal-soft p-[11px]" : "border border-line"} ${enabled ? "cursor-pointer" : "opacity-60"}`}>
                     <input type="radio" name="licence" value={id} checked={on} disabled={!enabled} onChange={() => set("licence", id)} className="mt-1 accent-teal" />
                     <span><b>{title}</b><span className="mt-0.5 block text-[12.5px] leading-snug text-muted">{text}</span></span>
                   </label>
                 );
               })}
             </fieldset>
-            <div className="rounded-xl bg-[#F3F6F5] px-3 py-2.5 text-[12.5px] leading-relaxed text-muted" data-testid="written-in">
+            <div className="rounded-xl bg-[#F3F9F5] px-3 py-2.5 text-[12.5px] leading-relaxed text-muted" data-testid="written-in">
               <b className="text-ink">Written into the font</b><br />
               {writtenIn}
               {filled.length > 0 && licence === "ofl" && <><br />Letters not drawn: {filled.length}, from Noto Sans Thaana</>}
@@ -293,7 +293,7 @@ export function ExportClient() {
             <div className="flex gap-2">
               {([["ttf", ".ttf"], ["woff2", ".woff2 for websites"]] as const).map(([f, label]) => (
                 <button key={f} type="button" disabled={busy !== null || hasProblems || !hasGlyphs} onClick={() => download(f)} data-testid={`download-${f}`}
-                  className="h-11 flex-1 rounded-xl border border-[#B6C2BF] bg-white text-sm font-bold hover:bg-paper disabled:opacity-60">
+                  className="h-11 flex-1 rounded-xl border border-[#BDCFC2] bg-white text-sm font-bold hover:bg-paper disabled:opacity-60">
                   {busy === f ? "Building…" : label}
                 </button>
               ))}

@@ -14,7 +14,7 @@ export function Stepper({ steps, current }: { steps: Step[]; current: number }) 
             <span
               className={[
                 "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
-                done ? "bg-teal" : now ? "bg-white text-ink" : "box-border border-[1.5px] border-[#B6C2BF]",
+                done ? "bg-teal" : now ? "bg-white text-ink" : "box-border border-[1.5px] border-[#BDCFC2]",
               ].join(" ")}
             >
               {done ? (

@@ -37,12 +37,12 @@ export function NewFontDialog({ onClose, suggest = "" }: { onClose: () => void; 
         <label htmlFor="nf-name" className="flex flex-col gap-1.5 text-sm font-bold">
           What is your font called?
           <input id="nf-name" ref={input} data-testid="new-font-name" value={name} maxLength={60} placeholder="My font" onChange={(e) => setName(e.target.value)}
-            className="h-12 rounded-xl border border-[#B6C2BF] px-3.5 text-base font-medium focus-visible:outline-2 focus-visible:outline-teal" />
+            className="h-12 rounded-xl border border-[#BDCFC2] px-3.5 text-base font-medium focus-visible:outline-2 focus-visible:outline-teal" />
         </label>
         <fieldset className="flex flex-col gap-2">
           <legend className="pb-1.5 text-sm font-bold">How will you make the letters?</legend>
           {WAYS.map((w) => (
-            <label key={w.id} className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-3.5 py-3 ${way === w.id ? "border-2 border-teal bg-teal-soft" : "border-line"}`}>
+            <label key={w.id} className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-3.5 py-3 ${way === w.id ? "border-[1.5px] border-edge bg-teal-soft" : "border-line"}`}>
               <input type="radio" name="nf-way" value={w.id} checked={way === w.id} onChange={() => setWay(w.id)} className="mt-1 h-[18px] w-[18px] accent-teal" />
               <span><b className="block">{w.title}</b><span className="text-[13px] text-muted">{w.text}</span></span>
             </label>
@@ -50,7 +50,7 @@ export function NewFontDialog({ onClose, suggest = "" }: { onClose: () => void; 
         </fieldset>
         <div className="flex flex-wrap gap-2.5">
           <button type="submit" data-testid="make-font" disabled={busy} className="h-12 rounded-xl bg-teal px-6 text-base font-bold text-white hover:bg-teal-dark disabled:opacity-60">Make font</button>
-          <button type="button" onClick={onClose} className="h-12 rounded-xl border border-[#B6C2BF] px-5 text-base font-bold hover:bg-paper">Cancel</button>
+          <button type="button" onClick={onClose} className="h-12 rounded-xl border border-[#BDCFC2] px-5 text-base font-bold hover:bg-paper">Cancel</button>
         </div>
       </form>
     </div>

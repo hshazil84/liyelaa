@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  h1, h2, h3, h4 { color: #55303C; }
+}
+
 @font-face {
   font-family: "NotoThaana";
   src: url("/fonts/NotoSansThaana-Variable.woff2") format("woff2");
@@ -55,8 +59,8 @@
 }
 
 @layer base {
-  html { background: #eef2f1; color: #10211f; }
+  html { background: #EAF5EF; color: #264022; }
   body { font-family: "DM Sans Variable", system-ui, sans-serif; min-height: 100vh; }
-  :focus-visible { outline: 3px solid #0b6b63; outline-offset: 2px; }
-  input[type="range"] { accent-color: #0b6b63; }
+  :focus-visible { outline: 3px solid #264022; outline-offset: 2px; }
+  input[type="range"] { accent-color: #264022; }
 }

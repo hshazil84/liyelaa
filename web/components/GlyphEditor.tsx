@@ -18,7 +18,7 @@ type Tool = "move" | "pen" | "erase";
 const TOP = Math.round((layout.guides.baseY - layout.guides.topY) * UNITS_PER_MM);          // 494
 const DESC = -Math.round((layout.guides.writeEnd - layout.guides.baseY) * UNITS_PER_MM);     // -304
 const VB_W = 1400, VB_H = 940, VB_Y = -590;                                                 // font y from -350 to 590
-const INK = "#10211F", TEAL = "#0B6B63", CORAL = "#D9482B";
+const INK = "#264022", TEAL = "#264022", CORAL = "#FA7E00";
 
 type Drag =
   | { kind: "pt" | "hi" | "ho"; c: number; s: number; base: Glyph; started: boolean; sx: number; sy: number; off: Pt }
@@ -39,7 +39,7 @@ function ToolButton({ label, on, disabled, onClick, children }: { label: string;
       aria-pressed={on}
       disabled={disabled}
       onClick={onClick}
-      className={`flex h-10 w-10 items-center justify-center rounded-[10px] border disabled:opacity-40 ${on ? "border-ink bg-ink text-white" : "border-[#B6C2BF] bg-white text-ink hover:bg-paper"}`}
+      className={`flex h-10 w-10 items-center justify-center rounded-[10px] border disabled:opacity-40 ${on ? "border-ink bg-ink text-white" : "border-[#BDCFC2] bg-white text-ink hover:bg-paper"}`}
     >
       {children}
     </button>
@@ -357,20 +357,20 @@ export function GlyphEditor({
           <svg {...iconProps}><path d="M13 5l4 4-4 4M17 9H8a4 4 0 000 8h2" /></svg>
         </ToolButton>
         <span className="mx-1 h-6 w-px bg-line" />
-        <button type="button" disabled={!selSeg || isSmooth(selSeg)} onClick={() => sel && commit(makeSmooth(g, sel.c, sel.s))} className="h-10 rounded-[10px] border border-[#B6C2BF] bg-white px-3 text-sm font-bold hover:bg-paper disabled:opacity-40">
+        <button type="button" disabled={!selSeg || isSmooth(selSeg)} onClick={() => sel && commit(makeSmooth(g, sel.c, sel.s))} className="h-10 rounded-[10px] border border-[#BDCFC2] bg-white px-3 text-sm font-bold hover:bg-paper disabled:opacity-40">
           Make smooth
         </button>
-        <button type="button" disabled={!selSeg || (!selSeg.hi.x && !selSeg.hi.y && !selSeg.ho.x && !selSeg.ho.y)} onClick={() => sel && commit(makeCorner(g, sel.c, sel.s))} className="h-10 rounded-[10px] border border-[#B6C2BF] bg-white px-3 text-sm font-bold hover:bg-paper disabled:opacity-40">
+        <button type="button" disabled={!selSeg || (!selSeg.hi.x && !selSeg.hi.y && !selSeg.ho.x && !selSeg.ho.y)} onClick={() => sel && commit(makeCorner(g, sel.c, sel.s))} className="h-10 rounded-[10px] border border-[#BDCFC2] bg-white px-3 text-sm font-bold hover:bg-paper disabled:opacity-40">
           Make corner
         </button>
-        <button type="button" disabled={!sel} onClick={() => sel && commit(reverseContour(g, sel.c))} title="Turns a filled shape into a hole, or a hole into a filled shape" className="h-10 rounded-[10px] border border-[#B6C2BF] bg-white px-3 text-sm font-bold hover:bg-paper disabled:opacity-40">
+        <button type="button" disabled={!sel} onClick={() => sel && commit(reverseContour(g, sel.c))} title="Turns a filled shape into a hole, or a hole into a filled shape" className="h-10 rounded-[10px] border border-[#BDCFC2] bg-white px-3 text-sm font-bold hover:bg-paper disabled:opacity-40">
           Fill ↔ hole
         </button>
       </div>
 
       <div className="flex flex-wrap items-start gap-4">
       <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-3">
-      <div className="relative overflow-hidden rounded-[14px] bg-[#F3F6F5]">
+      <div className="relative overflow-hidden rounded-[14px] bg-[#F3F9F5]">
         <svg
           ref={svgRef}
           viewBox={`${vbx} ${vby} ${vw} ${vh}`}
@@ -392,14 +392,14 @@ export function GlyphEditor({
             {/* guides */}
             {[[TOP, "Top", false], [TOP / 2, "Mid", false], [0, "Baseline", true], [DESC, "Descender", false]].map(([y, name, strong]) => (
               <g key={name as string}>
-                <line x1={vbx} x2={vbx + vw} y1={y as number} y2={y as number} stroke={strong ? TEAL : "#B6C2BF"} strokeWidth={(strong ? 2.5 : 1.5) * u} strokeDasharray={strong ? undefined : `${6 * u} ${5 * u}`} />
-                <text transform="scale(1,-1)" x={vbx + 12 * u} y={-(y as number) - 6 * u} fontSize={12 * u} fill={strong ? TEAL : "#5A6B68"} fontWeight={strong ? 700 : 400}>{name as string}</text>
+                <line x1={vbx} x2={vbx + vw} y1={y as number} y2={y as number} stroke={strong ? TEAL : "#BDCFC2"} strokeWidth={(strong ? 1.6 : 1) * u} strokeDasharray={strong ? undefined : `${6 * u} ${5 * u}`} />
+                <text transform="scale(1,-1)" x={vbx + 12 * u} y={-(y as number) - 6 * u} fontSize={12 * u} fill={strong ? TEAL : "#5D797B"} fontWeight={strong ? 700 : 400}>{name as string}</text>
               </g>
             ))}
             {!isMark && [0, g.adv].map((x) => (
-              <line key={x} x1={x} x2={x} y1={DESC} y2={TOP} stroke="#B6C2BF" strokeWidth={1 * u} strokeDasharray={`${3 * u} ${4 * u}`} />
+              <line key={x} x1={x} x2={x} y1={DESC} y2={TOP} stroke="#BDCFC2" strokeWidth={1 * u} strokeDasharray={`${3 * u} ${4 * u}`} />
             ))}
-            {isMark && <line x1={0} x2={0} y1={DESC} y2={TOP} stroke="#B6C2BF" strokeWidth={1 * u} strokeDasharray={`${3 * u} ${4 * u}`} />}
+            {isMark && <line x1={0} x2={0} y1={DESC} y2={TOP} stroke="#BDCFC2" strokeWidth={1 * u} strokeDasharray={`${3 * u} ${4 * u}`} />}
 
             {/* the starter letter, only as a hint for a letter that has no drawing yet */}
             {!hasShape && !pen && (

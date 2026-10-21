@@ -45,7 +45,7 @@ export function ShapePanel({
       </div>
 
       {disabled ? (
-        <p className="rounded-xl bg-[#F3F6F5] px-3 py-2.5 text-sm text-muted">Draw the letter first. Then these sliders can change it.</p>
+        <p className="rounded-xl bg-[#F3F9F5] px-3 py-2.5 text-sm text-muted">Draw the letter first. Then these sliders can change it.</p>
       ) : (
         SLIDERS.map((grp) => (
           <div key={grp.group} className="flex flex-col gap-3.5 border-t border-line pt-4">
@@ -73,7 +73,7 @@ export function ShapePanel({
                 type="button"
                 aria-pressed={shape.flip}
                 onClick={() => onShape({ ...shape, flip: !shape.flip })}
-                className={`h-10 rounded-xl border text-sm font-bold ${shape.flip ? "border-ink bg-ink text-white" : "border-[#B6C2BF] bg-white hover:bg-paper"}`}
+                className={`h-10 rounded-xl border text-sm font-bold ${shape.flip ? "border-ink bg-ink text-white" : "border-[#BDCFC2] bg-white hover:bg-paper"}`}
               >
                 Flip sideways
               </button>
@@ -88,7 +88,7 @@ export function ShapePanel({
             <button type="button" disabled={!changed} onClick={onApply} data-testid="shape-apply" className="h-11 flex-1 rounded-xl bg-teal text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-40">
               Apply to this letter
             </button>
-            <button type="button" disabled={!changed} onClick={() => onShape({ ...IDENTITY })} data-testid="shape-reset" className="h-11 rounded-xl border border-[#B6C2BF] bg-white px-4 text-[15px] font-bold hover:bg-paper disabled:opacity-40">
+            <button type="button" disabled={!changed} onClick={() => onShape({ ...IDENTITY })} data-testid="shape-reset" className="h-11 rounded-xl border border-[#BDCFC2] bg-white px-4 text-[15px] font-bold hover:bg-paper disabled:opacity-40">
               Reset
             </button>
           </div>

@@ -24,10 +24,10 @@ function LevelCell({ glyph, from, to, label }: { glyph: Glyph; from: number; to:
   return (
     <li data-letter={glyph.id} data-moved={moved ? "1" : "0"} className="flex flex-col items-center gap-1 rounded-xl border border-line bg-white p-1.5">
       <svg viewBox={`-40 -540 ${w} 920`} className="h-[84px] w-full" role="img" aria-label={`${label}, ${to === 0 ? "not moved" : to > 0 ? "moved up" : "moved down"}`}>
-        <line x1={-40} x2={w - 40} y1={0} y2={0} stroke="#0B6B63" strokeWidth={5} />
+        <line x1={-40} x2={w - 40} y1={0} y2={0} stroke="#264022" strokeWidth={5} />
         <g transform="scale(1,-1)">
-          {moved && <path d={contoursToD(drawn)} fill="#C5CFCC" fillRule="nonzero" />}
-          <path d={contoursToD(placed)} fill="#10211F" fillRule="nonzero" />
+          {moved && <path d={contoursToD(drawn)} fill="#CBD9CF" fillRule="nonzero" />}
+          <path d={contoursToD(placed)} fill="#264022" fillRule="nonzero" />
         </g>
       </svg>
     </li>
@@ -61,7 +61,7 @@ export function LevelClient() {
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={steps} current={3} />
-        <span className="flex items-center gap-2 text-sm text-muted">
+        <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>
       </header>
@@ -89,7 +89,7 @@ export function LevelClient() {
                 ))}
               </ul>
               <p className="flex items-center gap-4 text-xs text-muted">
-                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#C5CFCC]" />Where you drew it</span>
+                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#CBD9CF]" />Where you drew it</span>
                 <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-ink" />Where it will sit</span>
                 <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 bg-teal" />Baseline</span>
               </p>
@@ -105,7 +105,7 @@ export function LevelClient() {
               <input type="range" min={0} max={100} step={5} value={strength} onChange={(e) => setStrength(Number(e.target.value))} data-testid="strength" aria-label="Strength" className="accent-teal" />
               <span className="text-xs font-normal text-muted">100% puts every letter on the line. Lower keeps some of your own wobble.</span>
             </label>
-            <p className="rounded-xl bg-[#F3F6F5] px-3 py-2.5 text-[13px] leading-relaxed" data-testid="level-summary">
+            <p className="rounded-xl bg-[#F3F9F5] px-3 py-2.5 text-[13px] leading-relaxed" data-testid="level-summary">
               {plan.moved} of {drawn.length} letters {applied && same ? "are snapped" : "will move"}. Biggest move {(plan.biggest / UNITS_PER_MM).toFixed(1)} mm.
             </p>
             <div className="flex gap-2">
@@ -114,7 +114,7 @@ export function LevelClient() {
                 Snap letters
               </button>
               <button type="button" data-testid="undo-snap" disabled={!applied} onClick={() => void commit(0)}
-                className="h-12 rounded-xl border border-[#B6C2BF] px-4 text-[15px] font-bold hover:bg-paper disabled:cursor-not-allowed disabled:opacity-40">
+                className="h-12 rounded-xl border border-[#BDCFC2] px-4 text-[15px] font-bold hover:bg-paper disabled:cursor-not-allowed disabled:opacity-40">
                 Undo
               </button>
             </div>

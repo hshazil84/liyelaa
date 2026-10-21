@@ -82,13 +82,13 @@ export function FontsClient() {
         )}
         <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]" data-testid="font-cards">
           {(fonts ?? []).map((f) => (
-            <li key={f.id} data-font={f.id} data-active={f.active} className={`flex min-w-0 flex-col gap-3.5 rounded-[20px] bg-white p-4 ${f.active ? "border-2 border-teal" : "border border-line"}`}>
+            <li key={f.id} data-font={f.id} data-active={f.active} className={`flex min-w-0 flex-col gap-3.5 rounded-[20px] bg-white p-4 ${f.active ? "border-[1.5px] border-edge" : "border border-line"}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   {renaming === f.id ? (
                     <form onSubmit={(e) => { e.preventDefault(); rename(f); }} className="flex gap-2">
                       <input aria-label="Font name" data-testid="rename-input" autoFocus value={draft} maxLength={60} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setRenaming(null); }}
-                        className="h-10 min-w-0 flex-1 rounded-lg border border-[#B6C2BF] px-3 font-bold" />
+                        className="h-10 min-w-0 flex-1 rounded-lg border border-[#BDCFC2] px-3 font-bold" />
                       <button type="submit" className="h-10 rounded-lg bg-teal px-3 text-sm font-bold text-white">Save</button>
                     </form>
                   ) : (
@@ -104,9 +104,9 @@ export function FontsClient() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button type="button" data-testid={`open-${f.id}`} onClick={() => open(f)} className="h-9 rounded-lg bg-teal px-3.5 text-sm font-bold text-white hover:bg-teal-dark">Open</button>
-                <button type="button" data-testid={`rename-${f.id}`} onClick={() => { setRenaming(f.id); setDraft(f.title); }} className="h-9 rounded-lg border border-[#B6C2BF] px-3 text-sm font-bold hover:bg-paper">Rename</button>
-                <button type="button" onClick={() => backup(f)} className="h-9 rounded-lg border border-[#B6C2BF] px-3 text-sm font-bold hover:bg-paper">Save a backup</button>
-                <button type="button" data-testid={`delete-${f.id}`} onClick={() => setDeleting(f)} className="ml-auto text-sm font-bold text-coral underline underline-offset-4">Delete</button>
+                <button type="button" data-testid={`rename-${f.id}`} onClick={() => { setRenaming(f.id); setDraft(f.title); }} className="h-9 rounded-lg border border-[#BDCFC2] px-3 text-sm font-bold hover:bg-paper">Rename</button>
+                <button type="button" onClick={() => backup(f)} className="h-9 rounded-lg border border-[#BDCFC2] px-3 text-sm font-bold hover:bg-paper">Save a backup</button>
+                <button type="button" data-testid={`delete-${f.id}`} onClick={() => setDeleting(f)} className="ml-auto text-sm font-bold text-plum underline underline-offset-4">Delete</button>
               </div>
             </li>
           ))}
@@ -125,9 +125,9 @@ export function FontsClient() {
             <h2 id="del-title" className="font-display text-xl font-bold">Delete “{deleting.title}”?</h2>
             <p className="rounded-xl bg-coral-soft px-4 py-3 text-sm font-medium">This cannot be undone. {deleting.count > 0 ? `The ${deleting.count} letters in it will be gone.` : "It has no letters yet."}</p>
             <div className="flex flex-wrap gap-2.5">
-              <button type="button" onClick={() => backup(deleting)} className="h-11 rounded-xl border border-[#B6C2BF] px-4 text-sm font-bold hover:bg-paper">Save a backup first</button>
-              <button type="button" data-testid="confirm-delete" onClick={() => remove(deleting)} className="h-11 rounded-xl bg-coral px-4 text-sm font-bold text-white">Delete font</button>
-              <button type="button" onClick={() => setDeleting(null)} className="h-11 rounded-xl border border-[#B6C2BF] px-4 text-sm font-bold hover:bg-paper">Keep it</button>
+              <button type="button" onClick={() => backup(deleting)} className="h-11 rounded-xl border border-[#BDCFC2] px-4 text-sm font-bold hover:bg-paper">Save a backup first</button>
+              <button type="button" data-testid="confirm-delete" onClick={() => remove(deleting)} className="h-11 rounded-xl bg-plum px-4 text-sm font-bold text-white">Delete font</button>
+              <button type="button" onClick={() => setDeleting(null)} className="h-11 rounded-xl border border-[#BDCFC2] px-4 text-sm font-bold hover:bg-paper">Keep it</button>
             </div>
           </div>
         </div>
