@@ -97,7 +97,7 @@ def main():
 
         # pasting SVG code adds a letter the files did not have
         pg.goto(f"{WEB}/draw")
-        pg.get_by_role("tab", name="Paste SVG code").click()
+        pg.get_by_role("tab", name="Paste", exact=True).click()
         pg.get_by_test_id("paste-for").select_option("0789")
         pg.get_by_test_id("paste-text").fill(files["U+0789.svg"])
         pg.get_by_test_id("paste-add").click()

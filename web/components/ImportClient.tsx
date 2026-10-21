@@ -9,7 +9,7 @@ import { layout } from "@/lib/handwriting/pipeline";
 import { DRAW_STEPS } from "@/lib/handwriting/steps";
 import { clearProject, loadProject, saveGlyphs, setPath } from "@/lib/handwriting/store";
 import {
-  idFromName, importFiles, importSheet, summarise, type ImportItem, type ImportReport, type SizeMode, type SourceFile,
+  extractSvg, idFromName, importFiles, importSheet, summarise, type ImportItem, type ImportReport, type SizeMode, type SourceFile,
 } from "@/lib/handwriting/svgimport";
 
 type Source = { kind: "letter" | "sheet"; name: string; text: string; sheetId?: number };
@@ -109,15 +109,35 @@ export function ImportClient() {
     });
   }
 
-  function addPasted() {
-    if (!paste.trim()) return;
+  const addPasted = useCallback((text: string) => {
+    if (!text.trim()) return;
     setSaved(null);
     const s: Source = pasteFor === "sheet1" || pasteFor === "sheet2"
-      ? { kind: "sheet", name: `sheet-${pasteFor.slice(5)}.svg`, text: paste, sheetId: Number(pasteFor.slice(5)) }
-      : { kind: "letter", name: `U+${pasteFor}.svg`, text: paste };
+      ? { kind: "sheet", name: `sheet-${pasteFor.slice(5)}.svg`, text, sheetId: Number(pasteFor.slice(5)) }
+      : { kind: "letter", name: `U+${pasteFor}.svg`, text };
     setSources((prev) => [...prev.filter((x) => x.name !== s.name), s]);
     setPaste("");
-  }
+  }, [pasteFor]);
+
+  // Ctrl or ⌘ V anywhere on the page brings in what was copied, for the letter chosen under Paste
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      const dt = e.clipboardData;
+      const text = dt ? dt.getData("image/svg+xml") || dt.getData("text/plain") || dt.getData("text/html") : "";
+      e.preventDefault();
+      setTab("paste");
+      if (!extractSvg(text)) {
+        setError("That is not SVG. In Illustrator, turn on Preferences, Clipboard Handling, Include SVG Code, then copy again.");
+        return;
+      }
+      setError(null);
+      addPasted(extractSvg(text)!);
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [addPasted]);
 
   const summary = useMemo(() => (report ? summarise(report, layout) : null), [report]);
   const fixes = report ? LETTERS.filter((c) => report.items[c.id]?.status === "fix") : [];
@@ -147,7 +167,7 @@ export function ImportClient() {
           <section aria-label="Bring in your artwork" className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">
             <h2 className="font-display text-xl font-bold">Bring in your artwork</h2>
             <div role="tablist" aria-label="How to bring it in" className="flex gap-2">
-              {([["files", "SVG files"], ["paste", "Paste SVG code"]] as const).map(([id, label]) => (
+              {([["files", "SVG files"], ["paste", "Paste"]] as const).map(([id, label]) => (
                 <button
                   key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
                   className={`rounded-full px-4 py-1.5 text-sm font-bold ${tab === id ? "bg-ink text-white" : "text-muted hover:bg-paper"}`}
@@ -187,19 +207,22 @@ export function ImportClient() {
             ) : (
               <div className="flex flex-col gap-3">
                 <label className="flex flex-col gap-1.5 text-[13px] text-muted">
-                  What is this artwork?
+                  1. What is this artwork?
                   <select data-testid="paste-for" value={pasteFor} onChange={(e) => setPasteFor(e.target.value)} className="h-11 rounded-xl border border-[#B6C2BF] bg-white px-3 text-base text-ink">
                     <option value="sheet1">The whole page 1 (letters)</option>
                     <option value="sheet2">The whole page 2 (marks and extras)</option>
                     {PICK.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
                   </select>
                 </label>
+                <p className="rounded-xl bg-teal-soft px-3.5 py-3 text-[14px] leading-snug">
+                  <b className="text-teal-dark">2. Copy it in Illustrator, then press Ctrl or ⌘ V on this page.</b> It is read straight from the clipboard. You can also paste the SVG code in the box.
+                </p>
                 <label className="flex flex-col gap-1.5 text-[13px] text-muted">
                   SVG code
                   <textarea data-testid="paste-text" value={paste} onChange={(e) => setPaste(e.target.value)} rows={7} spellCheck={false}
                     placeholder="<svg …>…</svg>" className="rounded-xl border border-[#B6C2BF] bg-white p-3 font-mono text-[13px] text-ink" />
                 </label>
-                <button type="button" data-testid="paste-add" onClick={addPasted} disabled={!paste.trim()}
+                <button type="button" data-testid="paste-add" onClick={() => addPasted(paste)} disabled={!paste.trim()}
                   className="h-11 rounded-xl border border-[#B6C2BF] bg-white text-sm font-bold hover:bg-paper disabled:opacity-50">Add this artwork</button>
               </div>
             )}
@@ -219,8 +242,9 @@ export function ImportClient() {
             <h2 className="font-display text-lg font-bold">From Illustrator</h2>
             <ul className="list-disc space-y-1.5 pl-5 text-sm leading-normal text-muted">
               <li>Convert text to outlines.</li>
-              <li>Save as SVG, then drop the file here.</li>
-              <li>A browser cannot take a direct paste from Illustrator, so paste SVG code instead.</li>
+              <li>Turn on Preferences, Clipboard Handling, Include SVG Code, so a copy carries SVG.</li>
+              <li>Copy the drawing and press Ctrl or ⌘ V here, or on any letter in the editor.</li>
+              <li>Or save as SVG and drop the file here.</li>
             </ul>
           </section>
 
@@ -238,6 +262,7 @@ export function ImportClient() {
               className="flex h-12 items-center justify-center rounded-xl border border-[#B6C2BF] bg-white text-base font-bold hover:bg-paper">
               Open a blank letter
             </Link>
+            <p className="text-[13px] leading-snug text-muted">In the editor you can draw with the pen, or press Ctrl or ⌘ V to paste artwork onto the letter you picked.</p>
           </section>
         </div>
 

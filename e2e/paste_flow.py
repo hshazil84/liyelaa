@@ -63,6 +63,21 @@ def main():
         pg.get_by_label("Undo").click()
         pg.wait_for_timeout(600)
         assert bbox(pg.evaluate(READ)["glyphs"]["0780"]) == bbox(g)
+
+        # the Draw or import page takes a direct paste too
+        pg.goto(f"{WEB}/draw")
+        pg.wait_for_selector("[data-testid=open-blank]")
+        pg.evaluate(PASTE, "not svg at all")
+        pg.wait_for_selector("[data-testid=import-error]")
+        assert "Include SVG Code" in pg.get_by_test_id("import-error").inner_text()
+        pg.evaluate(PASTE, STROKE)
+        pg.wait_for_selector("[data-testid=stroke-notice]")
+        pg.get_by_test_id("outline-strokes").click()
+        pg.wait_for_selector("[data-testid=use-letters]:not([disabled])")
+        pg.get_by_test_id("use-letters").click()
+        pg.wait_for_selector("[data-testid=import-saved]")
+        saved = pg.evaluate(READ)["glyphs"]["0780"]
+        assert saved["contours"] and saved["source"] == "drawn"
         assert not errors, errors
         print("paste flow ok")
         b.close()
