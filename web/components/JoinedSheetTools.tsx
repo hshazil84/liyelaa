@@ -43,14 +43,14 @@ export function JoinedSheetTools({ ligs, onScanned, note = true }: { ligs: Ligat
     }
   }
 
-  const btn = "flex h-11 items-center justify-center rounded-xl px-4 text-[15px] font-bold";
+  const btn = "flex min-h-11 items-center justify-center rounded-xl px-4 py-2 text-center text-[15px] font-bold leading-tight";
   return (
     <div className="flex flex-col gap-2" data-testid="paper-sheet">
       {none ? (
-        <button type="button" disabled className={`${btn} bg-teal text-white opacity-40`}>Download a sheet for these (PDF)</button>
+        <button type="button" disabled className={`${btn} bg-teal text-white opacity-40`}>Download the sheet (PDF)</button>
       ) : (
         <button type="button" onClick={download} disabled={busy} data-testid="print-sheet" className={`${btn} bg-teal text-white hover:bg-teal-dark disabled:opacity-60`}>
-          Download a sheet for these (PDF)
+          Download the sheet (PDF)
         </button>
       )}
       {pages > 1 && (
