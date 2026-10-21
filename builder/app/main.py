@@ -16,7 +16,7 @@ from fontmaker.play import PlayParams, build_play_font, build_zip, font_bytes
 
 ALLOWED = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
 
-app = FastAPI(title="Liyelaa builder", version="0.1.0")
+app = FastAPI(title="MyAkuru builder", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=ALLOWED, allow_methods=["POST", "GET"], allow_headers=["content-type"],
                    expose_headers=["content-disposition", "x-dfm-filled", "x-dfm-drawn"])
 
