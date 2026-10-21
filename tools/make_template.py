@@ -34,6 +34,7 @@ EXTRAS = [(0xFDF2, "ﷲ", "Allah"), (0x20C2, "\u20c2", "rufiyaa"), (0x060C, "،"
           (0x201D, "”", "close quote"), (0x2018, "‘", "open single"), (0x2019, "’", "close single"),
           (0x00AB, "«", "guillemet L"), (0x00BB, "»", "guillemet R"), (0x28, "(", "bracket"),
           (0x29, ")", "bracket"), (0x2E, ".", "full stop"), (0x21, "!", "exclaim"), (0x3A, ":", "colon")]
+DIGITS = [(0x30 + d, str(d)) for d in range(10)]
 
 
 def cell_html(c):
@@ -71,6 +72,14 @@ def build_layout():
             x, y = GX + (COLS - 1 - c) * CELL_W, y0 + (r + 1) * CELL_H
         code = f"U+{cp:04X}" if cp > 127 and label.strip() and "\n" not in label else name
         s2.append(dict(id=f"{cp:04X}", cp=[cp], kind="symbol", x=x, y=y, w=CELL_W, h=CELL_H, label=label, code=code))
+    # digits 0-9: two rows below the extras, the second row centred so it stays clear of the corner squares
+    yd = y0 + 3 * CELL_H + 8
+    for i, (cp, label) in enumerate(DIGITS):
+        if i < COLS:
+            x, y = GX + (COLS - 1 - i) * CELL_W, yd
+        else:
+            x, y = GX + (COLS - 2 - (i - COLS)) * CELL_W, yd + CELL_H
+        s2.append(dict(id=f"{cp:04X}", cp=[cp], kind="symbol", x=x, y=y, w=CELL_W, h=CELL_H, label=label, code=f"digit {label}"))
     return s1, s2
 
 
@@ -107,8 +116,10 @@ def build_html(overlay1="", overlay2=""):
             "<b>baseline</b>; tall parts can reach the top dashed line. Keep the sheet flat, in daylight, and don't cover "
             "the four black squares in the corners.")
     tip2 = ("Write only the vowel mark (fili) where it would sit on the dotted letter-box: <b>above</b> the baseline for most, "
-            "<b>below</b> for ibifili and eebeefili (the 3rd and 4th marks). Extras are optional - skip any you don't want.")
-    sec = f'<div class="sec" style="top:{GY + 2 * CELL_H + 1}mm">Extras (optional)</div>'
+            "<b>below</b> for ibifili and eebeefili (the 3rd and 4th marks). Extras and numbers are optional - skip any you don't want.")
+    yd = GY + 2 * CELL_H + 6 + 3 * CELL_H + 8
+    sec = (f'<div class="sec" style="top:{GY + 2 * CELL_H + 1}mm">Extras (optional)</div>'
+           f'<div class="sec" style="top:{yd - 5}mm">Numbers 0 to 9 (optional)</div>')
     return (f"<!doctype html><meta charset=utf-8><style>{CSS}</style>"
             + page("Letters", tip1, "".join(map(cell_html, s1)) + overlay1, 1)
             + page("Vowel marks and extras", tip2, "".join(map(cell_html, s2)) + sec + overlay2, 2))

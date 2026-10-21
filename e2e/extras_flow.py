@@ -59,7 +59,7 @@ def main():
         pg.wait_for_selector('[data-cell="060C"]')
         assert pg.locator('[data-cell="060C"]').get_attribute("data-status") == "drawn"
         assert pg.locator('[data-cell="061B"]').get_attribute("data-status") == "missing"
-        assert pg.get_by_test_id("progress").inner_text().startswith("1 of 17"), pg.get_by_test_id("progress").inner_text()
+        assert pg.get_by_test_id("progress").inner_text().startswith("1 of 27"), pg.get_by_test_id("progress").inner_text()
         # draw the semicolon with the pen
         pg.locator('[data-cell="061B"]').click()
         pg.wait_for_selector("[data-testid=editor-svg]")
@@ -84,6 +84,8 @@ def main():
         # ---- joined letters
         pg.get_by_test_id("continue-ligatures").click()
         pg.wait_for_url("**/handwriting/ligatures")
+        pg.get_by_test_id("common").wait_for()
+        pg.locator('[data-mode="own"]').click()
         pg.get_by_test_id("add-lig").is_disabled()
         pg.locator('[data-pick="0780"]').click()
         pg.locator('[data-pick="0781"]').click()

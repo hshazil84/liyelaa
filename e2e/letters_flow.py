@@ -149,7 +149,7 @@ def main():
         assert pg.locator("[data-testid=grid] button").count() == 11
         pg.wait_for_selector("[data-node]")
         pg.get_by_role("tab", name="Extras").click()
-        assert pg.locator("[data-testid=grid] button").count() == 17
+        assert pg.locator("[data-testid=grid] button").count() == 27
         assert pg.get_by_test_id("size-check").count() in (0, 1)
 
         # 11. clearing the only drawing of a letter makes it "not drawn" again

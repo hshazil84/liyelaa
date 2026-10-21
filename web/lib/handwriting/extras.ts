@@ -54,6 +54,11 @@ export const SYMBOL_GROUPS: SymbolGroup[] = [
     ],
   },
   {
+    title: "Numbers",
+    note: "The digits 0 to 9, as they appear when you type numbers.",
+    items: Array.from({ length: 10 }, (_, d) => ({ id: `003${d}`, name: String(d) })),
+  },
+  {
     title: "Quotes and brackets",
     note: "Drawn the way they look in left-to-right text.",
     items: [

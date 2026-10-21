@@ -14,11 +14,20 @@ import type { Offsets } from "@/lib/handwriting/marks";
 import { layout } from "@/lib/handwriting/pipeline";
 import { emptySpacing, type Spacing } from "@/lib/handwriting/spacing";
 import { useSteps } from "@/lib/handwriting/steps";
-import { loadProject, removeLigature, saveLigature } from "@/lib/handwriting/store";
+import { loadProject, removeLigature, saveLigature, saveLigatures } from "@/lib/handwriting/store";
 import type { Glyph, LayoutCell } from "@/lib/handwriting/types";
 
 const PICK = [...layout.sheets[0].cells, ...layout.sheets[1].cells.filter((c) => c.kind === "fili")];
 const MAX = 4;
+const MARKS = layout.sheets[1].cells.filter((c) => c.kind === "fili");
+const MARK_NAME: Record<string, string> = {
+  "07A6": "abafili", "07A7": "aabaafili", "07A8": "ibifili", "07A9": "eebeefili", "07AA": "ubufili", "07AB": "ooboofili",
+  "07AC": "ebefili", "07AD": "ebeefili", "07AE": "obofili", "07AF": "oboofili", "07B0": "sukun",
+};
+const LETTERS = layout.sheets[0].cells;
+// letters most often joined with a sukun; only a starting guess, any of them can be unticked
+const SUKUN_COMMON = new Set([0x0782, 0x078c, 0x078b, 0x0783, 0x078d, 0x0786, 0x0790, 0x078e, 0x0789, 0x0784, 0x0785]);
+const SUKUN = 0x07b0;
 const WHENS: When[] = ["always", "start", "end"];
 
 const cellFor = (l: Ligature): LayoutCell => ({
@@ -36,6 +45,9 @@ export function LigaturesClient() {
   const [seq, setSeq] = useState<number[]>([]);
   const [when, setWhen] = useState<When>("always");
   const [word, setWord] = useState("");
+  const [mode, setMode] = useState<"mark" | "own">("mark");
+  const [mark, setMark] = useState<number>(MARKS[0].cp[0]);
+  const [ticked, setTicked] = useState<Set<number>>(new Set());
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
   useEffect(() => {
@@ -68,6 +80,36 @@ export function LigaturesClient() {
     setSelId(id);
     setWord(sequenceText(seq));
     setSeq([]);
+  }
+
+  const have = (letter: number) => ligs.some((l) => l.sequence.length === 2 && l.sequence[0] === letter && l.sequence[1] === mark && l.when === when);
+  const pending = LETTERS.map((c) => c.cp[0]).filter((cp) => ticked.has(cp) && !have(cp));
+
+  function chooseMark(cp: number) {
+    setMark(cp);
+    setTicked(cp === SUKUN ? new Set(SUKUN_COMMON) : new Set());
+  }
+
+  function toggle(cp: number) {
+    setTicked((t) => { const n = new Set(t); if (n.has(cp)) n.delete(cp); else n.add(cp); return n; });
+  }
+
+  function addMany() {
+    if (!pending.length) return;
+    let list = ligs;
+    const made: Ligature[] = [];
+    for (const cp of pending) {
+      const id = nextLigatureId(list);
+      const seq = [cp, mark];
+      const l: Ligature = { id, sequence: seq, when, glyph: { id, cp: seq, kind: "letter", contours: [], adv: 600, source: "drawn" } };
+      made.push(l);
+      list = [...list, l];
+    }
+    setLigs(list);
+    persist(() => saveLigatures(made));
+    setSelId(made[0].id);
+    setWord(sequenceText(made[0].sequence));
+    setTicked(new Set());
   }
 
   function drawn(l: Ligature, g: Glyph | null) {
@@ -106,9 +148,54 @@ export function LigaturesClient() {
           <section aria-label="Pick letters" className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">
             <h2 className="font-display text-xl font-bold">Join letters together</h2>
             <p className="text-[13px] leading-snug text-muted">
-              Some letters look better as one shape when they sit side by side. Tap the letters in the order you type them, then draw the joined shape.
+              Some letters look better as one shape when they sit side by side. Pick a mark and tick the letters it joins with, then draw each joined shape.
             </p>
-            <div dir="rtl" className="grid grid-cols-7 gap-1" data-testid="picker">
+            <div role="group" aria-label="Start from" className="flex flex-wrap gap-2">
+              {([["mark", "A letter and a mark"], ["own", "Type my own"]] as const).map(([m, label]) => (
+                <button key={m} type="button" onClick={() => setMode(m)} aria-pressed={mode === m} data-mode={m}
+                  className={`h-10 rounded-full border px-4 text-sm font-bold ${mode === m ? "border-teal bg-teal text-white" : "border-[#BDCFC2] bg-white hover:bg-paper"}`}>{label}</button>
+              ))}
+            </div>
+            {mode === "mark" && (
+              <div className="flex flex-col gap-3" data-testid="common">
+                <div>
+                  <div className="mb-1.5 text-sm font-bold">1. Which mark?</div>
+                  <div dir="rtl" className="grid grid-cols-4 gap-1.5">
+                    {MARKS.map((m) => (
+                      <button key={m.id} type="button" onClick={() => chooseMark(m.cp[0])} aria-pressed={mark === m.cp[0]} data-mark={m.id}
+                        aria-label={`Mark ${MARK_NAME[m.id]}`}
+                        className={`flex h-[66px] flex-col items-center justify-center rounded-xl border ${mark === m.cp[0] ? "border-[1.5px] border-edge bg-teal-soft" : "border-line bg-white hover:bg-paper"}`}>
+                        <span lang="dv" className="font-thaana text-[24px] leading-[1.3]">{"\u0780" + m.label.replace("◌", "")}</span>
+                        <small className="font-sans text-[10px] text-muted" dir="ltr">{MARK_NAME[m.id]}</small>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-1 text-sm font-bold">2. Which letters join with it?</div>
+                  <p className="mb-2 text-[12px] text-muted">{mark === SUKUN ? "The ticked ones are a starting guess. Tick or untick any." : "Tick the letters whose joined shape you want to draw."}</p>
+                  <div className="mb-2 flex gap-2">
+                    <button type="button" onClick={() => setTicked(new Set(LETTERS.map((c) => c.cp[0]).filter((cp) => !have(cp))))} data-testid="tick-all" className="h-8 rounded-lg border border-[#BDCFC2] bg-white px-3 text-[13px] font-bold hover:bg-paper">Tick all {LETTERS.length}</button>
+                    <button type="button" onClick={() => setTicked(new Set())} className="h-8 rounded-lg border border-[#BDCFC2] bg-white px-3 text-[13px] font-bold hover:bg-paper">Clear</button>
+                  </div>
+                  <div dir="rtl" className="grid grid-cols-6 gap-1" data-testid="common-grid">
+                    {LETTERS.map((c) => {
+                      const cp = c.cp[0], on = ticked.has(cp), done = have(cp);
+                      return (
+                        <button key={c.id} type="button" disabled={done} onClick={() => toggle(cp)} aria-pressed={on} data-letter={c.id}
+                          aria-label={`${c.label}${String.fromCodePoint(mark)}${done ? ", already in your list" : ""}`}
+                          className={`relative flex h-12 items-center justify-center rounded-lg border text-[24px] leading-none ${done ? "border-dashed border-[#BDCFC2] bg-[#F3F9F5] opacity-50" : on ? "border-[1.5px] border-edge bg-teal-soft" : "border-line bg-white hover:bg-paper"}`}>
+                          <span lang="dv" className="font-thaana">{c.label + String.fromCodePoint(mark)}</span>
+                          {on && <span aria-hidden className="absolute left-1 top-0.5 font-sans text-[10px] font-bold text-teal">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+            {mode === "own" && <p className="text-[13px] text-muted">Tap two to four letters or marks in the order you type them.</p>}
+            <div dir="rtl" className={`grid grid-cols-7 gap-1 ${mode === "own" ? "" : "hidden"}`} data-testid="picker">
               {PICK.map((c) => (
                 <button
                   key={c.id}
@@ -123,7 +210,7 @@ export function LigaturesClient() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center justify-between gap-3 rounded-xl bg-[#F3F9F5] px-3 py-2" dir="rtl">
+            <div className={`flex items-center justify-between gap-3 rounded-xl bg-[#F3F9F5] px-3 py-2 ${mode === "own" ? "" : "hidden"}`} dir="rtl">
               <span lang="dv" className="font-thaana text-[30px] leading-none" data-testid="sequence">{seq.length ? sequenceText(seq) : <span className="font-sans text-sm text-muted" dir="ltr">Tap two or more letters</span>}</span>
               <span className="flex gap-1" dir="ltr">
                 <button type="button" disabled={!seq.length} onClick={() => setSeq((s) => s.slice(0, -1))} className="h-9 rounded-lg border border-[#BDCFC2] bg-white px-3 text-sm font-bold hover:bg-paper disabled:opacity-40">Undo</button>
@@ -138,9 +225,15 @@ export function LigaturesClient() {
                 </label>
               ))}
             </fieldset>
-            <button type="button" disabled={seq.length < 2} onClick={add} data-testid="add-lig" className="h-12 rounded-xl bg-teal text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-40">
-              Add joined letters
-            </button>
+            {mode === "own" ? (
+              <button type="button" disabled={seq.length < 2} onClick={add} data-testid="add-lig" className="h-12 rounded-xl bg-teal text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-40">
+                Add joined letters
+              </button>
+            ) : (
+              <button type="button" disabled={!pending.length} onClick={addMany} data-testid="add-many" className="h-12 rounded-xl bg-teal text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-40">
+                {pending.length ? `Add ${pending.length} joined letter${pending.length === 1 ? "" : "s"}` : "Tick letters to add"}
+              </button>
+            )}
           </section>
 
           <section aria-label="Your joined letters" className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">

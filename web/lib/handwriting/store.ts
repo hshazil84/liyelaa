@@ -138,6 +138,16 @@ export async function saveLigature(l: Ligature): Promise<Project> {
   return p;
 }
 
+/** Add or replace several joined letters in one write, so adding a whole family at once cannot overwrite itself. */
+export async function saveLigatures(ls: Ligature[]): Promise<Project> {
+  const p = await loadProject();
+  const ids = new Set(ls.map((l) => l.id));
+  p.ligatures = [...(p.ligatures ?? []).filter((x) => !ids.has(x.id)), ...ls].sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+  p.updatedAt = Date.now();
+  try { await set(KEY, p); } catch {}
+  return p;
+}
+
 export async function removeLigature(id: string): Promise<Project> {
   const p = await loadProject();
   p.ligatures = (p.ligatures ?? []).filter((x) => x.id !== id);
