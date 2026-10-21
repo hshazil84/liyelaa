@@ -1,6 +1,6 @@
-import { BUILDER_URL } from "@/lib/play";
 import { inkBox, snapMark } from "./marks";
 import { REFERENCE } from "./reference";
+import { outlineStrokesLocal } from "./strokes";
 import { LSB, UNITS_PER_MM, type Contour, type Glyph, type Layout, type LayoutCell, type Seg } from "./types";
 
 /**
@@ -119,13 +119,9 @@ export async function readSvg(text: string): Promise<ReadResult> {
   return { ok: true, art };
 }
 
-// ---------------------------------------------------------------- strokes to outlines (the builder does the geometry)
+// ---------------------------------------------------------------- strokes to outlines (done in the browser)
 export async function outlineStrokes(strokes: Stroke[]): Promise<Contour[]> {
-  const res = await fetch(`${BUILDER_URL}/svg/outline`, {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ strokes }),
-  });
-  if (!res.ok) throw new Error("The font builder could not outline those strokes.");
-  return ((await res.json()) as { contours: Contour[] }).contours;
+  return outlineStrokesLocal(strokes);
 }
 
 // ---------------------------------------------------------------- placing letters
@@ -303,4 +299,46 @@ export function summarise(report: ImportReport, layout: Layout) {
     extras: { total: extras.length, ok: count(extras, "ok") },
     strokeFiles: Object.values(report.items).filter((i) => i.strokes).length,
   };
+}
+
+
+// ---------------------------------------------------------------- pasting one letter
+/** Find SVG code in whatever came off the clipboard. Illustrator's code often has no xmlns, which the parser needs. */
+export function extractSvg(raw: string): string | null {
+  const a = raw.indexOf("<svg"), b = raw.lastIndexOf("</svg>");
+  if (a < 0 || b < a) return null;
+  const svg = raw.slice(a, b + 6);
+  const tag = /^<svg[^>]*>/.exec(svg)![0];
+  let fixed = tag;
+  if (!/\sxmlns\s*=/.test(tag)) fixed = fixed.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+  if (/xlink:/.test(svg) && !/xmlns:xlink/.test(fixed)) fixed = fixed.replace("<svg", '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+  return svg.replace(tag, fixed);
+}
+
+export type OneResult = { ok: true; glyph: Glyph } | { ok: false; reason: string };
+
+/**
+ * One piece of artwork for one letter. Strokes are outlined, the size is set from the letter's usual height so
+ * it matches the template, and the ink is placed on the baseline with the usual space on its left.
+ */
+export async function importOne(text: string, cell: LayoutCell): Promise<OneResult> {
+  const svg = extractSvg(text);
+  if (!svg) return { ok: false, reason: "no-svg" };
+  const r = await readSvg(svg);
+  if (!r.ok) return { ok: false, reason: r.reason };
+  let contours = r.art.contours;
+  if (r.art.strokes.length) contours = contours.concat(outlineStrokesLocal(r.art.strokes));
+  if (!contours.length) return { ok: false, reason: r.art.text ? "There is text in that artwork. Convert it to outlines first (Type, Create Outlines)." : "I could not find any shapes in that artwork." };
+  const flipped = flipY(contours);
+  const box = (cs: Contour[]) => inkBox({ contours: cs } as Glyph) ?? { x0: 0, y0: 0, x1: 0, y1: 0 };
+  const b = box(flipped), ref = REFERENCE[cell.id];
+  const height = Math.max(1, b.y1 - b.y0);
+  const k = ref ? Math.max(1, ref[1] - ref[0]) / height : height > 800 || height < 40 ? 300 / height : 1;
+  const isMark = cell.kind === "fili";
+  const x0 = isMark ? ((b.x0 + b.x1) / 2) * k : b.x0 * k;
+  const dy = ref ? (ref[0] + ref[1]) / 2 - ((b.y0 + b.y1) / 2) * k : -b.y0 * k;
+  const placed = mapContours(flipped, (p) => ({ x: r1(p.x * k - x0 + (isMark ? 0 : LSB)), y: r1(p.y * k + dy) }), k);
+  const w = (b.x1 - b.x0) * k;
+  const glyph: Glyph = { id: cell.id, cp: cell.cp, kind: cell.kind, contours: placed, adv: isMark ? 0 : Math.round(w + 2 * LSB), source: "drawn" };
+  return { ok: true, glyph: isMark ? snapMark(glyph) : glyph };
 }

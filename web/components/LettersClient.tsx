@@ -9,7 +9,6 @@ import { Stepper } from "@/components/Stepper";
 import { layout } from "@/lib/handwriting/pipeline";
 import { useSteps } from "@/lib/handwriting/steps";
 import { loadProject, removeGlyph, updateGlyph } from "@/lib/handwriting/store";
-import { contoursToD } from "@/lib/handwriting/svg";
 import type { Glyph, LayoutCell } from "@/lib/handwriting/types";
 
 type TabId = "letters" | "marks" | "extras";
@@ -49,29 +48,6 @@ function Tile({ cell, glyph, open, onPick }: { cell: LayoutCell; glyph?: Glyph; 
       )}
     </button>
   );
-}
-
-function SizeCheck({ glyph }: { glyph?: Glyph }) {
-  if (!glyph || !glyph.contours.length) {
-    return <p className="text-[13px] leading-snug text-muted">Draw this letter to see it at reading sizes.</p>;
-  }
-  const mark = glyph.kind === "fili";
-  const x = mark ? -260 : -30, w = mark ? 520 : glyph.adv + 60;
-  return (
-    <div className="flex items-end justify-center gap-5 rounded-[14px] bg-[#F3F6F5] px-3 py-4" data-testid="size-check">
-      {[96, 48, 24].map((px) => (
-        <svg key={px} viewBox={`${x} -600 ${w} 950`} style={{ height: px * 0.95, width: (px * 0.95 * w) / 950 }} aria-label={`${px} pixels`} role="img">
-          <g transform="scale(1,-1)">
-            <GlyphPath glyph={glyph} />
-          </g>
-        </svg>
-      ))}
-    </div>
-  );
-}
-
-function GlyphPath({ glyph }: { glyph: Glyph }) {
-  return <path d={contoursToD(glyph.contours)} fill="#10211F" fillRule="nonzero" />;
 }
 
 export function LettersClient() {
@@ -145,7 +121,8 @@ export function LettersClient() {
       </header>
 
       <main className="mx-auto flex w-full max-w-[1280px] flex-wrap items-start gap-6 px-10 py-8">
-        <section aria-label="Letters" className="flex w-full flex-col gap-4 rounded-3xl border border-line bg-white p-5 lg:w-[360px]">
+        <div className="flex w-full flex-col gap-4 lg:w-[360px]">
+        <section aria-label="Letters" className="flex w-full flex-col gap-4 rounded-3xl border border-line bg-white p-5">
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-xl font-bold">{TABS.find((t) => t.id === tab)!.label}</h2>
             <span className="text-sm text-muted" data-testid="progress">{doneCount} of {cells.length} cleaned up</span>
@@ -177,6 +154,18 @@ export function LettersClient() {
             <li className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-[3px] border border-dashed border-[#B6C2BF] bg-[#F3F6F5]" />Not drawn</li>
           </ul>
         </section>
+          <div className="flex flex-col gap-2 rounded-3xl bg-teal-soft p-5">
+            <h2 className="font-display text-base font-bold text-teal">Keep it on the guides</h2>
+            <p className="text-sm leading-normal">Draw between Top and Baseline so vowel marks have room above and below.</p>
+          </div>
+          <Link
+            href="/handwriting/level"
+            data-testid="continue-level"
+            className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark"
+          >
+            Level the letters <span aria-hidden>→</span>
+          </Link>
+        </div>
 
         <section aria-label="Drawing area" className="flex min-w-0 flex-[1_1_520px] flex-col gap-4 rounded-3xl border border-line bg-white p-5">
           <div className="flex items-baseline gap-3">
@@ -211,24 +200,6 @@ export function LettersClient() {
           </div>
         </section>
 
-        <aside aria-label="Preview" className="flex w-full flex-col gap-4 lg:w-[300px]">
-          <div className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">
-            <h2 className="font-display text-lg font-bold">Size check</h2>
-            <SizeCheck glyph={glyphs[cell.id]} />
-            <p className="text-[13px] leading-snug text-muted">The same letter at three reading sizes. The word preview comes with the test step.</p>
-          </div>
-          <div className="flex flex-col gap-2 rounded-3xl bg-teal-soft p-5">
-            <h2 className="font-display text-base font-bold text-teal">Keep it on the guides</h2>
-            <p className="text-sm leading-normal">Draw between Top and Baseline so vowel marks have room above and below.</p>
-          </div>
-          <Link
-            href="/handwriting/level"
-            data-testid="continue-level"
-            className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark"
-          >
-            Level the letters <span aria-hidden>→</span>
-          </Link>
-        </aside>
       </main>
     </div>
   );

@@ -1,11 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ShapePanel } from "@/components/ShapePanel";
 import {
   addContour, clone, deleteContour, deletePoint, dist, emptyGlyph, fitAdvance, insertPoint, isSmooth,
   makeCorner, makeSmooth, movePoint, moveHandle, nearestOnOutline, nudge, reverseContour, type Sel,
 } from "@/lib/handwriting/edit";
 import { layout } from "@/lib/handwriting/pipeline";
+import { importOne } from "@/lib/handwriting/svgimport";
+import { IDENTITY, applyShape, isIdentity, type Shape } from "@/lib/handwriting/shape";
 import { contoursToD } from "@/lib/handwriting/svg";
 import { UNITS_PER_MM, type Glyph, type LayoutCell, type Pt, type Seg } from "@/lib/handwriting/types";
 
@@ -56,6 +59,9 @@ export function GlyphEditor({
   const [tool, setTool] = useState<Tool>(glyph ? "move" : "pen");
   const [sel, setSel] = useState<Sel>(null);
   const [pen, setPen] = useState<Seg[] | null>(null);
+  const [shape, setShape] = useState<Shape>({ ...IDENTITY });
+  const [showPts, setShowPts] = useState(true);
+  const [notice, setNotice] = useState<string | null>(null);
   const [u, setU] = useState(1);          // font units per screen pixel
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
@@ -74,6 +80,10 @@ export function GlyphEditor({
     return () => ro.disconnect();
   }, []);
 
+  const previewing = !isIdentity(shape);
+  // while a slider is away from its middle, the canvas shows what Apply would do and the letter itself is not touched
+  const view = useMemo(() => (previewing ? applyShape(g, shape) : g), [g, shape, previewing]);
+
   const finish = useCallback((next: Glyph) => {
     onChange(next.contours.length ? fitAdvance(next) : null);
   }, [onChange]);
@@ -83,18 +93,60 @@ export function GlyphEditor({
     setFuture([]);
     const fitted = next.contours.length ? fitAdvance(next) : next;
     setG(fitted);
+    setShape({ ...IDENTITY });
     finish(fitted);
   }, [g, finish]);
+
+  const applyShapeNow = () => {
+    if (!previewing) return;
+    commit(applyShape(g, shape));
+    setSel(null);
+  };
+
+  // Artwork from Illustrator (or any app that copies SVG code) can be pasted straight in, or an .svg file dropped on the canvas.
+  const bringIn = useCallback(async (text: string) => {
+    const r = await importOne(text, cell);
+    if (!r.ok) {
+      setNotice(r.reason === "no-svg"
+        ? "That is not SVG. In Illustrator, turn on Preferences, Clipboard Handling, Include SVG Code, then copy again. Or save the artwork as an SVG file and drop it here."
+        : r.reason);
+      return;
+    }
+    commit(r.glyph);
+    setSel(null); setPen(null); setTool("move");
+    setNotice("Pasted. Use the sliders on the right to adjust size or weight. Undo brings back the old letter.");
+  }, [cell, commit]);
+
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      const dt = e.clipboardData;
+      if (!dt) return;
+      const text = dt.getData("image/svg+xml") || dt.getData("text/plain") || dt.getData("text/html");
+      e.preventDefault();
+      void bringIn(text);
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [bringIn]);
+
+  const onDrop = async (e: React.DragEvent) => {
+    const f = Array.from(e.dataTransfer.files).find((x) => /\.svg$/i.test(x.name) || x.type === "image/svg+xml");
+    if (!f) return;
+    e.preventDefault();
+    await bringIn(await f.text());
+  };
 
   const undo = () => {
     if (!past.length) return;
     const prev = past[past.length - 1];
-    setPast(past.slice(0, -1)); setFuture([g, ...future]); setG(prev); setSel(null); finish(prev);
+    setPast(past.slice(0, -1)); setFuture([g, ...future]); setG(prev); setSel(null); setShape({ ...IDENTITY }); finish(prev);
   };
   const redo = () => {
     if (!future.length) return;
     const nxt = future[0];
-    setFuture(future.slice(1)); setPast([...past, g]); setG(nxt); setSel(null); finish(nxt);
+    setFuture(future.slice(1)); setPast([...past, g]); setG(nxt); setSel(null); setShape({ ...IDENTITY }); finish(nxt);
   };
 
   const toFont = (e: { clientX: number; clientY: number }): Pt => {
@@ -117,7 +169,7 @@ export function GlyphEditor({
 
   // ---------------------------------------------------------------- pointer handling
   const onSvgDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || previewing) return;
     const pos = toFont(e);
     if (tool === "pen") {
       if (pen && pen.length >= 3 && dist(pos, pen[0].p) < 14 * u) { closePen(); return; }
@@ -132,6 +184,7 @@ export function GlyphEditor({
   const onNodeDown = (e: React.PointerEvent, kind: "pt" | "hi" | "ho", c: number, s: number) => {
     if (e.button !== 0) return;
     e.stopPropagation();
+    if (previewing) return;
     if (tool === "erase") {
       commit(deletePoint(g, c, s));
       setSel(null);
@@ -175,7 +228,7 @@ export function GlyphEditor({
   };
 
   const onDouble = (e: React.MouseEvent) => {
-    if (tool !== "move") return;
+    if (tool !== "move" || previewing) return;
     const n = nearestOnOutline(g.contours, toFont(e));
     if (n && n.d < 14 * u) {
       commit(insertPoint(g, n.c, n.s, n.t));
@@ -208,7 +261,7 @@ export function GlyphEditor({
     return d;
   })();
 
-  const node = 5.5 * u, hit = 13 * u, line = 1.5 * u;
+  const node = 4 * u, hit = 9 * u, line = 1.4 * u;
 
   return (
     <div className="flex flex-col gap-3" onKeyDown={onKey} tabIndex={0} role="group" aria-label="Letter editor" data-testid="editor">
@@ -241,6 +294,8 @@ export function GlyphEditor({
         </button>
       </div>
 
+      <div className="flex flex-wrap items-start gap-4">
+      <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-3">
       <div className="relative overflow-hidden rounded-[14px] bg-[#F3F6F5]">
         <svg
           ref={svgRef}
@@ -254,6 +309,8 @@ export function GlyphEditor({
           onPointerUp={onUp}
           onPointerCancel={onUp}
           onDoubleClick={onDouble}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={onDrop}
         >
           <g ref={gRef} transform="scale(1,-1)">
             {/* guides */}
@@ -276,12 +333,12 @@ export function GlyphEditor({
             )}
 
             {/* outlines */}
-            {g.contours.map((ct, c) => (
+            {view.contours.map((ct, c) => (
               <path
                 key={c}
                 d={contoursToD([ct])}
                 fill={INK}
-                fillOpacity={sel?.c === c ? 0.78 : 0.88}
+                fillOpacity={previewing ? 0.7 : sel?.c === c ? 0.78 : 0.88}
                 fillRule="nonzero"
                 stroke={sel?.c === c ? TEAL : "none"}
                 strokeWidth={2 * u}
@@ -291,8 +348,19 @@ export function GlyphEditor({
               />
             ))}
 
+            {/* points */}
+            {tool !== "pen" && showPts && !previewing && g.contours.map((ct, c) => ct.map((sg, s) => {
+              const on = sel?.c === c && sel.s === s;
+              return (
+                <g key={`${c}-${s}`}>
+                  <rect x={sg.p.x - node} y={sg.p.y - node} width={node * 2} height={node * 2} fill={on ? CORAL : "#fff"} stroke={on ? CORAL : TEAL} strokeWidth={line * 1.3} pointerEvents="none" />
+                  <circle cx={sg.p.x} cy={sg.p.y} r={hit} fill="transparent" data-node={`${c}-${s}`} style={{ cursor: tool === "erase" ? "pointer" : "grab" }} onPointerDown={(e) => onNodeDown(e, "pt", c, s)} />
+                </g>
+              );
+            }))}
+
             {/* handles of the selected point */}
-            {tool !== "pen" && sel && selSeg && (["hi", "ho"] as const).map((k) => {
+            {tool !== "pen" && showPts && !previewing && sel && selSeg && (["hi", "ho"] as const).map((k) => {
               const h = selSeg[k];
               if (!h.x && !h.y) return null;
               const pos = { x: selSeg.p.x + h.x, y: selSeg.p.y + h.y };
@@ -304,17 +372,6 @@ export function GlyphEditor({
                 </g>
               );
             })}
-
-            {/* points */}
-            {tool !== "pen" && g.contours.map((ct, c) => ct.map((sg, s) => {
-              const on = sel?.c === c && sel.s === s;
-              return (
-                <g key={`${c}-${s}`}>
-                  <rect x={sg.p.x - node} y={sg.p.y - node} width={node * 2} height={node * 2} fill={on ? CORAL : "#fff"} stroke={on ? CORAL : TEAL} strokeWidth={line * 1.3} pointerEvents="none" />
-                  <circle cx={sg.p.x} cy={sg.p.y} r={hit} fill="transparent" data-node={`${c}-${s}`} style={{ cursor: tool === "erase" ? "pointer" : "grab" }} onPointerDown={(e) => onNodeDown(e, "pt", c, s)} />
-                </g>
-              );
-            }))}
 
             {/* the shape being drawn with the pen */}
             {pen && (
@@ -336,7 +393,9 @@ export function GlyphEditor({
           </g>
         </svg>
         <p className="pointer-events-none absolute bottom-2 left-3 right-3 text-[13px] text-muted" aria-live="polite">
-          {tool === "pen"
+          {previewing
+            ? "Previewing your changes. Press Apply to keep them, or Reset."
+            : tool === "pen"
             ? pen?.length
               ? pen.length < 3 ? "Keep clicking to add points. Drag while clicking to make a curve." : "Click the first point or press Enter to close the shape."
               : "Click to start a shape. Drag while clicking to make a curve."
@@ -344,11 +403,21 @@ export function GlyphEditor({
               ? "Click a point to remove it, or click a shape to remove all of it."
               : hasShape
                 ? "Drag a point or its handles. Double-click the outline to add a point."
-                : "Nothing drawn yet. Use the pen to draw this letter."}
+                : "Nothing drawn yet. Use the pen, or paste artwork from Illustrator with Ctrl or ⌘ V."}
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 text-sm">
+      {notice && (
+        <p role="status" data-testid="paste-notice" className="flex items-start justify-between gap-3 rounded-xl bg-sand px-3.5 py-2.5 text-[13px] leading-snug">
+          <span>{notice}</span>
+          <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss" className="font-bold">×</button>
+        </p>
+      )}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+        <label className="flex items-center gap-2 font-medium">
+          <input type="checkbox" checked={showPts} onChange={(e) => setShowPts(e.target.checked)} className="h-[18px] w-[18px] accent-teal" />
+          Show points
+        </label>
         <button
           type="button"
           disabled={!original && !hasShape}
@@ -361,6 +430,9 @@ export function GlyphEditor({
         >
           {original ? "Back to my drawing" : "Clear this letter"}
         </button>
+      </div>
+      </div>
+      <ShapePanel shape={shape} onShape={setShape} onApply={applyShapeNow} view={view} disabled={!hasShape} />
       </div>
     </div>
   );
