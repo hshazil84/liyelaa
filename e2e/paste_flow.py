@@ -86,6 +86,13 @@ def main():
         pg.wait_for_selector("[data-testid=stroke-notice]")
         pg.get_by_test_id("outline-strokes").click()
         pg.wait_for_selector("[data-testid=use-letters]:not([disabled])")
+        # a wrongly pasted letter can be taken out again, and pasted back
+        pg.get_by_test_id("remove-0780").click()
+        pg.wait_for_selector("[data-testid=use-letters][disabled]")
+        assert pg.locator("[data-cell='0780'][data-status=ok]").count() == 0
+        pg.evaluate(PASTE, STROKE)
+        pg.wait_for_selector("[data-cell='0780'][data-status=ok]")
+        pg.wait_for_selector("[data-testid=use-letters]:not([disabled])")
         pg.get_by_test_id("use-letters").click()
         pg.wait_for_selector("[data-testid=import-saved]")
         saved = pg.evaluate(READ)["glyphs"]["0780"]

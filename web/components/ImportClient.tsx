@@ -24,19 +24,25 @@ const arrowUp = (
   </svg>
 );
 
-function Tile({ id, item }: { id: string; item?: ImportItem }) {
+function Tile({ id, item, onRemove }: { id: string; item?: ImportItem; onRemove?: () => void }) {
   const cls = item?.status === "ok" ? "border-2 border-teal bg-white" : item ? "border-2 border-coral bg-white" : "border border-dashed border-[#B6C2BF] bg-[#F3F6F5]";
   const state = item?.status === "ok" ? "ok" : item ? "fix" : "missing";
   return (
     <li
       data-cell={id} data-status={state}
       title={`U+${id}${item?.reason ? ` · ${item.reason}` : ""}`}
-      className={`flex h-16 w-16 items-center justify-center rounded-[14px] ${cls}`}
+      className={`group relative flex h-16 w-16 items-center justify-center rounded-[14px] ${cls}`}
     >
       {item?.glyph ? (
         <GlyphSvg glyph={item.glyph} className="h-full w-full p-1" />
       ) : (
         <span lang="dv" className={`font-thaana text-[26px] leading-none ${item ? "text-coral" : "text-[#B6C2BF]"}`}>{LABEL.get(id)}</span>
+      )}
+      {item && onRemove && (
+        <button
+          type="button" onClick={onRemove} data-testid={`remove-${id}`} aria-label={`Remove U+${id}`} title="Take this one out"
+          className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-[#B6C2BF] bg-white text-sm font-bold leading-none text-ink shadow-sm hover:bg-coral-soft focus-visible:ring-2 focus-visible:ring-teal"
+        >×</button>
       )}
     </li>
   );
@@ -48,7 +54,8 @@ export function ImportClient() {
   const [mode, setMode] = useState<SizeMode>("fit");
   const [outline, setOutline] = useState(false);
   const [sheetId, setSheetId] = useState<1 | 2>(1);
-  const [report, setReport] = useState<ImportReport | null>(null);
+  const [found, setFound] = useState<ImportReport | null>(null);
+  const [dropped, setDropped] = useState<string[]>([]);       // letters the person took out of the check grid
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [drag, setDrag] = useState(false);
@@ -67,7 +74,7 @@ export function ImportClient() {
   useEffect(() => {
     let live = true;
     (async () => {
-      if (!sources.length) { setReport(null); return; }
+      if (!sources.length) { setFound(null); return; }
       setBusy(true); setError(null);
       try {
         const merged: ImportReport = { items: {}, unmatched: [] };
@@ -81,7 +88,7 @@ export function ImportClient() {
           if (r.error) { if (live) setError(`${s.name}: ${r.error}`); continue; }
           Object.assign(merged.items, r.report.items);
         }
-        if (live) setReport(merged);
+        if (live) setFound(merged);
       } catch (e) {
         if (live) setError("I could not read those files. Try saving them again as plain SVG.");
         console.error(e);
@@ -96,6 +103,8 @@ export function ImportClient() {
     const files = Array.from(list).filter((f) => /\.svg$/i.test(f.name) || f.type === "image/svg+xml");
     if (!files.length) { setError("Those are not SVG files."); return; }
     setSaved(null);
+    const isSheetFile = files.length === 1 && !idFromName(files[0].name);
+    setDropped((d) => (isSheetFile ? [] : d.filter((id) => !files.some((f) => idFromName(f.name) === id))));
     const read = await Promise.all(files.map(async (f) => ({ name: f.name, text: await f.text() })));
     setSources((prev) => {
       const next = [...prev];
@@ -112,6 +121,7 @@ export function ImportClient() {
   const addPasted = useCallback((text: string) => {
     if (!text.trim()) return;
     setSaved(null);
+    setDropped((d) => (pasteFor === "sheet1" || pasteFor === "sheet2" ? [] : d.filter((id) => id !== pasteFor)));
     const s: Source = pasteFor === "sheet1" || pasteFor === "sheet2"
       ? { kind: "sheet", name: `sheet-${pasteFor.slice(5)}.svg`, text, sheetId: Number(pasteFor.slice(5)) }
       : { kind: "letter", name: `U+${pasteFor}.svg`, text };
@@ -139,6 +149,13 @@ export function ImportClient() {
     return () => document.removeEventListener("paste", onPaste);
   }, [addPasted]);
 
+  // what is shown and saved: everything found, minus what the person took out
+  const report = useMemo<ImportReport | null>(() => {
+    if (!found) return null;
+    const items = { ...found.items };
+    for (const id of dropped) delete items[id];
+    return { ...found, items };
+  }, [found, dropped]);
   const summary = useMemo(() => (report ? summarise(report, layout) : null), [report]);
   const fixes = report ? LETTERS.filter((c) => report.items[c.id]?.status === "fix") : [];
   const strokeFixes = fixes.filter((c) => report!.items[c.id]?.strokes);
@@ -278,7 +295,7 @@ export function ImportClient() {
           {report && summary && (
             <>
               <ul aria-label="Letters" className="flex flex-wrap gap-2.5" data-testid="check-grid">
-                {LETTERS.map((c) => <Tile key={c.id} id={c.id} item={report.items[c.id]} />)}
+                {LETTERS.map((c) => <Tile key={c.id} id={c.id} item={report.items[c.id]} onRemove={() => { setSaved(null); setDropped((d) => [...d, c.id]); }} />)}
               </ul>
               <p className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl bg-paper px-4 py-3 text-[15px]" data-testid="import-summary">
                 <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-teal" />{summary.letters.ok} of {summary.letters.total} letters matched</span>
