@@ -65,19 +65,16 @@ def main():
         pg.get_by_test_id("print-sheet").wait_for()
         assert pg.get_by_test_id("sheet-no").count() == 1                      # 38 spill onto a second page
 
-        # the printable sheets
-        pg.goto(f"{WEB}/handwriting/print-joined")
-        pg.wait_for_selector("[data-sheet]")
-        assert pg.locator("[data-sheet]").count() == 2
-        assert pg.locator("[data-sheet='3'] [data-box]").count() == 36 and pg.locator("[data-sheet='4'] [data-box]").count() == 2
-        assert "Sheet 4 of 4" in pg.locator("[data-sheet='4']").inner_text()
-        pg.evaluate("document.querySelectorAll('nextjs-portal').forEach((e) => e.remove())")     # the dev server's error badge is not part of the page
-        pg.emulate_media(media="print")
+        # the PDF downloads straight away, like sheet 2, and does not open a tab
         pdf = OUT / "sheet3.pdf"
-        pg.pdf(path=str(pdf), width="210mm", height="297mm", print_background=True, prefer_css_page_size=True)
-        pg.emulate_media(media="screen")
+        with pg.expect_download() as dl:
+            pg.get_by_test_id("print-sheet").click()
+        dl.value.save_as(str(pdf))
+        assert dl.value.suggested_filename == "myakuru-joined-letters.pdf" and len(pg.context.pages) == 1
         pages = int([l for l in subprocess.check_output(["pdfinfo", str(pdf)], text=True).splitlines() if l.startswith("Pages")][0].split()[1])
         assert pages == 2, pages
+        txt = subprocess.check_output(["pdftotext", "-layout", str(pdf), "-"], text=True)
+        assert "Sheet 3 of 4" in txt and "Sheet 4 of 4" in txt and "joined 38" in txt, txt[:300]
         DPI = 150
         subprocess.run(["pdftoppm", "-r", str(DPI), "-png", str(pdf), str(OUT / "s3")], check=True)
         ppm = DPI / 25.4

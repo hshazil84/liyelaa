@@ -103,7 +103,7 @@ export function HandwritingPhoto() {
               </>
             ) : (
               <>
-                <p className="text-sm leading-normal text-muted">You have {ligs.length} joined letter{ligs.length === 1 ? "" : "s"}. Print a sheet with a box for each.</p>
+                <p className="text-sm leading-normal text-muted">You have {ligs.length} joined letter{ligs.length === 1 ? "" : "s"}. Download a sheet with a box for each.</p>
                 <JoinedSheetTools ligs={ligs} note={false} onScanned={async (next) => { await saveLigatures(next); await refresh(); }} />
               </>
             )}
