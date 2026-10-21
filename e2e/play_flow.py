@@ -83,7 +83,7 @@ def sangu_flow(ctx, errors):
     pg.route("**/play/build", lambda r: r.abort())
     pg.locator("#s-weight").fill("300")
     pg.wait_for_selector('[data-testid=preview][data-preview-state=error]')
-    assert "Could not reach the font builder" in pg.locator("main").inner_text()
+    assert "The font maker is not answering" in pg.locator("main").inner_text()
     pg.unroute("**/play/build")
     pg.close()
     errors[:] = [e for e in errors if "ERR_FAILED" not in e and "Failed to load resource" not in e]
@@ -115,7 +115,7 @@ def main():
 
         # settings survive a reload (stored in this browser)
         pg.reload()
-        pg.wait_for_timeout(300)
+        pg.wait_for_function("document.querySelector('#s-width')?.value === '110'", timeout=5000)
         assert pg.locator("#s-width").input_value() == "110", "settings were not remembered"
 
         pg.get_by_role("button", name="Save my font").click()

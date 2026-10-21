@@ -66,16 +66,66 @@ def main():
         pg.reload(); pg.wait_for_selector("[data-letter]")
         assert pg.evaluate(READ)["levelled"] == lev
 
+        # one letter at a time: nudge, put back, snap just this one
+        tile = pg.locator("[data-letter]").first
+        lid = tile.get_attribute("data-letter")
+        assert pg.get_by_test_id("one-letter").inner_text().count("Click a letter"), "asks for a letter first"
+        tile.get_by_test_id("level-tile").click()
+        base_lev = pg.evaluate(READ)["levelled"].get(lid, 0)
+        b0 = bottoms(pg.evaluate(READ))[lid]
+        pg.get_by_test_id("nudge-up").click(); pg.get_by_test_id("nudge-up").click(); pg.wait_for_timeout(400)
+        proj = pg.evaluate(READ)
+        assert proj["levelHand"][lid] == 20, proj.get("levelHand")                       # two quarter-millimetre steps, 10 units each
+        assert proj["levelled"][lid] == base_lev + 20
+        assert abs(bottoms(proj)[lid][0] - (b0[0] + 20)) <= 0.2 and tile.get_attribute("data-hand") == "1"
+        others = bottoms(proj)
+        assert all(others[k] == bottoms(proj)[k] for k in others)
+        pg.get_by_test_id("nudge-down").click(); pg.wait_for_timeout(300)
+        assert pg.evaluate(READ)["levelHand"][lid] == 10
+        pg.get_by_test_id("put-back").click(); pg.wait_for_timeout(400)
+        proj = pg.evaluate(READ)
+        assert lid not in proj["levelled"] and lid not in (proj.get("levelHand") or {}), "put back returns it to where it was drawn"
+        assert abs(bottoms(proj)[lid][0] - (b0[0] - base_lev)) <= 0.2
+        assert tile.get_attribute("data-hand") == "0"
+        pg.get_by_test_id("snap-one").click(); pg.wait_for_timeout(400)
+        proj = pg.evaluate(READ)
+        assert proj["levelled"].get(lid, 0) == base_lev and abs(bottoms(proj)[lid][0] - b0[0]) <= 0.2, "snap this one puts it back on its snapped spot"
+        assert pg.get_by_test_id("snap-one").is_disabled()
+
+        # the two ways of finding the place differ, and the choice is remembered
+        pg.get_by_test_id("method-middle").click()
+        assert pg.get_by_test_id("snap").is_enabled()
+        pg.get_by_test_id("snap").click(); pg.wait_for_timeout(400)
+        mid = pg.evaluate(READ)
+        assert mid["levelMethod"] == "middle" and mid["levelled"] != lev, "the middle method lands letters elsewhere"
+        pg.reload(); pg.wait_for_selector("[data-letter]")
+        assert pg.get_by_test_id("snap").is_disabled(), "the saved method is the one shown after a reload"
+        pg.get_by_test_id("method-baseline").click(); pg.get_by_test_id("snap").click(); pg.wait_for_timeout(400)
+        back = pg.evaluate(READ)
+        assert back["levelMethod"] == "baseline" and back["levelled"] == lev
+        # letters that sit on the line end up with their bottom where the reference puts it (scaled to this writing)
+        import re
+        txt = (Path(__file__).resolve().parent.parent / "web/lib/handwriting/reference.ts").read_text()
+        ref = {m[0].upper(): (int(m[1]), int(m[2])) for m in re.findall(r'"([0-9A-Fa-f]{4})":\s*\[(-?\d+),\s*(-?\d+)\]', txt)}
+        bt = bottoms(back)
+        ratios = sorted((bt[k][1] - bt[k][0]) / (ref[k.upper()][1] - ref[k.upper()][0]) for k in bt if k.upper() in ref)
+        scale = min(3, max(0.6, ratios[len(ratios) // 2]))
+        errs = [abs(bt[k][0] - scale * ref[k.upper()][0]) for k in bt if k.upper() in ref and ref[k.upper()][0] >= -90]
+        assert errs and max(errs) <= 12, max(errs)   # on-curve points stand in for the true ink edge here
+
         # half strength lands between
         pg.get_by_test_id("strength").fill("50"); pg.get_by_test_id("snap").click(); pg.wait_for_timeout(500)
         half = pg.evaluate(READ)["levelled"]
         k0 = max(lev, key=lambda k: abs(lev[k]))
         assert abs(half[k0] - lev[k0] / 2) <= 1.01, (half[k0], lev[k0])
 
-        # undo puts every letter back exactly where it was drawn
+        # undo puts every letter back exactly where it was drawn, nudges included
+        pg.get_by_test_id("level-tile").first.click()
+        pg.get_by_test_id("nudge-up").click(); pg.wait_for_timeout(300)
+        assert pg.evaluate(READ)["levelHand"]
         pg.get_by_test_id("undo-snap").click(); pg.wait_for_timeout(500)
         proj = pg.evaluate(READ)
-        assert not proj.get("levelled"), proj.get("levelled")
+        assert not proj.get("levelled") and not proj.get("levelHand"), (proj.get("levelled"), proj.get("levelHand"))
         assert bottoms(proj) == before or all(abs(a - c) <= 0.3 for k in before for a, c in zip(bottoms(proj)[k], before[k]))
 
         # the next step still works after a snap

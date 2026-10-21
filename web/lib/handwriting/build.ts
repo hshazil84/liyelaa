@@ -1,10 +1,10 @@
-import { BUILDER_URL, saveBlob, type BuildFormat } from "@/lib/play";
+import { BUILDER_HICCUP, BUILDER_URL, buildProblem, saveBlob, type BuildFormat } from "@/lib/play";
 import { DEFAULT_EXTRAS } from "./extras";
 import { autoAnchor } from "./marks";
 import { bake } from "./spacing";
 import type { FontInfo, Project } from "./store";
 
-export { saveBlob };
+export { buildProblem, saveBlob };
 export type { BuildFormat };
 
 export const DEFAULT_INFO: FontInfo = {
@@ -91,7 +91,7 @@ export async function buildHandwritingFont(p: Project, info: FontInfo, format: B
       const j = await res.json();
       detail = typeof j.detail === "string" ? j.detail : Array.isArray(j.detail) ? String(j.detail[0]?.msg ?? "").replace(/^Value error, /, "") : "";
     } catch {}
-    throw new Error(detail || (res.status === 413 ? "That project is too large to build." : "The font builder had a problem."));
+    throw new Error(detail || (res.status === 413 ? "That project is too large to build." : BUILDER_HICCUP));
   }
   const cd = res.headers.get("content-disposition") ?? "";
   return {

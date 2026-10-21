@@ -79,6 +79,11 @@ export function changes(s: PlaySettings): string[] {
   return out;
 }
 
+export const BUILDER_DOWN = "The font maker is not answering right now. Your work is saved in this browser. Wait a minute, then try again.";
+export const BUILDER_HICCUP = "The font maker hit a problem. Your work is saved in this browser. Try again in a minute.";
+/** What to tell the person when a build fails: a network failure means the builder is down, anything else carries its own plain message. */
+export const buildProblem = (e: unknown): string => (e instanceof TypeError ? BUILDER_DOWN : e instanceof Error && e.message ? e.message : BUILDER_HICCUP);
+
 export type BuildFormat = "zip" | "ttf" | "woff2";
 
 export async function buildFont(s: PlaySettings, format: BuildFormat, signal?: AbortSignal): Promise<{ blob: Blob; filename: string }> {
@@ -88,7 +93,7 @@ export async function buildFont(s: PlaySettings, format: BuildFormat, signal?: A
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ ...s, name: cleanName(s.name).trim() || DEFAULTS.name, format }),
   });
-  if (!res.ok) throw new Error(res.status === 422 ? "Those settings are out of range." : "The font builder had a problem.");
+  if (!res.ok) throw new Error(res.status === 422 ? "Those settings are out of range." : BUILDER_HICCUP);
   const cd = res.headers.get("content-disposition") ?? "";
   const filename = /filename="([^"]+)"/.exec(cd)?.[1] ?? `font.${format}`;
   return { blob: await res.blob(), filename };

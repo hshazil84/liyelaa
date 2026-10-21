@@ -5,7 +5,7 @@ import { Logo } from "@/components/Logo";
 import { Stepper } from "@/components/Stepper";
 import {
   BASES, BaseId, BuildFormat, DEFAULTS, LIMITS, PRESETS, PlaySettings,
-  baseOf, buildFont, changes, cleanName, loadPreviewFace, previewStyle, saveBlob,
+  baseOf, buildFont, buildProblem, changes, cleanName, loadPreviewFace, previewStyle, saveBlob,
 } from "@/lib/play";
 
 const STORAGE_KEY = "dfm.play.v1";
@@ -39,6 +39,7 @@ export function PlayClient() {
   const [step, setStep] = useState<1 | 2>(1);
   const [busy, setBusy] = useState<BuildFormat | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState<BuildFormat | null>(null);
   const [builtFamily, setBuiltFamily] = useState<string | null>(null);
   const [previewState, setPreviewState] = useState<PreviewState>("idle");
   const faceRef = useRef<FontFace | null>(null);
@@ -46,6 +47,7 @@ export function PlayClient() {
   const base = baseOf(s.base);
 
   // Settings live in this browser only. No account needed.
+  const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -55,10 +57,12 @@ export function PlayClient() {
         setS(saved);
       }
     } catch {}
+    setHydrated(true);
   }, []);
   useEffect(() => {
+    if (!hydrated) return;                       // until the saved settings are read, the defaults must not overwrite them
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {}
-  }, [s]);
+  }, [s, hydrated]);
 
   // A one-weight base cannot be restyled by CSS, so its preview is the real font made by the builder.
   useEffect(() => {
@@ -88,12 +92,12 @@ export function PlayClient() {
 
   async function download(format: BuildFormat) {
     setBusy(format);
-    setError(null);
+    setError(null); setFailed(null);
     try {
       const { blob, filename } = await buildFont(s, format);
       saveBlob(blob, filename);
     } catch (e) {
-      setError(e instanceof TypeError ? "Could not reach the font builder. Is it running?" : (e as Error).message);
+      setError(buildProblem(e)); setFailed(format);
     } finally {
       setBusy(null);
     }
@@ -111,7 +115,7 @@ export function PlayClient() {
       </div>
       {!base.variable && previewState === "error" && (
         <p role="status" className="absolute bottom-3 left-4 right-4 text-[13px] text-plum">
-          Could not reach the font builder, so this preview is out of date.
+          The font maker is not answering, so this preview is out of date.
         </p>
       )}
     </div>
@@ -241,7 +245,14 @@ export function PlayClient() {
               </button>
             ))}
           </div>
-          {error && <p role="alert" className="rounded-xl bg-coral-soft px-4 py-3 text-sm font-medium text-ink">{error}</p>}
+          {error && (
+              <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl bg-coral-soft px-4 py-3 text-sm font-medium text-ink" data-testid="build-error">
+                <span className="min-w-0 flex-1">{error}</span>
+                {failed && busy === null && (
+                  <button type="button" onClick={() => void download(failed)} data-testid="build-retry" className="h-9 rounded-lg border border-[#BDCFC2] bg-white px-3 font-bold hover:bg-paper">Try again</button>
+                )}
+              </div>
+            )}
           <p className="text-sm leading-normal text-muted">
             Based on {base.credit} (SIL Open Font License). Your font keeps that licence and needs its own name.
             To install it, open the .ttf file and choose Install.

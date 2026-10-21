@@ -6,7 +6,7 @@ import { FontSwitcher } from "@/components/FontSwitcher";
 import { Logo } from "@/components/Logo";
 import { Stepper } from "@/components/Stepper";
 import {
-  DEFAULT_INFO, NEEDED_LETTERS, NEEDED_MARKS, allMine, buildHandwritingFont, cleanFontName, cpId, infoProblems, saveBlob,
+  DEFAULT_INFO, NEEDED_LETTERS, NEEDED_MARKS, allMine, buildHandwritingFont, buildProblem, cleanFontName, cpId, infoProblems, saveBlob,
   type BuildFormat,
 } from "@/lib/handwriting/build";
 import { DEFAULT_EXTRAS } from "@/lib/handwriting/extras";
@@ -63,6 +63,7 @@ export function ExportClient() {
   const [filled, setFilled] = useState<string[]>([]);
   const [busy, setBusy] = useState<BuildFormat | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState<BuildFormat | null>(null);
   const faceRef = useRef<FontFace | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -112,7 +113,7 @@ export function ExportClient() {
       } catch (e) {
         if (ctrl.signal.aborted) return;
         setPreview("error");
-        setPreviewError(e instanceof TypeError ? "Could not reach the font builder. Is it running?" : (e as Error).message);
+        setPreviewError(buildProblem(e));
       }
     }, 300);
     return () => { clearTimeout(timer); ctrl.abort(); };
@@ -151,12 +152,12 @@ export function ExportClient() {
   async function download(format: BuildFormat) {
     if (!project) return;
     setBusy(format);
-    setError(null);
+    setError(null); setFailed(null);
     try {
       const r = await buildHandwritingFont(project, effective, format);
       saveBlob(r.blob, r.filename);
     } catch (e) {
-      setError(e instanceof TypeError ? "Could not reach the font builder. Is it running?" : (e as Error).message);
+      setError(buildProblem(e)); setFailed(format);
     } finally {
       setBusy(null);
     }
@@ -298,7 +299,14 @@ export function ExportClient() {
                 </button>
               ))}
             </div>
-            {error && <p role="alert" className="rounded-xl bg-coral-soft px-4 py-3 text-sm font-medium text-ink">{error}</p>}
+            {error && (
+              <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl bg-coral-soft px-4 py-3 text-sm font-medium text-ink" data-testid="build-error">
+                <span className="min-w-0 flex-1">{error}</span>
+                {failed && busy === null && (
+                  <button type="button" onClick={() => void download(failed)} data-testid="build-retry" className="h-9 rounded-lg border border-[#BDCFC2] bg-white px-3 font-bold hover:bg-paper">Try again</button>
+                )}
+              </div>
+            )}
             <details className="text-sm">
               <summary className="cursor-pointer font-bold text-teal underline underline-offset-4">How to install on your phone or computer</summary>
               <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5 leading-snug text-muted">

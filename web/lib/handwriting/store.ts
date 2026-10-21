@@ -13,6 +13,8 @@ export type Project = {
   v: 1; glyphs: Record<string, Glyph>; updatedAt: number;
   originals?: Record<string, Glyph>;     // the traced version of a letter, kept when it is first edited
   levelled?: Levelled;                   // how far each letter was moved by Level your letters, so it can be undone
+  levelHand?: Levelled;                  // the part of each letter's move the person made with the nudge buttons
+  levelMethod?: "baseline" | "middle";    // how Snap finds each letter's place
   markOffsets?: Offsets;                 // hand adjustments, one per letter and vowel mark pair
   spacing?: Spacing;                     // letter spacing and pair adjustments
   info?: FontInfo;                       // name, designer and so on, for the export step
@@ -41,6 +43,7 @@ export async function saveGlyphs(glyphs: Glyph[], source: "photo" | "drawn" = "p
     p.glyphs[g.id] = { ...g, source };
     if (p.originals) delete p.originals[g.id];      // a fresh photo replaces the old trace
     if (p.levelled) delete p.levelled[g.id];
+    if (p.levelHand) delete p.levelHand[g.id];
   }
   p.updatedAt = Date.now();
   try { await set(KEY, p); } catch {}
@@ -78,10 +81,12 @@ export async function removeGlyph(id: string): Promise<Project> {
 }
 
 /** Save letters that were moved to the baseline, with how far each moved. Marks keep their own offsets, which follow the letter. */
-export async function saveLevelled(glyphs: Record<string, Glyph>, levelled: Levelled): Promise<Project> {
+export async function saveLevelled(glyphs: Record<string, Glyph>, levelled: Levelled, extra: { hand?: Levelled; method?: "baseline" | "middle" } = {}): Promise<Project> {
   const p = await loadProject();
   for (const id of Object.keys(levelled).concat(Object.keys(p.levelled ?? {}))) if (glyphs[id]) p.glyphs[id] = glyphs[id];
   p.levelled = levelled;
+  if (extra.hand) p.levelHand = extra.hand;
+  if (extra.method) p.levelMethod = extra.method;
   p.updatedAt = Date.now();
   try { await set(KEY, p); } catch {}
   return p;
