@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "@fontsource-variable/bricolage-grotesque";
+import "@fontsource-variable/hanken-grotesk";
 import "@fontsource-variable/dm-sans";
 import "./globals.css";
 

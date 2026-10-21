@@ -14,7 +14,7 @@ const config: Config = {
         coral: { DEFAULT: "#D9482B", soft: "#FBDDD4" },
       },
       fontFamily: {
-        display: ["'Bricolage Grotesque Variable'", "system-ui", "sans-serif"],
+        display: ["'Hanken Grotesk Variable'", "system-ui", "sans-serif"],
         sans: ["'DM Sans Variable'", "system-ui", "sans-serif"],
         thaana: ["AKRasmee", "NotoThaana", "sans-serif"],
         noto: ["NotoThaana", "sans-serif"],
