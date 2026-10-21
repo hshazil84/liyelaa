@@ -474,20 +474,20 @@ export function GlyphEditor({
           <button type="button" aria-label="Zoom in" disabled={cam.z >= ZOOM_MAX} onClick={() => zoomTo(cam.z * 1.5)} className="h-8 w-8 rounded-lg text-lg font-bold hover:bg-paper disabled:opacity-40">+</button>
           <button type="button" aria-label="Zoom to the letter" onClick={fitInk} disabled={!hasShape} className="h-8 rounded-lg px-2 text-[13px] font-bold hover:bg-paper disabled:opacity-40">Fit letter</button>
         </div>
-        <p className="pointer-events-none absolute bottom-2 left-3 right-3 text-[13px] text-muted" aria-live="polite">
-          {previewing
-            ? "Previewing your changes. Press Apply to keep them, or Reset."
-            : tool === "pen"
-            ? pen?.length
-              ? pen.length < 3 ? "Keep clicking to add points. Drag while clicking to make a curve." : "Click the first point or press Enter to close the shape."
-              : "Click to start a shape. Drag while clicking to make a curve."
-            : tool === "erase"
-              ? "Click a point to remove it, or click a shape to remove all of it."
-              : hasShape
-                ? "Drag a point or its handles. Double-click the outline to add a point."
-                : "Nothing drawn yet. Use the pen, or paste artwork from Illustrator with Ctrl or ⌘ V."}
-        </p>
       </div>
+      <p className="px-1 text-[13px] leading-snug text-muted" aria-live="polite">
+        {previewing
+          ? "Previewing your changes. Press Apply to keep them, or Reset."
+          : tool === "pen"
+          ? pen?.length
+            ? pen.length < 3 ? "Keep clicking to add points. Drag while clicking to make a curve." : "Click the first point or press Enter to close the shape."
+            : "Click to start a shape. Drag while clicking to make a curve."
+          : tool === "erase"
+            ? "Click a point to remove it, or click a shape to remove all of it."
+            : hasShape
+              ? "Drag a point or its handles. Double-click the outline to add a point."
+              : "Nothing drawn yet. Use the pen, or paste artwork from Illustrator with Ctrl or ⌘ V."}
+      </p>
 
       {notice && (
         <p role="status" data-testid="paste-notice" className="flex items-start justify-between gap-3 rounded-xl bg-sand px-3.5 py-2.5 text-[13px] leading-snug">
