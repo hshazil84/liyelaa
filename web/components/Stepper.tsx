@@ -30,7 +30,7 @@ export function Stepper({ steps, current }: { steps: Step[]; current: number }) 
         );
         const cls = [
           "flex items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3.5 text-sm font-medium",
-          now ? "bg-ink text-white" : done ? "text-teal" : "text-muted",
+          now ? "bg-ink text-white" : done ? "text-teal hover:bg-white" : "text-muted",
         ].join(" ");
         return (
           <li key={s.label} aria-current={now ? "step" : undefined}>

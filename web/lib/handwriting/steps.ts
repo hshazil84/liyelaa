@@ -5,10 +5,10 @@ import type { Step } from "@/components/Stepper";
 import { loadProject } from "./store";
 
 const REST: Step[] = [
-  { label: "Level" },
-  { label: "Anchors" },
-  { label: "Spacing and extras" },
-  { label: "Test and export" },
+  { label: "Level", href: "/handwriting/level" },
+  { label: "Anchors", href: "/handwriting/anchors" },
+  { label: "Spacing and extras", href: "/handwriting/spacing" },
+  { label: "Test and export", href: "/handwriting/export" },
 ];
 
 /** The handwriting path. Index = position in the stepper. */
