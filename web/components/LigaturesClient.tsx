@@ -12,7 +12,7 @@ import { Stepper } from "@/components/Stepper";
 import { WHEN_LABEL, nextLigatureId, sequenceText, type Ligature, type When } from "@/lib/handwriting/extras";
 import type { Offsets } from "@/lib/handwriting/marks";
 import { layout } from "@/lib/handwriting/pipeline-layout";
-import { FIRST_PAGE_ID, PER_PAGE, withJoined } from "@/lib/handwriting/joined";
+import { JoinedSheetTools } from "@/components/JoinedSheetTools";
 import { emptySpacing, type Spacing } from "@/lib/handwriting/spacing";
 import { useSteps } from "@/lib/handwriting/steps";
 import { loadProject, removeLigature, saveLigature, saveLigatures } from "@/lib/handwriting/store";
@@ -49,9 +49,6 @@ export function LigaturesClient() {
   const [mode, setMode] = useState<"mark" | "own">("mark");
   const [mark, setMark] = useState<number>(MARKS[0].cp[0]);
   const [ticked, setTicked] = useState<Set<number>>(new Set());
-  const [sheetNo, setSheetNo] = useState(FIRST_PAGE_ID);
-  const [scanBusy, setScanBusy] = useState(false);
-  const [scanMsg, setScanMsg] = useState<string | null>(null);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
   useEffect(() => {
@@ -116,39 +113,12 @@ export function LigaturesClient() {
     setTicked(new Set());
   }
 
-  const pageCount = Math.max(1, Math.ceil(ligs.length / PER_PAGE));
-  const sheet = Math.min(sheetNo, FIRST_PAGE_ID + pageCount - 1);
-
-  /** A photo of the printed joined-letters sheet: every box found becomes that joined letter's drawing. */
-  async function readSheet(file: File | undefined) {
-    if (!file || !ligs.length) return;
-    setScanBusy(true); setScanMsg(null);
-    try {
-      const { processPhoto } = await import("@/lib/handwriting/pipeline");
-      const r = await processPhoto(file, sheet, withJoined(ligs));
-      if (!r.ok) { setScanMsg(r.reason); return; }
-      const found = new Map(r.cells.flatMap((c) => (c.glyph ? [[c.id, c.glyph] as const] : [])));
-      const next = ligs.flatMap((l) => {
-        const g = found.get(l.id);
-        return g ? [{ ...l, glyph: { ...g, id: l.id, cp: l.sequence, kind: "letter" as const, source: "photo" as const } }] : [];
-      });
-      if (next.length) {
-        setLigs((p) => p.map((l) => next.find((n) => n.id === l.id) ?? l));
-        persist(() => saveLigatures(next));
-        setSelId(next[0].id);
-        setWord(sequenceText(next[0].sequence));
-      }
-      const bits = [`${next.length} joined shape${next.length === 1 ? "" : "s"} added`];
-      if (r.counts.light) bits.push(`${r.counts.light} too light`);
-      if (r.counts.edge) bits.push(`${r.counts.edge} touching the box edge`);
-      if (r.counts.empty) bits.push(`${r.counts.empty} empty`);
-      setScanMsg(bits.join(", ") + ".");
-    } catch (e) {
-      setScanMsg("I could not read that photo. Try a different one.");
-      console.error(e);
-    } finally {
-      setScanBusy(false);
-    }
+  /** Joined shapes read from a photo of the printed sheet. */
+  function scanned(next: Ligature[]) {
+    setLigs((p) => p.map((l) => next.find((n) => n.id === l.id) ?? l));
+    persist(() => saveLigatures(next));
+    setSelId(next[0].id);
+    setWord(sequenceText(next[0].sequence));
   }
 
   function drawn(l: Ligature, g: Glyph | null) {
@@ -182,13 +152,42 @@ export function LigaturesClient() {
       </header>
       <ExtrasNav current="ligatures" />
 
-      <main className="mx-auto flex w-full max-w-[1280px] flex-wrap items-start gap-6 px-10 py-6">
-        <div className="flex w-full flex-col gap-4 lg:w-[360px]">
+      <main className="mx-auto flex w-full max-w-[1280px] flex-col gap-5 px-10 py-6">
+        <section aria-label="Your joined letters" className="flex flex-wrap items-start gap-x-8 gap-y-4 rounded-3xl border border-line bg-white p-5">
+          <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-2">
+            <h2 className="font-display text-lg font-bold">Your joined letters <span className="font-sans text-base font-medium text-muted" data-testid="lig-count">{ligs.length ? `(${ligs.length})` : ""}</span></h2>
+            {ligs.length === 0 ? (
+              <p className="text-sm text-muted">None yet. This step is optional, you can skip it.</p>
+            ) : (
+              <ul dir="rtl" className="flex max-h-[104px] flex-wrap gap-1.5 overflow-y-auto p-0.5" data-testid="lig-list">
+                {ligs.map((l) => (
+                  <li key={l.id}>
+                    <button
+                      type="button"
+                      onClick={() => { setSelId(l.id); setWord(sequenceText(l.sequence)); }}
+                      aria-current={l.id === selId ? "true" : undefined}
+                      aria-label={`${sequenceText(l.sequence)}, ${l.glyph.contours.length ? "drawn" : "not drawn yet"}`}
+                      title={`${sequenceText(l.sequence)} · ${l.glyph.contours.length ? WHEN_LABEL[l.when] : "Not drawn yet"}`}
+                      data-lig={l.id}
+                      data-status={l.glyph.contours.length ? "drawn" : "missing"}
+                      className={`flex h-11 w-11 items-center justify-center rounded-[10px] ${l.id === selId ? "border-[1.5px] border-coral bg-white" : l.glyph.contours.length ? "border border-[#CFE3D5] bg-teal-soft" : "border border-dashed border-[#BDCFC2] bg-[#F3F9F5]"}`}
+                    >
+                      {l.glyph.contours.length ? <GlyphSvg glyph={l.glyph} className="h-full w-full p-0.5" /> : <span lang="dv" className="font-thaana text-[20px] leading-none text-muted">{sequenceText(l.sequence)}</span>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:w-[260px]">
+            <JoinedSheetTools ligs={ligs} onScanned={scanned} />
+          </div>
+        </section>
+
+        <div className="flex flex-wrap items-start gap-6">
+        <div className="flex w-full flex-col gap-4 lg:w-[340px]">
           <section aria-label="Pick letters" className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">
-            <h2 className="font-display text-xl font-bold">Join letters together</h2>
-            <p className="text-[13px] leading-snug text-muted">
-              Some letters look better as one shape when they sit side by side. Pick a mark and tick the letters it joins with, then draw each joined shape.
-            </p>
+            <h2 className="font-display text-xl font-bold">Add joined letters</h2>
             <div role="group" aria-label="Start from" className="flex flex-wrap gap-2">
               {([["mark", "A letter and a mark"], ["own", "Type my own"]] as const).map(([m, label]) => (
                 <button key={m} type="button" onClick={() => setMode(m)} aria-pressed={mode === m} data-mode={m}
@@ -198,34 +197,36 @@ export function LigaturesClient() {
             {mode === "mark" && (
               <div className="flex flex-col gap-3" data-testid="common">
                 <div>
-                  <div className="mb-1.5 text-sm font-bold">1. Which mark?</div>
-                  <div dir="rtl" className="grid grid-cols-4 gap-1.5">
+                  <div className="mb-1.5 text-[13px] font-bold">1. Which mark?</div>
+                  <div dir="rtl" className="grid grid-cols-6 gap-1">
                     {MARKS.map((m) => (
                       <button key={m.id} type="button" onClick={() => chooseMark(m.cp[0])} aria-pressed={mark === m.cp[0]} data-mark={m.id}
                         aria-label={`Mark ${MARK_NAME[m.id]}`}
-                        className={`flex h-[66px] flex-col items-center justify-center rounded-xl border ${mark === m.cp[0] ? "border-[1.5px] border-edge bg-teal-soft" : "border-line bg-white hover:bg-paper"}`}>
-                        <span lang="dv" className="font-thaana text-[24px] leading-[1.3]">{"\u0780" + m.label.replace("◌", "")}</span>
-                        <small className="font-sans text-[10px] text-muted" dir="ltr">{MARK_NAME[m.id]}</small>
+                        className={`flex h-[52px] flex-col items-center justify-center rounded-[10px] border ${mark === m.cp[0] ? "border-[1.5px] border-edge bg-teal-soft" : "border-line bg-white hover:bg-paper"}`}>
+                        <span lang="dv" className="font-thaana text-[18px] leading-[1.2]">{"\u0780" + m.label.replace("◌", "")}</span>
+                        <small className="font-sans text-[8px] text-muted" dir="ltr">{MARK_NAME[m.id]}</small>
                       </button>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <div className="mb-1 text-sm font-bold">2. Which letters join with it?</div>
-                  <p className="mb-2 text-[12px] text-muted">{mark === SUKUN ? "The ticked ones are a starting guess. Tick or untick any." : "Tick the letters whose joined shape you want to draw."}</p>
-                  <div className="mb-2 flex gap-2">
+                  <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[13px] font-bold">2. Which letters?</span>
+                    <span className="flex gap-1.5">
                     <button type="button" onClick={() => setTicked(new Set(LETTERS.map((c) => c.cp[0]).filter((cp) => !have(cp))))} data-testid="tick-all" className="h-8 rounded-lg border border-[#BDCFC2] bg-white px-3 text-[13px] font-bold hover:bg-paper">Tick all {LETTERS.length}</button>
                     <button type="button" onClick={() => setTicked(new Set())} className="h-8 rounded-lg border border-[#BDCFC2] bg-white px-3 text-[13px] font-bold hover:bg-paper">Clear</button>
+                    </span>
                   </div>
-                  <div dir="rtl" className="grid grid-cols-6 gap-1" data-testid="common-grid">
+                  {mark === SUKUN && <p className="mb-1.5 text-[12px] text-muted">The ticked ones are a starting guess. Tick or untick any.</p>}
+                  <div dir="rtl" className="grid grid-cols-8 gap-1" data-testid="common-grid">
                     {LETTERS.map((c) => {
                       const cp = c.cp[0], on = ticked.has(cp), done = have(cp);
                       return (
                         <button key={c.id} type="button" disabled={done} onClick={() => toggle(cp)} aria-pressed={on} data-letter={c.id}
                           aria-label={`${c.label}${String.fromCodePoint(mark)}${done ? ", already in your list" : ""}`}
-                          className={`relative flex h-12 items-center justify-center rounded-lg border text-[24px] leading-none ${done ? "border-dashed border-[#BDCFC2] bg-[#F3F9F5] opacity-50" : on ? "border-[1.5px] border-edge bg-teal-soft" : "border-line bg-white hover:bg-paper"}`}>
+                          className={`relative flex h-[38px] items-center justify-center rounded-lg border text-[18px] leading-none ${done ? "border-dashed border-[#BDCFC2] bg-[#F3F9F5] opacity-50" : on ? "border-[1.5px] border-edge bg-teal-soft" : "border-line bg-white hover:bg-paper"}`}>
                           <span lang="dv" className="font-thaana">{c.label + String.fromCodePoint(mark)}</span>
-                          {on && <span aria-hidden className="absolute left-1 top-0.5 font-sans text-[10px] font-bold text-teal">✓</span>}
+                          {on && <span aria-hidden className="absolute left-0.5 top-0 font-sans text-[8px] font-bold text-teal">✓</span>}
                         </button>
                       );
                     })}
@@ -255,10 +256,10 @@ export function LigaturesClient() {
                 <button type="button" disabled={!seq.length} onClick={() => setSeq((s) => s.slice(0, -1))} className="h-9 rounded-lg border border-[#BDCFC2] bg-white px-3 text-sm font-bold hover:bg-paper disabled:opacity-40">Undo</button>
               </span>
             </div>
-            <fieldset className="flex flex-col gap-1.5">
-              <legend className="mb-1 text-sm font-bold">Where does it join?</legend>
+            <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <legend className="sr-only">Where does it join?</legend>
               {WHENS.map((w) => (
-                <label key={w} className="flex items-center gap-2 text-sm">
+                <label key={w} className="flex items-center gap-1.5 text-[13px]">
                   <input type="radio" name="when" checked={when === w} onChange={() => setWhen(w)} className="accent-teal" />
                   {WHEN_LABEL[w]}
                 </label>
@@ -275,57 +276,6 @@ export function LigaturesClient() {
             )}
           </section>
 
-          <section aria-label="Your joined letters" className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">
-            <h2 className="font-display text-lg font-bold">Your joined letters</h2>
-            {ligs.length === 0 ? (
-              <p className="text-sm text-muted">None yet. This step is optional, you can skip it.</p>
-            ) : (
-              <ul className="flex flex-col gap-2" data-testid="lig-list">
-                {ligs.map((l) => (
-                  <li key={l.id} className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { setSelId(l.id); setWord(sequenceText(l.sequence)); }}
-                      aria-current={l.id === selId ? "true" : undefined}
-                      data-lig={l.id}
-                      data-status={l.glyph.contours.length ? "drawn" : "missing"}
-                      className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2 text-left ${l.id === selId ? "border-[1.5px] border-coral bg-white" : l.glyph.contours.length ? "border border-[#CFE3D5] bg-teal-soft" : "border border-dashed border-[#BDCFC2] bg-[#F3F9F5]"}`}
-                    >
-                      <span className="flex h-11 w-14 shrink-0 items-center justify-center">
-                        {l.glyph.contours.length ? <GlyphSvg glyph={l.glyph} className="h-full w-full" /> : <span lang="dv" className="font-thaana text-[26px] leading-none text-muted">{sequenceText(l.sequence)}</span>}
-                      </span>
-                      <span className="flex min-w-0 flex-col">
-                        <span lang="dv" className="font-thaana text-lg leading-tight">{sequenceText(l.sequence)}</span>
-                        <span className="text-[12px] text-muted">{l.glyph.contours.length ? WHEN_LABEL[l.when] : "Not drawn yet"}</span>
-                      </span>
-                    </button>
-                    <button type="button" onClick={() => remove(l)} aria-label={`Remove ${sequenceText(l.sequence)}`} className="h-9 w-9 shrink-0 rounded-lg border border-[#BDCFC2] bg-white text-lg hover:bg-paper">×</button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {ligs.length > 0 && (
-              <div className="flex flex-col gap-2 border-t border-line pt-3" data-testid="paper-sheet">
-                <p className="text-[13px] leading-snug text-muted">Prefer paper? Print a sheet with a box for each one, write them, then add a photo of it.</p>
-                <a href="/handwriting/print-joined" target="_blank" rel="noopener" data-testid="print-sheet" className="flex h-12 items-center justify-center rounded-xl bg-teal text-[15px] font-bold text-white hover:bg-teal-dark">
-                  Print a sheet for these
-                </a>
-                {pageCount > 1 && (
-                  <label className="flex items-center gap-2 text-sm">
-                    Photo is of
-                    <select value={sheet} onChange={(e) => setSheetNo(Number(e.target.value))} data-testid="sheet-no" className="rounded-lg border border-[#BDCFC2] bg-white px-2 py-1 text-sm">
-                      {Array.from({ length: pageCount }, (_, i) => <option key={i} value={FIRST_PAGE_ID + i}>Sheet {FIRST_PAGE_ID + i}</option>)}
-                    </select>
-                  </label>
-                )}
-                <label htmlFor="sheet-photo" className="flex h-12 cursor-pointer items-center justify-center rounded-xl border border-[#BDCFC2] bg-white text-[15px] font-bold hover:bg-paper">
-                  {scanBusy ? "Reading your photo…" : "Add a photo of the sheet"}
-                </label>
-                <input id="sheet-photo" data-testid="sheet-photo" type="file" accept="image/*" className="sr-only" onChange={(e) => { readSheet(e.target.files?.[0]); e.target.value = ""; }} />
-                {scanMsg && <p role="status" data-testid="sheet-msg" className="text-[13px] leading-snug text-muted">{scanMsg}</p>}
-              </div>
-            )}
-          </section>
         </div>
 
         <section aria-label="Drawing area" className="flex min-w-0 flex-[1_1_480px] flex-col gap-4 rounded-3xl border border-line bg-white p-5">
@@ -339,6 +289,7 @@ export function LigaturesClient() {
                     {WHENS.map((w) => <option key={w} value={w}>{WHEN_LABEL[w]}</option>)}
                   </select>
                 </label>
+                <button type="button" onClick={() => remove(sel)} aria-label={`Remove ${sequenceText(sel.sequence)}`} className="ml-auto h-9 rounded-lg border border-[#BDCFC2] bg-white px-3 text-sm font-bold hover:bg-paper">Remove this one</button>
               </div>
               <p className="text-[13px] text-muted">Draw the whole joined shape, including any vowel marks that belong to it.</p>
               <GlyphEditor key={sel.id} cell={cellFor(sel)} glyph={sel.glyph.contours.length ? sel.glyph : null} original={null} onChange={(g) => drawn(sel, g)} />
@@ -346,7 +297,7 @@ export function LigaturesClient() {
           ) : loaded && (
             <div className="flex flex-col gap-2 py-10 text-center">
               <h1 className="font-display text-xl font-bold">No joined letters yet</h1>
-              <p className="mx-auto max-w-[44ch] text-[15px] text-muted">Pick two or more letters on the left and add them. If your letters already look right side by side, you do not need this step.</p>
+              <p className="mx-auto max-w-[44ch] text-[15px] text-muted">Pick a mark and tick letters on the left, then add them. If your letters already look right side by side, you do not need this step.</p>
             </div>
           )}
         </section>
@@ -379,6 +330,7 @@ export function LigaturesClient() {
             Continue to test and export <span aria-hidden>→</span>
           </Link>
         </aside>
+        </div>
       </main>
     </div>
   );

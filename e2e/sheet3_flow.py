@@ -94,6 +94,7 @@ def main():
             sp.simulate(flat, jpg, rot, (3024, 4032), 1.0, 11)
 
         pg.goto(f"{WEB}/handwriting/ligatures")
+        pg.wait_for_selector("[data-lig=lig1]")           # the joined letters have loaded, so the photo button is switched on
         pg.get_by_test_id("sheet-photo").set_input_files(str(OUT / "p3.jpg"))
         pg.get_by_test_id("sheet-msg").wait_for(timeout=60000)
         msg = pg.get_by_test_id("sheet-msg").inner_text()
@@ -116,6 +117,13 @@ def main():
         pg.reload()
         pg.wait_for_selector("[data-lig=lig37][data-status=drawn]")
         pg.screenshot(path=str(OUT / "sheet3_ligatures.png"))
+        # the page stays short even with 38 joined letters, and the print button is on screen
+        assert pg.locator("[aria-label='Pick letters']").bounding_box()["height"] < 800, "the picker is compact"
+        assert pg.get_by_test_id("print-sheet").is_visible() and pg.get_by_test_id("print-sheet").bounding_box()["y"] < 400
+        # the Photo page has the same card
+        pg.goto(f"{WEB}/handwriting")
+        pg.get_by_test_id("joined-card").get_by_test_id("print-sheet").wait_for()
+        assert "38 joined letters" in pg.get_by_test_id("joined-card").inner_text()
         assert not errors, errors
         b.close()
     print("sheet 3 flow ok")

@@ -8,8 +8,10 @@ import { Logo } from "@/components/Logo";
 import { Stepper } from "@/components/Stepper";
 import { layout, processPhoto, type PhotoOutcome } from "@/lib/handwriting/pipeline";
 import { useSteps } from "@/lib/handwriting/steps";
+import { JoinedSheetTools } from "@/components/JoinedSheetTools";
 import { MixPrompt } from "@/components/MixPrompt";
-import { clearProject, createFont, fontTitle, loadProject, saveGlyphs, sourceMix } from "@/lib/handwriting/store";
+import type { Ligature } from "@/lib/handwriting/extras";
+import { clearProject, createFont, fontTitle, loadProject, saveGlyphs, saveLigatures, sourceMix } from "@/lib/handwriting/store";
 
 
 const letterCount = layout.sheets[0].cells.length;
@@ -24,10 +26,12 @@ export function HandwritingPhoto() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<{ letters: number; fili: number; symbols: number } | null>(null);
   const [drag, setDrag] = useState(false);
+  const [ligs, setLigs] = useState<Ligature[]>([]);
 
   const refresh = useCallback(async () => {
     const p = await loadProject();
     const gs = Object.values(p.glyphs);
+    setLigs(p.ligatures ?? []);
     setSaved({
       letters: gs.filter((g) => g.kind === "letter").length,
       fili: gs.filter((g) => g.kind === "fili").length,
@@ -84,10 +88,25 @@ export function HandwritingPhoto() {
         <section aria-label="Get your photo in" className="flex w-full flex-col gap-5 lg:w-[360px]">
           <div className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">
             <h2 className="font-display text-xl font-bold">1. Print the template</h2>
-            <p className="text-sm leading-normal text-muted">Two A4 pages: letters, then vowel marks and extras.</p>
+            <p className="text-sm leading-normal text-muted">Two A4 pages: letters, then vowel marks, extras and numbers.</p>
             <a href="/templates/dhivehi-handwriting-template.pdf" download className="flex h-12 items-center justify-center rounded-xl border border-[#BDCFC2] text-base font-bold hover:bg-paper">
               Download the template (PDF)
             </a>
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5" data-testid="joined-card">
+            <h2 className="font-display text-xl font-bold">Joined letters <span className="ml-1 rounded-full bg-sand px-2.5 py-0.5 align-middle font-sans text-xs font-bold">Optional</span></h2>
+            {ligs.length === 0 ? (
+              <>
+                <p className="text-sm leading-normal text-muted">None yet. Pick the letters that join on the Joined letters step and a printable sheet appears here.</p>
+                <Link href="/handwriting/ligatures" className="flex h-11 items-center justify-center rounded-xl border border-[#BDCFC2] text-[15px] font-bold hover:bg-paper">Go to joined letters</Link>
+              </>
+            ) : (
+              <>
+                <p className="text-sm leading-normal text-muted">You have {ligs.length} joined letter{ligs.length === 1 ? "" : "s"}. Print a sheet with a box for each.</p>
+                <JoinedSheetTools ligs={ligs} note={false} onScanned={async (next) => { await saveLigatures(next); await refresh(); }} />
+              </>
+            )}
           </div>
 
           <div className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">
