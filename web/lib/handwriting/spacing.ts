@@ -1,3 +1,4 @@
+import type { Ligature } from "./extras";
 import { inkBox, markShift, offsetKey, shiftContours, type Offsets } from "./marks";
 import type { Contour, Glyph } from "./types";
 
@@ -43,19 +44,33 @@ export type Line = {
  * Lay out a right-to-left line from the person's own glyphs, the way the built font will: letters run from the right,
  * each mark sits on the letter before it, and a pair adjustment opens or closes the gap between its two letters.
  */
-export function layoutLine(text: string, glyphs: Record<string, Glyph>, offsets: Offsets, sp: Spacing): Line {
+export function layoutLine(text: string, glyphs: Record<string, Glyph>, offsets: Offsets, sp: Spacing, ligatures: Ligature[] = []): Line {
   const byCp = new Map<number, Glyph>();
   for (const g of Object.values(glyphs)) if (g.contours.length) byCp.set(g.cp[0], g);
-  type Item = { letter?: Glyph; marks: Glyph[]; adv: number; kern: number };
+  type Item = { letter?: Glyph; marks: Glyph[]; adv: number; kern: number; lig?: boolean };
   const items: Item[] = [];
   let prev: Glyph | undefined;
-  for (const ch of Array.from(text)) {
-    const cp = ch.codePointAt(0)!;
+  const cps = Array.from(text).map((ch) => ch.codePointAt(0)!);
+  const ligs = ligatures.filter((l) => l.glyph.contours.length).sort((a, b) => b.sequence.length - a.sequence.length);
+  const inWord = (cp: number | undefined) => cp !== undefined && cp >= 0x0780 && cp <= 0x07b0;
+  for (let i = 0; i < cps.length; i++) {
+    const cp = cps[i];
+    // a drawn letter combination stands in for its letters; it carries no vowel marks of its own after it
+    const lig = ligs.find((l) =>
+      l.sequence.every((c, k) => cps[i + k] === c) &&
+      (l.when !== "start" || !inWord(cps[i - 1])) &&
+      (l.when !== "end" || !inWord(cps[i + l.sequence.length])));
+    if (lig) {
+      items.push({ letter: lig.glyph, marks: [], adv: Math.max(0, lig.glyph.adv + sp.all), kern: 0, lig: true });
+      prev = undefined;
+      i += lig.sequence.length - 1;
+      continue;
+    }
     if (cp === 0x20) { items.push({ marks: [], adv: SPACE_ADVANCE, kern: 0 }); prev = undefined; continue; }
     const g = byCp.get(cp);
     if (isMarkCp(cp)) {
       const last = items[items.length - 1];
-      if (g && last?.letter) last.marks.push(g);
+      if (g && last?.letter && !last.lig) last.marks.push(g);
       continue;
     }
     if (!g) { items.push({ marks: [], adv: 300, kern: 0 }); prev = undefined; continue; }

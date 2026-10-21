@@ -1,4 +1,5 @@
 import { BUILDER_URL, saveBlob, type BuildFormat } from "@/lib/play";
+import { DEFAULT_EXTRAS } from "./extras";
 import { autoAnchor } from "./marks";
 import { bake } from "./spacing";
 import type { FontInfo, Project } from "./store";
@@ -58,6 +59,10 @@ export function buildBody(p: Project, info: FontInfo, format: BuildFormat) {
     const dx = fit((o?.dx ?? 0) + a.x - raw.x), dy = fit((o?.dy ?? 0) + a.y - raw.y);
     if (dx || dy) mark_offsets.push({ base: l.id, mark: m.id, dx, dy });
   }
+  const ex = { ...DEFAULT_EXTRAS, ...p.extras };
+  const ligatures = (p.ligatures ?? []).filter((l) => l.glyph.contours.length).map((l) => ({
+    id: l.id, sequence: l.sequence, when: l.when, contours: l.glyph.contours, adv: Math.round(l.glyph.adv),
+  }));
   return {
     name: cleanFontName(info.name).trim() || DEFAULT_INFO.name,
     author: info.designer.trim(),
@@ -66,7 +71,8 @@ export function buildBody(p: Project, info: FontInfo, format: BuildFormat) {
     version: info.version.trim() || DEFAULT_INFO.version,
     licence: info.licence,
     fallback: info.licence === "private" ? "none" : "noto",
-    glyphs, kerning, mark_offsets, spacing: sp.all, format,
+    glyphs, ligatures, kerning, mark_offsets, spacing: sp.all, format,
+    rufiyaa_private_use: ex.rufiyaaPrivateUse, latin_punctuation: ex.latinPunctuation, rtl_quotes: ex.rtlQuotes,
   };
 }
 

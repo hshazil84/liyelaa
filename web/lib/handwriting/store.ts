@@ -1,4 +1,5 @@
 import { del, get, set } from "idb-keyval";
+import type { Extras, Ligature } from "./extras";
 import type { Levelled } from "./level";
 import type { Offsets } from "./marks";
 import type { Spacing } from "./spacing";
@@ -14,6 +15,8 @@ export type Project = {
   spacing?: Spacing;                     // letter spacing and pair adjustments
   info?: FontInfo;                       // name, designer and so on, for the export step
   path?: "photo" | "draw";               // which way in this project started, so the steps are named right
+  ligatures?: Ligature[];                // letter combinations drawn as one shape
+  extras?: Extras;                       // choices about signs and punctuation
 };
 
 export type FontInfo = {
@@ -102,6 +105,32 @@ export async function saveInfo(info: FontInfo): Promise<Project> {
 export async function setPath(path: "photo" | "draw"): Promise<Project> {
   const p = await loadProject();
   p.path = path;
+  p.updatedAt = Date.now();
+  try { await set(KEY, p); } catch {}
+  return p;
+}
+
+export async function saveExtras(extras: Extras): Promise<Project> {
+  const p = await loadProject();
+  p.extras = extras;
+  p.updatedAt = Date.now();
+  try { await set(KEY, p); } catch {}
+  return p;
+}
+
+/** Add a ligature, or replace the one with the same id. */
+export async function saveLigature(l: Ligature): Promise<Project> {
+  const p = await loadProject();
+  const rest = (p.ligatures ?? []).filter((x) => x.id !== l.id);
+  p.ligatures = [...rest, l].sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+  p.updatedAt = Date.now();
+  try { await set(KEY, p); } catch {}
+  return p;
+}
+
+export async function removeLigature(id: string): Promise<Project> {
+  const p = await loadProject();
+  p.ligatures = (p.ligatures ?? []).filter((x) => x.id !== id);
   p.updatedAt = Date.now();
   try { await set(KEY, p); } catch {}
   return p;

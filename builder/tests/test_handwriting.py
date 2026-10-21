@@ -199,6 +199,47 @@ def test_ligature_replaces_a_sequence():
     assert [n for n, _, _ in placed(font, chr(BA))] == ["uni0784"], "the letter alone is unchanged"
 
 
+def _lig_font(when):
+    lig = LigatureIn(id="ba-sukun", sequence=[BA, 0x07B0], when=when, contours=[rect(0, 0, 500, 300)], adv=540)
+    glyphs = BASE_GLYPHS + [G(0x07B0, [rect(-20, 350, 20, 390)], 0)]
+    return build(glyphs, ligatures=[lig])[0]
+
+
+def _names(font, text):
+    return [n for n, _, _ in placed(font, text)]
+
+
+def test_ligature_only_at_the_start_of_a_word():
+    font = _lig_font("start")
+    pair = chr(BA) + chr(0x07B0)
+    assert _names(font, pair) == ["lig_basukun"], "a word that starts with the pair"
+    assert "lig_basukun" in _names(font, pair + chr(KA)), "start of the word, more letters after"
+    assert "lig_basukun" in _names(font, chr(KA) + " " + pair), "a space before it starts a new word"
+    assert "lig_basukun" not in _names(font, chr(KA) + pair), "a letter before it means it is not the start of the word"
+
+
+def test_ligature_only_at_the_end_of_a_word():
+    font = _lig_font("end")
+    pair = chr(BA) + chr(0x07B0)
+    assert "lig_basukun" in _names(font, chr(KA) + pair), "the pair ends the word"
+    assert "lig_basukun" not in _names(font, pair + chr(KA)), "a letter after it means it is not the end of the word"
+    assert "lig_basukun" in _names(font, pair + " " + chr(KA)), "a space ends the word"
+
+
+def test_rufiyaa_sign_can_also_sit_at_the_private_use_code():
+    glyphs = BASE_GLYPHS + [G(0x20C2, [rect(0, 0, 300, 400)], 340)]
+    on, _ = build(glyphs, rufiyaa_private_use=True)
+    off, _ = build(glyphs)
+    assert on.getBestCmap()[0xE000] == "uni20C2" and 0xE000 not in off.getBestCmap()
+
+
+def test_punctuation_options_can_be_turned_off():
+    glyphs = BASE_GLYPHS + [G(0x060C, [rect(0, -50, 60, 60)], 120), G(0x201C, [rect(0, 300, 100, 400)], 150), G(0x201D, [rect(0, 300, 100, 380)], 150)]
+    font, _ = build(glyphs, latin_punctuation=False, rtl_quotes=False)
+    assert 0x2C not in font.getBestCmap()
+    assert _names(font, "“") == ["uni201C"], "quotes are not swapped"
+
+
 def test_quotation_marks_swap_in_right_to_left_text():
     glyphs = BASE_GLYPHS + [G(0x201C, [rect(0, 300, 100, 400)], 150), G(0x201D, [rect(0, 300, 100, 380)], 150)]
     font, _ = build(glyphs)

@@ -55,6 +55,10 @@ def main():
         pg.wait_for_timeout(500)
         assert pg.evaluate(READ)["spacing"]["side"], "even out sets space on letters"
         pg.screenshot(path=str(PHOTOS / "spacing-2.png"))
+        pg.get_by_test_id("continue-extras").click()
+        pg.wait_for_url("**/handwriting/extras")
+        pg.get_by_test_id("continue-ligatures").click()
+        pg.wait_for_url("**/handwriting/ligatures")
         pg.get_by_test_id("continue-export").click()
         pg.wait_for_url("**/handwriting/export")
 

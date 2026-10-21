@@ -8,6 +8,7 @@ import {
   DEFAULT_INFO, NEEDED_LETTERS, NEEDED_MARKS, allMine, buildHandwritingFont, cleanFontName, cpId, infoProblems, saveBlob,
   type BuildFormat,
 } from "@/lib/handwriting/build";
+import { DEFAULT_EXTRAS } from "@/lib/handwriting/extras";
 import { checkPair } from "@/lib/handwriting/marks";
 import { layout } from "@/lib/handwriting/pipeline";
 import { useSteps } from "@/lib/handwriting/steps";
@@ -132,7 +133,17 @@ export function ExportClient() {
     out.push({ ok: bad === 0, text: bad === 0 ? "Every vowel mark sits on its letter" : `${bad} vowel mark ${bad === 1 ? "combination looks" : "combinations look"} wrong`, href: bad ? "/handwriting/anchors" : undefined });
     const missing = SIGNS.filter((s) => !have(s.cp)).map((s) => s.label);
     out.push({ ok: missing.length === 0, text: missing.length === 0 ? "Bismillah, Allah and rufiyaa signs drawn" : `Not drawn: ${missing.join(", ")}`, href: missing.length ? "/handwriting/letters" : undefined });
-    out.push({ ok: true, text: "Comma, semicolon, question mark and quotes read right to left" });
+    const ex = { ...DEFAULT_EXTRAS, ...project.extras };
+    const marks = [0x060c, 0x061b, 0x061f].filter(have).length;
+    out.push({
+      ok: true,
+      text: !ex.latinPunctuation && !ex.rtlQuotes
+        ? "Punctuation is left as typed"
+        : `${ex.latinPunctuation ? (marks === 3 ? "Comma, semicolon and question mark follow the keyboard keys" : "Comma, semicolon and question mark follow the keyboard keys once you draw them") : ""}${ex.latinPunctuation && ex.rtlQuotes ? ", " : ""}${ex.rtlQuotes ? "quotes face the right way for Thaana" : ""}`.replace(/^./, (c) => c.toUpperCase()),
+      href: marks < 3 ? "/handwriting/extras" : undefined,
+    });
+    const joined = (project.ligatures ?? []).filter((l) => l.glyph.contours.length).length;
+    if (joined) out.push({ ok: true, text: `${joined} joined ${joined === 1 ? "shape" : "shapes"} will be used` });
     return out;
   }, [project, licence]);
 

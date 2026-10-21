@@ -50,6 +50,7 @@ FALLBACK_CPS = (
 # typed with the Latin keys, shown with the Arabic forms (Dhivehi keyboards often produce these)
 LATIN_TO_ARABIC = {0x002C: 0x060C, 0x003B: 0x061B, 0x003F: 0x061F}
 QUOTE_SWAPS = [(0x201C, 0x201D), (0x2018, 0x2019)]
+RUFIYAA = 0x20C2
 
 
 # ----------------------------------------------------------------------------- request model
@@ -92,6 +93,7 @@ class GlyphIn(BaseModel):
 class LigatureIn(BaseModel):
     id: str = Field(max_length=24)
     sequence: list[int] = Field(min_length=2, max_length=6)
+    when: Literal["always", "start", "end"] = "always"      # anywhere, or only at the start or end of a word
     contours: Contours
     adv: float = Field(ge=0, le=6000)
 
@@ -134,6 +136,9 @@ class BuildRequest(BaseModel):
     mark_offsets: list[MarkOffsetIn] = Field(default_factory=list, max_length=700)
     fallback: Literal["noto", "none"] = "noto"
     licence: Literal["ofl", "private"] = "ofl"
+    rufiyaa_private_use: bool = False                    # also place the rufiyaa sign (U+20C2) at U+E000, so it works before software knows U+20C2
+    latin_punctuation: bool = True                        # typed , ; ? show the Arabic forms ، ؛ ؟
+    rtl_quotes: bool = True                               # swap the quote shapes in right-to-left text
     spacing: int = Field(0, ge=-100, le=200)
     space_width: int = Field(SPACE_ADVANCE, ge=100, le=800)
 
@@ -356,9 +361,12 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
     cmap: dict[int, str] = {0x20: "space", 0xA0: "space"}
     for cp, it in items.items():
         cmap[cp] = it.name
-    for latin, arabic in LATIN_TO_ARABIC.items():
-        if arabic in items:
-            cmap[latin] = items[arabic].name
+    if req.latin_punctuation:
+        for latin, arabic in LATIN_TO_ARABIC.items():
+            if arabic in items:
+                cmap[latin] = items[arabic].name
+    if req.rufiyaa_private_use and RUFIYAA in items and not items[RUFIYAA].from_fallback:
+        cmap[0xE000] = items[RUFIYAA].name
 
     ys = [b for it in order_items if it.bounds for b in (it.bounds[1], it.bounds[3])]
     ascent = int(max(800, max(ys, default=0) + 60))
@@ -408,6 +416,7 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
 
     # 6. OpenType features
     glyph_of = {cp: it.name for cp, it in items.items()}
+    items_by_name = {it.name: cp for cp, it in items.items()}
     bases = [it.name for it in order_items if it.name not in (".notdef",) and not it.is_mark and not it.name.startswith("lig_")]
     marks = [it.name for it in order_items if it.is_mark]
     lig_names = [it.name for _, it in ligs]
@@ -431,11 +440,33 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
         if lines:
             fea += ["feature mark {"] + lines + ["} mark;"]
     if ligs:
-        fea += ["feature liga {"]
-        for lg, it in sorted(ligs, key=lambda t: -len(t[0].sequence)):         # longest sequences first
-            fea.append(f"    sub {' '.join(glyph_of[c] for c in lg.sequence)} by {it.name};")
-        fea += ["} liga;"]
-    swaps = [(glyph_of[a], glyph_of[b]) for a, b in QUOTE_SWAPS if a in glyph_of and b in glyph_of]
+        everywhere = [(lg, it) for lg, it in ligs if lg.when == "always"]
+        contextual = [(lg, it) for lg, it in ligs if lg.when != "always"]
+        if everywhere:
+            fea += ["feature liga {"]
+            for lg, it in sorted(everywhere, key=lambda t: -len(t[0].sequence)):         # longest sequences first
+                fea.append(f"    sub {' '.join(glyph_of[c] for c in lg.sequence)} by {it.name};")
+            fea += ["} liga;"]
+        if contextual:
+            # a letter or mark of Thaana text: "start of a word" means no such glyph just before, "end" means none just after
+            word = [it.name for it in order_items if it.name not in (".notdef", "space") and not it.name.startswith("lig_")
+                    and (items_by_name[it.name] >= 0x0780 and items_by_name[it.name] <= 0x07B0)]
+            fea.append("@WORD = [" + " ".join(word) + "];")
+            for lg, it in contextual:
+                seq = [glyph_of[c] for c in lg.sequence]
+                fea.append(f"lookup LIG_{it.name} {{ sub {' '.join(seq)} by {it.name}; }} LIG_{it.name};")
+            fea += ["feature calt {"]
+            for lg, it in sorted(contextual, key=lambda t: -len(t[0].sequence)):
+                seq = [glyph_of[c] for c in lg.sequence]
+                marked = " ".join(f"{g}'" for g in seq)
+                if lg.when == "start":
+                    fea.append(f"    ignore sub @WORD {marked};")
+                else:
+                    fea.append(f"    ignore sub {marked} @WORD;")
+                look = " ".join(f"{g}'" + (f" lookup LIG_{it.name}" if i == 0 else "") for i, g in enumerate(seq))
+                fea.append(f"    sub {look};")
+            fea += ["} calt;"]
+    swaps = [(glyph_of[a], glyph_of[b]) for a, b in QUOTE_SWAPS if req.rtl_quotes and a in glyph_of and b in glyph_of]
     if swaps:
         fea += ["feature rtlm {"]
         for a, b in swaps:

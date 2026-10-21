@@ -1,4 +1,5 @@
 import { markShift, shiftContours, type Offset, type Offsets } from "@/lib/handwriting/marks";
+import type { Ligature } from "@/lib/handwriting/extras";
 import { layoutLine, type Spacing } from "@/lib/handwriting/spacing";
 import { contoursToD } from "@/lib/handwriting/svg";
 import type { Glyph } from "@/lib/handwriting/types";
@@ -18,12 +19,12 @@ export function Composed({ letter, mark, offset, className }: { letter: Glyph; m
 
 /** A right-to-left line of text drawn from the person's own letters and marks. */
 export function WordSvg({
-  text, glyphs, offsets, spacing, height, label, children,
+  text, glyphs, offsets, spacing, ligatures, height, label, children,
 }: {
-  text: string; glyphs: Record<string, Glyph>; offsets: Offsets; spacing: Spacing; height: number; label?: string;
+  text: string; glyphs: Record<string, Glyph>; offsets: Offsets; spacing: Spacing; ligatures?: Ligature[]; height: number; label?: string;
   children?: (line: ReturnType<typeof layoutLine>) => React.ReactNode;
 }) {
-  const line = layoutLine(text, glyphs, offsets, spacing);
+  const line = layoutLine(text, glyphs, offsets, spacing, ligatures);
   const pad = 60;
   return (
     <svg

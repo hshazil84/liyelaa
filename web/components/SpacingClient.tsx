@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ExtrasNav } from "@/components/ExtrasNav";
 import { WordSvg } from "@/components/MarkViews";
 import { GlyphSvg } from "@/components/GlyphTile";
 import { Logo } from "@/components/Logo";
@@ -92,6 +93,7 @@ export function SpacingClient() {
         </span>
       </header>
 
+      <ExtrasNav current="spacing" />
       <main className="mx-auto flex w-full max-w-[1240px] flex-wrap items-start gap-6 px-10 py-8">
         <div className="flex w-full flex-col gap-6 lg:w-[320px]">
           <section aria-label="Letter spacing" className="flex flex-col gap-[18px] rounded-3xl border border-line bg-white p-5">
@@ -148,11 +150,11 @@ export function SpacingClient() {
           </section>
 
           <Link
-            href="/handwriting/export"
-            data-testid="continue-export"
+            href="/handwriting/extras"
+            data-testid="continue-extras"
             className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark"
           >
-            Continue to test and export <span aria-hidden>→</span>
+            Next: signs and punctuation <span aria-hidden>→</span>
           </Link>
         </div>
 
