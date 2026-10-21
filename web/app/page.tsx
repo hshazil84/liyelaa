@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { ThaanaOutline } from "@/components/ThaanaOutline";
 
 function Arrow() {
   return (
@@ -59,9 +60,9 @@ export default function Home() {
             href="/play"
             tone="bg-sand"
           >
-            {[400, 700, 900].map((w) => (
-              <span key={w} lang="dv" dir="rtl" className="text-[40px] leading-[1.4]" style={{ fontFamily: "DemocratsSample, NotoThaana, sans-serif", fontWeight: w }}>
-                ދިވެހި
+            {(["w400", "w700", "w900"] as const).map((w) => (
+              <span key={w} className="text-ink">
+                <ThaanaOutline id={w} size={40} label="ދިވެހި" />
               </span>
             ))}
           </Card>
@@ -72,8 +73,11 @@ export default function Home() {
             href="/handwriting"
             tone="bg-teal-soft"
           >
-            <span lang="dv" className="flex h-[68px] w-[52px] items-center justify-center rounded-xl bg-white font-thaana text-[38px] leading-none">ގ</span>
-            <span lang="dv" className="flex h-[68px] w-[52px] items-center justify-center rounded-xl bg-white font-thaana text-[38px] leading-none">ބ</span>
+            {(["ga", "ba"] as const).map((g) => (
+              <span key={g} className="flex h-[68px] w-[52px] items-center justify-center rounded-xl bg-white text-ink">
+                <ThaanaOutline id={g} size={38} />
+              </span>
+            ))}
           </Card>
           <Card
             title="Draw or import my own"
