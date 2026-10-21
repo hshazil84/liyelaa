@@ -189,7 +189,7 @@ export function PlayClient() {
                       onClick={() => set("base", b.id as BaseId)}
                       className={`flex flex-col gap-0.5 rounded-2xl text-left ${on ? "border-2 border-teal bg-teal-soft p-[13px]" : "border border-line bg-white p-3.5 hover:bg-paper"}`}
                     >
-                      <span lang="dv" dir="rtl" className={`w-full text-[30px] leading-[1.5] ${b.variable ? "font-noto" : "font-sangu"}`}>{SAMPLE}</span>
+                      <span lang="dv" dir="rtl" className="w-full text-[30px] leading-[1.5]" style={{ fontFamily: `${b.family}, sans-serif` }}>{SAMPLE}</span>
                       <span className="text-[15px] font-bold">{b.label}</span>
                       <span className="text-[13px] text-muted">{b.blurb}</span>
                     </button>

@@ -16,6 +16,12 @@
 }
 
 @font-face {
+  font-family: "Haluvidhaa";
+  src: url("/fonts/Haluvidhaa.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
   font-family: "AKRasmee";
   src: url("/fonts/AKRasmee-2.0.woff2") format("woff2");
   font-display: swap;

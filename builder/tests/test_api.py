@@ -48,6 +48,13 @@ def test_sangu_base_builds_and_unknown_base_is_rejected():
     assert client.post("/play/build", json={"base": "arial"}).status_code == 422
 
 
+def test_haluvidhaa_base_builds_with_its_licence_credit():
+    r = client.post("/play/build", json={"base": "haluvidhaa", "weight": 700, "format": "woff2"})
+    assert r.status_code == 200
+    f = TTFont(io.BytesIO(r.content))
+    assert "Haluvidhaa" in f["name"].getDebugName(10)
+
+
 # ----------------------------------------------------------------------------- handwriting build
 def _hw_payload(**extra):
     sq = lambda x0, y0, x1, y1: [{"p": {"x": x, "y": y}, "hi": {"x": 0, "y": 0}, "ho": {"x": 0, "y": 0}} for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))]

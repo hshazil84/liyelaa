@@ -57,7 +57,7 @@ class PlayRequest(BaseModel):
     slant: float = Field(0, ge=-15, le=15)
     spacing: int = Field(0, ge=-100, le=200)
     name: str = Field("My Dhivehi Font", max_length=60)
-    base: Literal["noto", "sangu"] = "noto"
+    base: Literal["noto", "sangu", "haluvidhaa"] = "noto"
     format: Literal["zip", "ttf", "woff2"] = "zip"
 
 

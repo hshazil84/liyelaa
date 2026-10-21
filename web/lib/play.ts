@@ -1,8 +1,9 @@
-export type BaseId = "noto" | "sangu";
+export type BaseId = "noto" | "sangu" | "haluvidhaa";
 
-export const BASES: { id: BaseId; label: string; blurb: string; credit: string; variable: boolean }[] = [
-  { id: "noto", label: "Noto Sans Thaana", blurb: "Clean and simple · 9 weights", credit: "Noto Sans Thaana", variable: true },
-  { id: "sangu", label: "Sangu Suruhee", blurb: "Bold and calligraphic · one weight", credit: "Sangu Suruhee by Thaana Type Foundry", variable: false },
+export const BASES: { id: BaseId; label: string; blurb: string; credit: string; variable: boolean; family: string }[] = [
+  { id: "noto", label: "Noto Sans Thaana", blurb: "Clean and simple · 9 weights", credit: "Noto Sans Thaana", variable: true, family: "NotoThaana" },
+  { id: "sangu", label: "Sangu Suruhee", blurb: "Bold and calligraphic · one weight", credit: "Sangu Suruhee by Thaana Type Foundry", variable: false, family: "SanguSuruhee" },
+  { id: "haluvidhaa", label: "Haluvidhaa", blurb: "Light and tight · one weight", credit: "Haluvidhaa by Thaana Type Foundry", variable: false, family: "Haluvidhaa" },
 ];
 
 export const baseOf = (id: BaseId) => BASES.find((b) => b.id === id) ?? BASES[0];
@@ -55,7 +56,7 @@ export function previewStyle(s: PlaySettings, builtFamily?: string | null): Reac
   if (!baseOf(s.base).variable) {
     // A one-weight font cannot be thinned or thickened by CSS, so the builder makes the preview font.
     // It already has width, slant and spacing in it, so nothing is applied here.
-    return { fontFamily: `${builtFamily ?? "SanguSuruhee"}, sans-serif`, display: "inline-block", whiteSpace: "nowrap" };
+    return { fontFamily: `${builtFamily ?? baseOf(s.base).family}, sans-serif`, display: "inline-block", whiteSpace: "nowrap" };
   }
   const sx = s.width / 100;
   return {
