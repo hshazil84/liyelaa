@@ -11,7 +11,8 @@ import { WordSvg } from "@/components/MarkViews";
 import { Stepper } from "@/components/Stepper";
 import { WHEN_LABEL, nextLigatureId, sequenceText, type Ligature, type When } from "@/lib/handwriting/extras";
 import type { Offsets } from "@/lib/handwriting/marks";
-import { layout } from "@/lib/handwriting/pipeline";
+import { layout } from "@/lib/handwriting/pipeline-layout";
+import { FIRST_PAGE_ID, PER_PAGE, withJoined } from "@/lib/handwriting/joined";
 import { emptySpacing, type Spacing } from "@/lib/handwriting/spacing";
 import { useSteps } from "@/lib/handwriting/steps";
 import { loadProject, removeLigature, saveLigature, saveLigatures } from "@/lib/handwriting/store";
@@ -48,6 +49,9 @@ export function LigaturesClient() {
   const [mode, setMode] = useState<"mark" | "own">("mark");
   const [mark, setMark] = useState<number>(MARKS[0].cp[0]);
   const [ticked, setTicked] = useState<Set<number>>(new Set());
+  const [sheetNo, setSheetNo] = useState(FIRST_PAGE_ID);
+  const [scanBusy, setScanBusy] = useState(false);
+  const [scanMsg, setScanMsg] = useState<string | null>(null);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
   useEffect(() => {
@@ -110,6 +114,41 @@ export function LigaturesClient() {
     setSelId(made[0].id);
     setWord(sequenceText(made[0].sequence));
     setTicked(new Set());
+  }
+
+  const pageCount = Math.max(1, Math.ceil(ligs.length / PER_PAGE));
+  const sheet = Math.min(sheetNo, FIRST_PAGE_ID + pageCount - 1);
+
+  /** A photo of the printed joined-letters sheet: every box found becomes that joined letter's drawing. */
+  async function readSheet(file: File | undefined) {
+    if (!file || !ligs.length) return;
+    setScanBusy(true); setScanMsg(null);
+    try {
+      const { processPhoto } = await import("@/lib/handwriting/pipeline");
+      const r = await processPhoto(file, sheet, withJoined(ligs));
+      if (!r.ok) { setScanMsg(r.reason); return; }
+      const found = new Map(r.cells.flatMap((c) => (c.glyph ? [[c.id, c.glyph] as const] : [])));
+      const next = ligs.flatMap((l) => {
+        const g = found.get(l.id);
+        return g ? [{ ...l, glyph: { ...g, id: l.id, cp: l.sequence, kind: "letter" as const, source: "photo" as const } }] : [];
+      });
+      if (next.length) {
+        setLigs((p) => p.map((l) => next.find((n) => n.id === l.id) ?? l));
+        persist(() => saveLigatures(next));
+        setSelId(next[0].id);
+        setWord(sequenceText(next[0].sequence));
+      }
+      const bits = [`${next.length} joined shape${next.length === 1 ? "" : "s"} added`];
+      if (r.counts.light) bits.push(`${r.counts.light} too light`);
+      if (r.counts.edge) bits.push(`${r.counts.edge} touching the box edge`);
+      if (r.counts.empty) bits.push(`${r.counts.empty} empty`);
+      setScanMsg(bits.join(", ") + ".");
+    } catch (e) {
+      setScanMsg("I could not read that photo. Try a different one.");
+      console.error(e);
+    } finally {
+      setScanBusy(false);
+    }
   }
 
   function drawn(l: Ligature, g: Glyph | null) {
@@ -264,6 +303,27 @@ export function LigaturesClient() {
                   </li>
                 ))}
               </ul>
+            )}
+            {ligs.length > 0 && (
+              <div className="flex flex-col gap-2 border-t border-line pt-3" data-testid="paper-sheet">
+                <p className="text-[13px] leading-snug text-muted">Prefer paper? Print a sheet with a box for each one, write them, then add a photo of it.</p>
+                <a href="/handwriting/print-joined" target="_blank" rel="noopener" data-testid="print-sheet" className="flex h-12 items-center justify-center rounded-xl bg-teal text-[15px] font-bold text-white hover:bg-teal-dark">
+                  Print a sheet for these
+                </a>
+                {pageCount > 1 && (
+                  <label className="flex items-center gap-2 text-sm">
+                    Photo is of
+                    <select value={sheet} onChange={(e) => setSheetNo(Number(e.target.value))} data-testid="sheet-no" className="rounded-lg border border-[#BDCFC2] bg-white px-2 py-1 text-sm">
+                      {Array.from({ length: pageCount }, (_, i) => <option key={i} value={FIRST_PAGE_ID + i}>Sheet {FIRST_PAGE_ID + i}</option>)}
+                    </select>
+                  </label>
+                )}
+                <label htmlFor="sheet-photo" className="flex h-12 cursor-pointer items-center justify-center rounded-xl border border-[#BDCFC2] bg-white text-[15px] font-bold hover:bg-paper">
+                  {scanBusy ? "Reading your photo…" : "Add a photo of the sheet"}
+                </label>
+                <input id="sheet-photo" data-testid="sheet-photo" type="file" accept="image/*" className="sr-only" onChange={(e) => { readSheet(e.target.files?.[0]); e.target.value = ""; }} />
+                {scanMsg && <p role="status" data-testid="sheet-msg" className="text-[13px] leading-snug text-muted">{scanMsg}</p>}
+              </div>
             )}
           </section>
         </div>
