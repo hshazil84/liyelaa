@@ -20,7 +20,7 @@ const VB_W = 1400, VB_H = 940, VB_Y = -590;                                     
 const INK = "#10211F", TEAL = "#0B6B63", CORAL = "#D9482B";
 
 type Drag =
-  | { kind: "pt" | "hi" | "ho"; c: number; s: number; base: Glyph; started: boolean; sx: number; sy: number }
+  | { kind: "pt" | "hi" | "ho"; c: number; s: number; base: Glyph; started: boolean; sx: number; sy: number; off: Pt }
   | { kind: "pen" };
 
 const iconProps = { width: 20, height: 20, viewBox: "0 0 20 20", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
@@ -191,14 +191,19 @@ export function GlyphEditor({
       return;
     }
     setSel({ c, s });
-    drag.current = { kind, c, s, base: g, started: false, sx: e.clientX, sy: e.clientY };
+    // remember where inside the point the pointer grabbed it, so grabbing off-centre never makes it jump
+    const sg = g.contours[c][s], at = toFont(e);
+    const own = kind === "pt" ? sg.p : { x: sg.p.x + sg[kind].x, y: sg.p.y + sg[kind].y };
+    drag.current = { kind, c, s, base: g, started: false, sx: e.clientX, sy: e.clientY, off: { x: at.x - own.x, y: at.y - own.y } };
     svgRef.current!.setPointerCapture(e.pointerId);
   };
 
   const onMove = (e: React.PointerEvent) => {
     const d = drag.current;
     if (!d) return;
-    const pos = toFont(e);
+    if (e.buttons === 0 && d.kind !== "pen") { onUp(); return; }       // the button was let go somewhere we did not see
+    const raw = toFont(e);
+    const pos = d.kind === "pen" ? raw : { x: raw.x - d.off.x, y: raw.y - d.off.y };
     if (d.kind === "pen") {
       setPen((prev) => {
         if (!prev) return prev;
@@ -308,6 +313,7 @@ export function GlyphEditor({
           onPointerMove={onMove}
           onPointerUp={onUp}
           onPointerCancel={onUp}
+          onLostPointerCapture={onUp}
           onDoubleClick={onDouble}
           onDragOver={(e) => e.preventDefault()}
           onDrop={onDrop}
