@@ -10,7 +10,7 @@ import {
   autoAnchor, checkPair, inkBox, isBelow, markShift, offsetKey, shiftContours, type Offset, type Offsets,
 } from "@/lib/handwriting/marks";
 import { emptySpacing, type Spacing } from "@/lib/handwriting/spacing";
-import { HANDWRITING_STEPS } from "@/lib/handwriting/steps";
+import { useSteps } from "@/lib/handwriting/steps";
 import { loadProject, saveMarkOffsets } from "@/lib/handwriting/store";
 import { contoursToD } from "@/lib/handwriting/svg";
 import type { Glyph } from "@/lib/handwriting/types";
@@ -24,6 +24,7 @@ const WHY = { overlaps: "Touches the letter", far: "Too far away", missing: "Mis
 const key = (l: Glyph, m: Glyph) => offsetKey(l.id, m.id);
 
 export function AnchorsClient() {
+  const steps = useSteps();
   const [glyphs, setGlyphs] = useState<Record<string, Glyph>>({});
   const [offsets, setOffsets] = useState<Offsets>({});
   const [spacing, setSpacing] = useState<Spacing>(emptySpacing());
@@ -113,7 +114,7 @@ export function AnchorsClient() {
     <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <Logo />
-        <Stepper steps={HANDWRITING_STEPS} current={4} />
+        <Stepper steps={steps} current={4} />
         <span className="flex items-center gap-2 text-sm text-muted">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>

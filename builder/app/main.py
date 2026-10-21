@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from fontmaker.handwriting import BuildRequest, build_handwriting_font, build_zip as build_handwriting_zip
 from fontmaker.play import PlayParams, build_play_font, build_zip, font_bytes
+from fontmaker.svgoutline import OutlineRequest, outline_strokes
 
 ALLOWED = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
 
@@ -83,6 +84,17 @@ async def play_build(req: PlayRequest):
         except Exception as exc:  # pragma: no cover - surfaced to the client as a clean error
             raise HTTPException(status_code=500, detail="Could not build the font") from exc
     return Response(data, media_type=media, headers={"content-disposition": f'attachment; filename="{filename}"'})
+
+
+@app.post("/svg/outline")
+async def svg_outline(req: OutlineRequest):
+    """Imported artwork may use strokes. Fonts need filled shapes, so each stroke is turned into an outline."""
+    async with _slots:
+        try:
+            contours = await asyncio.to_thread(outline_strokes, req)
+        except Exception as exc:  # pragma: no cover
+            raise HTTPException(status_code=422, detail="Could not outline those strokes") from exc
+    return {"contours": contours}
 
 
 class HandwritingBuild(BuildRequest):

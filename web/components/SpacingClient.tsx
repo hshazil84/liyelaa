@@ -11,7 +11,7 @@ import { layout } from "@/lib/handwriting/pipeline";
 import {
   ALL_MAX, ALL_MIN, PAIR_STEP, SIDE_MAX, SIDE_MIN, emptySpacing, evenOut, pairKey, pairsToLookAt, type Spacing,
 } from "@/lib/handwriting/spacing";
-import { HANDWRITING_STEPS } from "@/lib/handwriting/steps";
+import { useSteps } from "@/lib/handwriting/steps";
 import { loadProject, saveSpacing } from "@/lib/handwriting/store";
 import type { Glyph } from "@/lib/handwriting/types";
 
@@ -32,6 +32,7 @@ function Range({ id, label, value, min, max, onChange }: { id: string; label: st
 }
 
 export function SpacingClient() {
+  const steps = useSteps();
   const [glyphs, setGlyphs] = useState<Record<string, Glyph>>({});
   const [offsets, setOffsets] = useState<Offsets>({});
   const [sp, setSp] = useState<Spacing>(emptySpacing());
@@ -85,7 +86,7 @@ export function SpacingClient() {
     <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <Logo />
-        <Stepper steps={HANDWRITING_STEPS} current={5} />
+        <Stepper steps={steps} current={5} />
         <span className="flex items-center gap-2 text-sm text-muted">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>

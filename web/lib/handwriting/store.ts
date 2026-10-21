@@ -13,6 +13,7 @@ export type Project = {
   markOffsets?: Offsets;                 // hand adjustments, one per letter and vowel mark pair
   spacing?: Spacing;                     // letter spacing and pair adjustments
   info?: FontInfo;                       // name, designer and so on, for the export step
+  path?: "photo" | "draw";               // which way in this project started, so the steps are named right
 };
 
 export type FontInfo = {
@@ -26,10 +27,11 @@ export async function loadProject(): Promise<Project> {
   try { return (await get<Project>(KEY)) ?? empty(); } catch { return empty(); }
 }
 
-export async function saveGlyphs(glyphs: Glyph[]): Promise<Project> {
+export async function saveGlyphs(glyphs: Glyph[], source: "photo" | "drawn" = "photo"): Promise<Project> {
   const p = await loadProject();
+  p.path = source === "photo" ? "photo" : "draw";
   for (const g of glyphs) {
-    p.glyphs[g.id] = { ...g, source: "photo" };
+    p.glyphs[g.id] = { ...g, source };
     if (p.originals) delete p.originals[g.id];      // a fresh photo replaces the old trace
     if (p.levelled) delete p.levelled[g.id];
   }
@@ -91,6 +93,15 @@ export async function saveSpacing(spacing: Spacing): Promise<Project> {
 export async function saveInfo(info: FontInfo): Promise<Project> {
   const p = await loadProject();
   p.info = info;
+  p.updatedAt = Date.now();
+  try { await set(KEY, p); } catch {}
+  return p;
+}
+
+/** Remember which way in the project started, for example when someone opens a blank letter without importing anything. */
+export async function setPath(path: "photo" | "draw"): Promise<Project> {
+  const p = await loadProject();
+  p.path = path;
   p.updatedAt = Date.now();
   try { await set(KEY, p); } catch {}
   return p;

@@ -7,7 +7,7 @@ import { GlyphSvg } from "@/components/GlyphTile";
 import { Logo } from "@/components/Logo";
 import { Stepper } from "@/components/Stepper";
 import { layout } from "@/lib/handwriting/pipeline";
-import { HANDWRITING_STEPS } from "@/lib/handwriting/steps";
+import { useSteps } from "@/lib/handwriting/steps";
 import { loadProject, removeGlyph, updateGlyph } from "@/lib/handwriting/store";
 import { contoursToD } from "@/lib/handwriting/svg";
 import type { Glyph, LayoutCell } from "@/lib/handwriting/types";
@@ -75,6 +75,7 @@ function GlyphPath({ glyph }: { glyph: Glyph }) {
 }
 
 export function LettersClient() {
+  const steps = useSteps();
   const [glyphs, setGlyphs] = useState<Record<string, Glyph>>({});
   const [originals, setOriginals] = useState<Record<string, Glyph>>({});
   const [loaded, setLoaded] = useState(false);
@@ -137,7 +138,7 @@ export function LettersClient() {
     <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <Logo />
-        <Stepper steps={HANDWRITING_STEPS} current={2} />
+        <Stepper steps={steps} current={2} />
         <span className="flex items-center gap-2 text-sm text-muted">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>

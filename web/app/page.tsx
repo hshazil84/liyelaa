@@ -79,6 +79,7 @@ export default function Home() {
             title="Draw or import my own"
             text="Draw with the pen tool, or bring in SVG artwork from Illustrator or other vector apps."
             cta="Open the editor"
+            href="/draw"
             tone="bg-coral-soft"
           >
             <svg aria-hidden viewBox="0 0 220 100" width="200" height="90">

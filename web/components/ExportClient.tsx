@@ -10,7 +10,7 @@ import {
 } from "@/lib/handwriting/build";
 import { checkPair } from "@/lib/handwriting/marks";
 import { layout } from "@/lib/handwriting/pipeline";
-import { HANDWRITING_STEPS } from "@/lib/handwriting/steps";
+import { useSteps } from "@/lib/handwriting/steps";
 import { loadProject, saveInfo, type FontInfo, type Project } from "@/lib/handwriting/store";
 
 type Tab = "headline" | "paragraph" | "pangram" | "letters";
@@ -50,6 +50,7 @@ function Field({ id, label, hint, error, children }: { id: string; label: string
 const inputCls = "h-11 w-full rounded-xl border border-[#B6C2BF] bg-white px-3.5 text-[15px] font-normal";
 
 export function ExportClient() {
+  const steps = useSteps();
   const [project, setProject] = useState<Project | null>(null);
   const [info, setInfo] = useState<FontInfo>(DEFAULT_INFO);
   const [tab, setTab] = useState<Tab>("headline");
@@ -163,7 +164,7 @@ export function ExportClient() {
     <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <Logo />
-        <Stepper steps={HANDWRITING_STEPS} current={6} />
+        <Stepper steps={steps} current={6} />
         <span className="flex items-center gap-2 text-sm text-muted">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>

@@ -103,3 +103,30 @@ def test_a_visitor_who_builds_too_often_is_told_to_wait(monkeypatch):
     assert client.post("/handwriting/build", json=body, headers={"x-forwarded-for": "203.0.113.10"}).status_code != 429, "another visitor is not affected"
     assert client.get("/health", headers=hdr).status_code == 200, "reading is never limited"
     m._hits.clear()
+
+
+# ----------------------------------------------------------------------------- stroke outlines
+def _z():
+    return {"x": 0, "y": 0}
+
+
+def test_svg_outline_turns_a_stroked_line_into_a_filled_shape():
+    segs = [{"p": {"x": 0, "y": 0}, "hi": _z(), "ho": _z()}, {"p": {"x": 100, "y": 0}, "hi": _z(), "ho": _z()}]
+    r = client.post("/svg/outline", json={"strokes": [{"width": 20, "closed": False, "segs": segs}]})
+    assert r.status_code == 200
+    contours = r.json()["contours"]
+    assert len(contours) == 1
+    xs = [n["p"]["x"] for n in contours[0]]
+    ys = [n["p"]["y"] for n in contours[0]]
+    assert min(xs) < -9 and max(xs) > 109          # round caps stick out by half the width
+    assert min(ys) < -9 and max(ys) > 9            # and the band is 20 wide
+
+
+def test_svg_outline_merges_overlapping_strokes_and_rejects_bad_input():
+    def seg(x0, y0, x1, y1):
+        return [{"p": {"x": x0, "y": y0}, "hi": _z(), "ho": _z()}, {"p": {"x": x1, "y": y1}, "hi": _z(), "ho": _z()}]
+    two = [{"width": 20, "closed": False, "segs": seg(0, 0, 100, 0)}, {"width": 20, "closed": False, "segs": seg(50, -50, 50, 50)}]
+    r = client.post("/svg/outline", json={"strokes": two})
+    assert r.status_code == 200 and len(r.json()["contours"]) == 1     # a plus sign is one outline
+    assert client.post("/svg/outline", json={"strokes": []}).status_code == 422
+    assert client.post("/svg/outline", json={"strokes": [{"width": 0, "segs": seg(0, 0, 1, 1)}]}).status_code == 422
