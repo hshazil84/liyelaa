@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { inkBox } from "@/lib/handwriting/marks";
 import { ShapePanel } from "@/components/ShapePanel";
 import {
   addContour, clone, deleteContour, deletePoint, dist, emptyGlyph, fitAdvance, insertPoint, isSmooth,
@@ -21,7 +22,11 @@ const INK = "#10211F", TEAL = "#0B6B63", CORAL = "#D9482B";
 
 type Drag =
   | { kind: "pt" | "hi" | "ho"; c: number; s: number; base: Glyph; started: boolean; sx: number; sy: number; off: Pt }
-  | { kind: "pen" };
+  | { kind: "pen" }
+  | { kind: "pan"; sx: number; sy: number; cx: number; cy: number };
+
+const ZOOM_MIN = 1, ZOOM_MAX = 12;
+const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
 
 const iconProps = { width: 20, height: 20, viewBox: "0 0 20 20", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
 
@@ -62,18 +67,22 @@ export function GlyphEditor({
   const [shape, setShape] = useState<Shape>({ ...IDENTITY });
   const [showPts, setShowPts] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
-  const [u, setU] = useState(1);          // font units per screen pixel
+  const [px, setPx] = useState(VB_W);       // width of the canvas in screen pixels
+  const [cam, setCam] = useState({ z: 1, cx: 0, cy: VB_Y + VB_H / 2 });     // zoom and the middle of what is shown (svg space)
+  const spaceDown = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
   const drag = useRef<Drag | null>(null);
   const isMark = cell.kind === "fili";
   const cx = useRef(isMark ? 0 : Math.max(glyph?.adv ?? 600, 360) / 2).current;
-  const vbX = cx - VB_W / 2;
+  const vw = VB_W / cam.z, vh = VB_H / cam.z;
+  const vbx = (cam.z === 1 ? cx : cam.cx) - vw / 2, vby = (cam.z === 1 ? VB_Y + VB_H / 2 : cam.cy) - vh / 2;
+  const u = vw / px;          // font units per screen pixel, so points and lines stay the same size on screen when zoomed
 
   useEffect(() => {
     const el = svgRef.current;
     if (!el) return;
-    const measure = () => setU(VB_W / Math.max(el.clientWidth, 1));
+    const measure = () => setPx(Math.max(el.clientWidth, 1));
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
@@ -158,6 +167,45 @@ export function GlyphEditor({
     return { x: r.x, y: r.y };
   };
 
+  // ---------------------------------------------------------------- zoom and pan
+  const centreNow = () => ({ x: cam.z === 1 ? cx : cam.cx, y: cam.z === 1 ? VB_Y + VB_H / 2 : cam.cy });
+  /** Zoom to `z`, keeping the spot under `at` (svg space) where it is on screen. */
+  const zoomTo = (z: number, at?: { x: number; y: number }) => {
+    const nz = clampZoom(z), c = centreNow();
+    if (nz === cam.z) return;
+    if (nz === 1) { setCam({ z: 1, cx: c.x, cy: c.y }); return; }
+    const a = at ?? c, k = cam.z / nz;
+    setCam({ z: nz, cx: a.x - (a.x - c.x) * k, cy: a.y - (a.y - c.y) * k });
+  };
+  const fitInk = () => {
+    const b = inkBox(g);
+    if (!b) { setCam({ z: 1, cx, cy: VB_Y + VB_H / 2 }); return; }
+    const w = Math.max(b.x1 - b.x0, 60), h = Math.max(b.y1 - b.y0, 60);
+    setCam({ z: clampZoom(Math.min(VB_W / (w * 1.5), VB_H / (h * 1.5))), cx: (b.x0 + b.x1) / 2, cy: -(b.y0 + b.y1) / 2 });
+  };
+
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    // pinch on a trackpad, or Ctrl or ⌘ with the wheel, zooms around the pointer. A plain wheel still scrolls the page.
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      setCam((v) => {
+        const z0 = v.z, nz = clampZoom(z0 * Math.exp(-e.deltaY * 0.01));
+        if (nz === z0) return v;
+        const w0 = VB_W / z0, h0 = VB_H / z0;
+        const c = { x: z0 === 1 ? cx : v.cx, y: z0 === 1 ? VB_Y + VB_H / 2 : v.cy };
+        const at = { x: c.x - w0 / 2 + ((e.clientX - r.left) / r.width) * w0, y: c.y - h0 / 2 + ((e.clientY - r.top) / r.height) * h0 };
+        const k = z0 / nz;
+        return { z: nz, cx: at.x - (at.x - c.x) * k, cy: at.y - (at.y - c.y) * k };
+      });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [cx]);
+
   const closePen = () => {
     if (pen && pen.length >= 3) {
       const next = addContour(g, pen);
@@ -169,6 +217,13 @@ export function GlyphEditor({
 
   // ---------------------------------------------------------------- pointer handling
   const onSvgDown = (e: React.PointerEvent) => {
+    if (e.button === 1 || (e.button === 0 && spaceDown.current)) {
+      e.preventDefault();
+      const c = centreNow();
+      drag.current = { kind: "pan", sx: e.clientX, sy: e.clientY, cx: c.x, cy: c.y };
+      svgRef.current!.setPointerCapture(e.pointerId);
+      return;
+    }
     if (e.button !== 0 || previewing) return;
     const pos = toFont(e);
     if (tool === "pen") {
@@ -178,6 +233,11 @@ export function GlyphEditor({
       svgRef.current!.setPointerCapture(e.pointerId);
     } else if (tool === "move") {
       setSel(null);
+      if (cam.z > 1) {            // when zoomed in, dragging empty space moves the view
+        const c = centreNow();
+        drag.current = { kind: "pan", sx: e.clientX, sy: e.clientY, cx: c.x, cy: c.y };
+        svgRef.current!.setPointerCapture(e.pointerId);
+      }
     }
   };
 
@@ -202,6 +262,11 @@ export function GlyphEditor({
     const d = drag.current;
     if (!d) return;
     if (e.buttons === 0 && d.kind !== "pen") { onUp(); return; }       // the button was let go somewhere we did not see
+    if (d.kind === "pan") {
+      const k = vw / px;
+      setCam((v) => ({ ...v, cx: d.cx - (e.clientX - d.sx) * k, cy: d.cy - (e.clientY - d.sy) * k }));
+      return;
+    }
     const raw = toFont(e);
     const pos = d.kind === "pen" ? raw : { x: raw.x - d.off.x, y: raw.y - d.off.y };
     if (d.kind === "pen") {
@@ -225,7 +290,7 @@ export function GlyphEditor({
   const onUp = () => {
     const d = drag.current;
     drag.current = null;
-    if (d && d.kind !== "pen" && d.started) {
+    if (d && d.kind !== "pen" && d.kind !== "pan" && d.started) {
       const fitted = fitAdvance(g);
       setG(fitted);
       finish(fitted);
@@ -243,6 +308,10 @@ export function GlyphEditor({
 
   const onKey = (e: React.KeyboardEvent) => {
     const mod = e.ctrlKey || e.metaKey;
+    if (e.key === " " && !pen) { spaceDown.current = true; e.preventDefault(); return; }
+    if (!mod && (e.key === "+" || e.key === "=")) { e.preventDefault(); zoomTo(cam.z * 1.5); return; }
+    if (!mod && (e.key === "-" || e.key === "_")) { e.preventDefault(); zoomTo(cam.z / 1.5); return; }
+    if (!mod && e.key === "0") { e.preventDefault(); zoomTo(1); return; }
     if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
     if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
     if (e.key === "Enter" && pen) { e.preventDefault(); closePen(); return; }
@@ -269,7 +338,7 @@ export function GlyphEditor({
   const node = 4 * u, hit = 9 * u, line = 1.4 * u;
 
   return (
-    <div className="flex flex-col gap-3" onKeyDown={onKey} tabIndex={0} role="group" aria-label="Letter editor" data-testid="editor">
+    <div className="flex flex-col gap-3" onKeyDown={onKey} onKeyUp={(e) => { if (e.key === " ") spaceDown.current = false; }} tabIndex={0} role="group" aria-label="Letter editor" data-testid="editor">
       <div className="flex flex-wrap items-center gap-1.5">
         <ToolButton label="Pen" on={tool === "pen"} onClick={() => { setTool("pen"); setSel(null); }}>
           <svg {...iconProps}><path d="M3 17l1-4 9-9 3 3-9 9-4 1zM12 5l3 3" /></svg>
@@ -304,11 +373,12 @@ export function GlyphEditor({
       <div className="relative overflow-hidden rounded-[14px] bg-[#F3F6F5]">
         <svg
           ref={svgRef}
-          viewBox={`${vbX} ${VB_Y} ${VB_W} ${VB_H}`}
+          viewBox={`${vbx} ${vby} ${vw} ${vh}`}
           className="block h-auto w-full touch-none select-none"
-          style={{ cursor: tool === "pen" ? "crosshair" : tool === "erase" ? "not-allowed" : "default" }}
+          style={{ cursor: tool === "pen" ? "crosshair" : tool === "erase" ? "not-allowed" : cam.z > 1 ? "grab" : "default" }}
           data-testid="editor-svg"
-          data-vb={`${vbX} ${VB_Y} ${VB_W} ${VB_H}`}
+          data-vb={`${vbx} ${vby} ${vw} ${vh}`}
+          data-zoom={cam.z}
           onPointerDown={onSvgDown}
           onPointerMove={onMove}
           onPointerUp={onUp}
@@ -322,8 +392,8 @@ export function GlyphEditor({
             {/* guides */}
             {[[TOP, "Top", false], [TOP / 2, "Mid", false], [0, "Baseline", true], [DESC, "Descender", false]].map(([y, name, strong]) => (
               <g key={name as string}>
-                <line x1={vbX} x2={vbX + VB_W} y1={y as number} y2={y as number} stroke={strong ? TEAL : "#B6C2BF"} strokeWidth={(strong ? 2.5 : 1.5) * u} strokeDasharray={strong ? undefined : `${6 * u} ${5 * u}`} />
-                <text transform="scale(1,-1)" x={vbX + 12 * u} y={-(y as number) - 6 * u} fontSize={12 * u} fill={strong ? TEAL : "#5A6B68"} fontWeight={strong ? 700 : 400}>{name as string}</text>
+                <line x1={vbx} x2={vbx + vw} y1={y as number} y2={y as number} stroke={strong ? TEAL : "#B6C2BF"} strokeWidth={(strong ? 2.5 : 1.5) * u} strokeDasharray={strong ? undefined : `${6 * u} ${5 * u}`} />
+                <text transform="scale(1,-1)" x={vbx + 12 * u} y={-(y as number) - 6 * u} fontSize={12 * u} fill={strong ? TEAL : "#5A6B68"} fontWeight={strong ? 700 : 400}>{name as string}</text>
               </g>
             ))}
             {!isMark && [0, g.adv].map((x) => (
@@ -398,6 +468,12 @@ export function GlyphEditor({
             )}
           </g>
         </svg>
+        <div className="absolute right-2 top-2 flex items-center gap-1 rounded-xl border border-line bg-white/95 p-1 shadow-sm" role="group" aria-label="Zoom">
+          <button type="button" aria-label="Zoom out" disabled={cam.z <= ZOOM_MIN} onClick={() => zoomTo(cam.z / 1.5)} className="h-8 w-8 rounded-lg text-lg font-bold hover:bg-paper disabled:opacity-40">−</button>
+          <button type="button" aria-label="Back to the whole view" onClick={() => zoomTo(1)} data-testid="zoom-level" className="h-8 min-w-[52px] rounded-lg px-1.5 text-[13px] font-bold tabular-nums hover:bg-paper">{Math.round(cam.z * 100)}%</button>
+          <button type="button" aria-label="Zoom in" disabled={cam.z >= ZOOM_MAX} onClick={() => zoomTo(cam.z * 1.5)} className="h-8 w-8 rounded-lg text-lg font-bold hover:bg-paper disabled:opacity-40">+</button>
+          <button type="button" aria-label="Zoom to the letter" onClick={fitInk} disabled={!hasShape} className="h-8 rounded-lg px-2 text-[13px] font-bold hover:bg-paper disabled:opacity-40">Fit letter</button>
+        </div>
         <p className="pointer-events-none absolute bottom-2 left-3 right-3 text-[13px] text-muted" aria-live="polite">
           {previewing
             ? "Previewing your changes. Press Apply to keep them, or Reset."
