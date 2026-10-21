@@ -86,19 +86,19 @@ async function extractCell(sheet: ImageData, flat: Float32Array, cell: LayoutCel
   if (contrast < 0.5) return { ...base, status: "light" };
 
   const T = (paper + darkest) / 2;            // halfway between paper and the darkest ink
-  let inkPixels = 0, edge = false;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    if (L[y * w + x] < T) {
-      inkPixels++;
-      if (x < 2 || y < 2 || x >= w - 2) edge = true;
-    }
-  }
+  let inkPixels = 0;
+  for (let i = 0; i < L.length; i++) if (L[i] < T) inkPixels++;
   if (inkPixels < 25) return { ...base, status: "empty" };
 
   const dark = new Float32Array(w * h);
   for (let i = 0; i < dark.length; i++) dark[i] = Math.max(0, paper - L[i]);
   const rings = await traceField(boxBlur3(dark, w, h), w, h, paper - T, { minArea: SPECK_MM2 * ppm * ppm, relMinArea: 0.02, relBelow: 1.2 * ppm * ppm });
   if (!rings.length) return { ...base, status: "empty" };
+
+  // Only the letter itself counts. A stray dark pixel from the printed box line or a shadow is dropped by the
+  // tracing above, so it must not raise the warning either.
+  let edge = false;
+  for (const r of rings) for (const s of r) if (s.x < 2 || s.y < 2 || s.x >= w - 2) edge = true;
 
   const glyph = toGlyph(cell, rings, x0, y0, ppm, layout);
   return { ...base, status: "ok", glyph, warn: edge ? "Touches the edge of its box" : undefined };

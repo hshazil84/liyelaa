@@ -87,10 +87,14 @@ export async function readSvg(text: string): Promise<ReadResult> {
     for (const s of segs) { x0 = Math.min(x0, s.p.x); x1 = Math.max(x1, s.p.x); y0 = Math.min(y0, s.p.y); y1 = Math.max(y1, s.p.y); }
     return { x0, y0, x1, y1 };
   };
+  // A backing shape is a plain box with straight sides that fills the artboard. A letter on a tight artboard
+  // (Illustrator crops the artboard to the artwork) also fills it, but it has curves, so it stays.
   const isBackground = (segs: Seg[]) => {
     if (!viewBox) return false;
     const b = bbox(segs);
-    return (b.x1 - b.x0) >= 0.9 * viewBox.w && (b.y1 - b.y0) >= 0.9 * viewBox.h;
+    const covers = (b.x1 - b.x0) >= 0.9 * viewBox.w && (b.y1 - b.y0) >= 0.9 * viewBox.h;
+    const straight = segs.length <= 5 && segs.every((s) => Math.hypot(s.hi.x, s.hi.y) < 1e-6 && Math.hypot(s.ho.x, s.ho.y) < 1e-6);
+    return covers && straight;
   };
 
   const walk = (item: PItem) => {

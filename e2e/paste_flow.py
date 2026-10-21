@@ -15,6 +15,9 @@ PASTE = """(text) => { const dt = new DataTransfer(); dt.setData('text/plain', t
 # a looped handwriting stroke like the Illustrator screenshot: no fill, 6pt black stroke, self-crossing, no xmlns
 STROKE = ('<svg id="Layer_1" viewBox="0 0 900 700"><defs><style>.cls-1{fill:none;stroke:#000;stroke-miterlimit:10;stroke-width:6px;}</style></defs>'
           '<path class="cls-1" d="M40 640 C 200 520 330 360 390 250 C 420 180 450 120 400 130 C 360 140 380 300 440 280 C 520 250 560 160 600 140 C 610 250 600 330 640 320 C 700 300 720 200 735 100"/></svg>')
+# Illustrator crops the artboard to the artwork, so a filled letter with curves fills the whole viewBox
+TIGHT = ('<?xml version="1.0" encoding="UTF-8"?><svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 153.73 121.46"><defs><style>.cls-1{fill:#231f20;}</style></defs>'
+         '<path class="cls-1" d="M148.73,2.41c.13,9.35-3.17,18.71-9.1,25.95-3.03,3.7-6.69,6.98-10.9,9.4-30,17.3-80,40-120,80.7,4-8,20-30,45-50,40-30,80-50,95-66Z"/></svg>')
 FILLED = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M10 90 L50 10 L90 90 Z"/></svg>'
 
 
@@ -63,6 +66,15 @@ def main():
         pg.get_by_label("Undo").click()
         pg.wait_for_timeout(600)
         assert bbox(pg.evaluate(READ)["glyphs"]["0780"]) == bbox(g)
+
+        # a letter that fills a tight artboard is kept, not mistaken for a background
+        pg.evaluate(PASTE, TIGHT)
+        pg.wait_for_timeout(600)
+        t = pg.evaluate(READ)["glyphs"]["0780"]
+        assert t["contours"] and len(t["contours"][0]) > 3, t["contours"]
+        assert pg.get_by_test_id("paste-notice").inner_text().startswith("Pasted"), pg.get_by_test_id("paste-notice").inner_text()
+        pg.get_by_label("Undo").click()
+        pg.wait_for_timeout(600)
 
         # the Draw or import page takes a direct paste too
         pg.goto(f"{WEB}/draw")
