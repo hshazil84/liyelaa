@@ -23,6 +23,8 @@ app.add_middleware(CORSMiddleware, allow_origins=ALLOWED, allow_methods=["POST",
 
 # Each visitor (by address) gets a limited number of builds a minute. Railway puts the real address in X-Forwarded-For.
 RATE_PER_MIN = int(os.environ.get("RATE_LIMIT_PER_MIN", "20"))
+# Dragging a slider in Play rebuilds the preview many times a minute, and phone networks share one address between many people, so Play gets a much larger allowance.
+PLAY_RATE_PER_MIN = int(os.environ.get("PLAY_RATE_LIMIT_PER_MIN", "240"))
 _hits: dict[str, deque] = defaultdict(deque)
 
 
@@ -31,10 +33,12 @@ async def rate_limit(request: Request, call_next):
     if request.method == "POST" and RATE_PER_MIN > 0:
         who = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
         now = time.monotonic()
-        q = _hits[who]
+        play = request.url.path == "/play/build"
+        limit = PLAY_RATE_PER_MIN if play else RATE_PER_MIN
+        q = _hits[("play:" if play else "") + who]
         while q and now - q[0] > 60:
             q.popleft()
-        if len(q) >= RATE_PER_MIN:
+        if len(q) >= limit:
             wait = max(1, int(60 - (now - q[0])))
             origin = request.headers.get("origin", "")
             headers = {"retry-after": str(wait)}

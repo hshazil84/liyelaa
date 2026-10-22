@@ -6,7 +6,7 @@ import { BuilderWaking, useSlow } from "@/components/BuilderWaking";
 import { Stepper } from "@/components/Stepper";
 import {
   BASES, BaseId, BuildFormat, DEFAULTS, LIMITS, PRESETS, PlaySettings,
-  baseOf, buildFont, buildProblem, changes, cleanName, loadPreviewFace, previewStyle, saveBlob,
+  baseOf, BUILDER_BUSY, buildFont, buildProblem, changes, cleanName, loadPreviewFace, previewStyle, saveBlob,
 } from "@/lib/play";
 
 const STORAGE_KEY = "dfm.play.v1";
@@ -44,6 +44,7 @@ export function PlayClient() {
   const slow = useSlow(busy !== null);
   const [builtFamily, setBuiltFamily] = useState<string | null>(null);
   const [previewState, setPreviewState] = useState<PreviewState>("idle");
+  const [previewBusy, setPreviewBusy] = useState(false);
   const faceRef = useRef<FontFace | null>(null);
 
   const base = baseOf(s.base);
@@ -83,10 +84,10 @@ export function PlayClient() {
         faceRef.current = face;
         setBuiltFamily(family);
         setPreviewState("ready");
-      } catch {
-        if (!ctrl.signal.aborted) setPreviewState("error");
+      } catch (e) {
+        if (!ctrl.signal.aborted) { setPreviewState("error"); setPreviewBusy(e instanceof Error && e.message === BUILDER_BUSY); }
       }
-    }, 180);
+    }, 350);
     return () => { clearTimeout(timer); ctrl.abort(); };
   }, [base.variable, s.base, s.weight, s.width, s.slant, s.spacing]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -117,7 +118,7 @@ export function PlayClient() {
       </div>
       {!base.variable && previewState === "error" && (
         <p role="status" className="absolute bottom-3 left-4 right-4 text-[13px] text-plum">
-          The font maker is not answering, so this preview is out of date.
+          {previewBusy ? "Too many changes at once, so this preview is out of date. Move a slider again in a few seconds." : "The font maker is not answering, so this preview is out of date."}
         </p>
       )}
     </div>

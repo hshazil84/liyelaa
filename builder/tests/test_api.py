@@ -105,6 +105,17 @@ def test_a_visitor_who_builds_too_often_is_told_to_wait(monkeypatch):
     m._hits.clear()
 
 
+def test_play_previews_get_a_larger_allowance_than_other_builds(monkeypatch):
+    import app.main as m
+    monkeypatch.setattr(m, "RATE_PER_MIN", 2)
+    monkeypatch.setattr(m, "PLAY_RATE_PER_MIN", 6)
+    m._hits.clear()
+    hdr = {"x-forwarded-for": "203.0.113.20"}
+    codes = [client.post("/play/build", json={"format": "woff2"}, headers=hdr).status_code for _ in range(8)]
+    assert 429 not in codes[:6] and codes[6:] == [429, 429], codes
+    m._hits.clear()
+
+
 # ----------------------------------------------------------------------------- stroke outlines
 def _z():
     return {"x": 0, "y": 0}
