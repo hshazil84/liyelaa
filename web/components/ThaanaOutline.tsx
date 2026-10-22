@@ -13,7 +13,7 @@ export function ThaanaOutline({ id, size, label }: { id: keyof typeof HOME_THAAN
       role={label ? "img" : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
-      className="shrink-0"
+      className="shrink-0 overflow-visible"
     >
       <path d={o.d} />
     </svg>

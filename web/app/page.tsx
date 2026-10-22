@@ -10,19 +10,49 @@ function Arrow() {
   );
 }
 
+/** The printed template sheet, peeking up into the card: corner squares, a box for every letter, a baseline in each. */
+function TemplateSheet() {
+  const ink: Record<number, "ga" | "ba"> = { 1: "ga", 2: "ba", 5: "ba", 6: "ga", 9: "ga", 10: "ba", 13: "ba", 17: "ga" };
+  return (
+    <div aria-hidden className="relative h-[250px] w-[210px] shrink-0 -rotate-3 rounded-md bg-white px-4 pb-3.5 pt-[26px] shadow-[0_4px_14px_rgba(38,64,34,0.18)]">
+      <i className="absolute left-2 top-2 h-[11px] w-[11px] bg-ink" />
+      <i className="absolute right-2 top-2 h-[11px] w-[11px] bg-ink" />
+      <i className="absolute bottom-2 left-2 h-[11px] w-[11px] bg-ink" />
+      <i className="absolute bottom-2 right-2 h-[11px] w-[11px] bg-ink" />
+      <i className="absolute left-7 top-[11px] h-[5px] w-12 rounded-sm bg-ink" />
+      <i className="absolute right-7 top-3 h-1 w-[26px] rounded-sm bg-[#BDCFC2]" />
+      <div className="grid h-full grid-cols-4 border border-[#CFD9D2]">
+        {Array.from({ length: 20 }, (_, i) => (
+          <div key={i} className="relative border-[0.5px] border-[#CFD9D2]">
+            <i className="absolute inset-x-0 top-[22%] border-t-[0.5px] border-dashed border-[#BDCFC2]" />
+            <i className="absolute inset-x-0 top-[68%] border-t border-[#8FA495]" />
+            <i className="absolute bottom-[3px] right-[3px] h-0.5 w-2.5 bg-[#D4DDD6]" />
+            {ink[i] && (
+              <span className="absolute inset-x-0 top-0 flex h-[68%] items-end justify-center text-ink">
+                <ThaanaOutline id={ink[i]} size={15} />
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 type CardProps = {
   title: string;
   text: string;
   cta: string;
   href?: string;
   tone: string;
+  peek?: boolean;     // the picture starts at the top and runs off the bottom edge
   children: React.ReactNode;
 };
 
-function Card({ title, text, cta, href, tone, children }: CardProps) {
+function Card({ title, text, cta, href, tone, peek, children }: CardProps) {
   return (
     <section aria-label={title} className="flex min-w-0 flex-1 basis-[300px] flex-col gap-5 rounded-[28px] border border-line bg-white p-6">
-      <div className={`flex h-[180px] items-center justify-center gap-3 rounded-[20px] ${tone}`}>{children}</div>
+      <div className={`flex h-[180px] justify-center gap-3 overflow-hidden rounded-[20px] ${peek ? "items-start pt-[18px]" : "items-center"} ${tone}`}>{children}</div>
       <div className="flex flex-1 flex-col gap-2">
         <h2 className="font-display text-[26px] font-bold leading-tight">{title}</h2>
         <p className="text-base leading-normal text-muted">{text}</p>
@@ -72,12 +102,9 @@ export default function Home() {
             cta="Start with a photo"
             href="/handwriting"
             tone="bg-teal-soft"
+            peek
           >
-            {(["ga", "ba"] as const).map((g) => (
-              <span key={g} className="flex h-[68px] w-[52px] items-center justify-center rounded-xl bg-white text-ink">
-                <ThaanaOutline id={g} size={38} />
-              </span>
-            ))}
+            <TemplateSheet />
           </Card>
           <Card
             title="Draw or import my own"
