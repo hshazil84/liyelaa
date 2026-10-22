@@ -1,5 +1,5 @@
 import ClipperLib from "clipper-lib";
-import { fitAdvance } from "./edit";
+import { area, fitAdvance } from "./edit";
 import { inkBox } from "./marks";
 import { LSB, type Contour, type Glyph, type Seg } from "./types";
 
@@ -18,10 +18,26 @@ export type Shape = {
   slant: number;     // degrees, -25..25, positive leans right
   lift: number;      // font units up (+) or down (-)
   flip: boolean;     // mirror left to right
+  chips: number;     // 0..100, nicks, bites and scratches cut into the ink
+  bleed: number;     // 0..100, ink spreads and rounds the edges
+  seed: number;      // which random damage the grunge uses; Shuffle changes it
 };
 
-export const IDENTITY: Shape = { smooth: 0, rough: 0, weight: 0, size: 100, width: 100, slant: 0, lift: 0, flip: false };
-export const isIdentity = (s: Shape) => (Object.keys(IDENTITY) as (keyof Shape)[]).every((k) => s[k] === IDENTITY[k]);
+export const IDENTITY: Shape = { smooth: 0, rough: 0, weight: 0, size: 100, width: 100, slant: 0, lift: 0, flip: false, chips: 0, bleed: 0, seed: 1 };
+/** Nothing to apply. The seed alone is not a change, it only picks which damage a grunge setting gives. */
+export const isIdentity = (s: Shape) => (Object.keys(IDENTITY) as (keyof Shape)[]).every((k) => k === "seed" || s[k] === IDENTITY[k]);
+
+/** A small seeded random generator: the same seed always gives the same damage. */
+export function rng(seed: number) {
+  let a = Math.floor(seed) >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 type P = [number, number];
 
@@ -128,20 +144,115 @@ export function smoothGlyph(g: Glyph, amount: number): Glyph {
   }, 7, 55);
 }
 
-/** Give the edge a hand-made wobble. The same amount always gives the same wobble. */
-export function roughenGlyph(g: Glyph, amount: number): Glyph {
+/** Give the edge a hand-made wobble: a fine tremble plus a slower waver. The same amount and seed always give the same wobble. */
+export function roughenGlyph(g: Glyph, amount: number, seed = 1): Glyph {
   if (amount <= 0) return g;
-  let seed = 11;
-  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647) - 0.5;
+  const rnd = rng(11 * seed);
   return mapContours(g, (poly) => {
     const n = poly.length;
+    const knots = Array.from({ length: Math.ceil(n / 5) + 2 }, () => rnd() * 2 - 1);
     return poly.map((q, i) => {
       const a = poly[(i - 1 + n) % n], b = poly[(i + 1) % n];
       const tx = b[0] - a[0], ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1;
-      const d = rnd() * amount * 0.7;
+      const f = i / 5, k = Math.floor(f), lf = knots[k] * (1 - (f - k)) + knots[k + 1] * (f - k);
+      const d = amount * 0.22 * (0.55 * (rnd() * 2 - 1) + 0.45 * lf);
       return [q[0] - (ty / tl) * d, q[1] + (tx / tl) * d] as P;
     });
-  }, 26, 180);
+  }, 10, 120);
+}
+
+// ---------------------------------------------------------------- grunge: ink that spreads, chips and scratches
+type CP = { X: number; Y: number }[];
+const SC = 100;
+const toCP = (poly: P[]): CP => poly.map(([x, y]) => ({ X: Math.round(x * SC), Y: Math.round(y * SC) }));
+const shoelace = (poly: P[]) => { let a = 0; for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length]; a += p[0] * q[1] - q[0] * p[1]; } return a / 2; };
+
+/** Which way round the letter's own filled shapes run (the largest one decides). */
+export function outerSign(g: Glyph): number {
+  let best = 0, sign = 1;
+  for (const ct of g.contours) { const a = area(ct); if (Math.abs(a) > Math.abs(best)) { best = a; sign = Math.sign(a) || 1; } }
+  return sign;
+}
+
+/** Clipper's result paths back into outlines: filled shapes run the way the letter's do, holes the opposite way. */
+export function pathsToContours(paths: CP[], sign: number, tol: number, corner: number, minArea = 4): Contour[] {
+  const out: Contour[] = [];
+  for (const path of paths) {
+    if (Math.abs(ClipperLib.Clipper.Area(path)) / (SC * SC) < minArea) continue;
+    const hole = !ClipperLib.Clipper.Orientation(path);
+    let poly = simplify(path.map(({ X, Y }) => [X / SC, Y / SC] as P), tol);
+    if (poly.length < 3) continue;
+    if (Math.sign(shoelace(poly)) !== (hole ? -sign : sign)) poly = [...poly].reverse();
+    out.push(fitContour(poly, corner));
+  }
+  return out;
+}
+
+const solid = (g: Glyph): CP[] => {
+  const paths = g.contours.map((ct) => toCP(flattenContour(ct, 4)));
+  return ClipperLib.Clipper.SimplifyPolygons(paths, ClipperLib.PolyFillType.pftNonZero) as CP[];
+};
+
+/** Ink bleed: the ink spreads into the paper, which rounds the corners and closes tiny gaps. */
+export function bleedGlyph(g: Glyph, amount: number): Glyph {
+  if (amount <= 0 || !g.contours.length) return g;
+  const out = solid(g);
+  const grow = new ClipperLib.ClipperOffset(2, 0.2 * SC);
+  grow.AddPaths(out, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
+  const big = new ClipperLib.Paths();
+  grow.Execute(big, amount * 0.2 * SC);
+  const back = new ClipperLib.ClipperOffset(2, 0.2 * SC);
+  back.AddPaths(big, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
+  const res = new ClipperLib.Paths();
+  back.Execute(res, -amount * 0.2 * 0.35 * SC);
+  return { ...g, contours: pathsToContours(res, outerSign(g), 0.6, 60) };
+}
+
+/** A blob with a ragged edge, drawn counter-clockwise. */
+const blob = (cx: number, cy: number, r: number, rnd: () => number): P[] => {
+  const n = 9 + Math.floor(rnd() * 4);
+  return Array.from({ length: n }, (_, i) => { const a = (i / n) * Math.PI * 2, rr = r * (0.55 + 0.9 * rnd()); return [cx + Math.cos(a) * rr, cy + Math.sin(a) * rr] as P; });
+};
+
+/** Chips and scratches: small bites out of the edge, thin scratches across the ink and a few specks missing inside it. */
+export function chipGlyph(g: Glyph, amount: number, seed = 1): Glyph {
+  const box = inkBox(g);
+  if (amount <= 0 || !box) return g;
+  const rnd = rng(7919 * seed + 3), k = amount / 100;
+  const polys = g.contours.map((ct) => flattenContour(ct, 6)).filter((p) => p.length > 2);
+  const edge: P[] = polys.flat();
+  const perimeter = edge.length * 6;
+  const cuts: P[][] = [];
+  const bites = Math.round((perimeter / 90) * k * 2.2);
+  for (let i = 0; i < bites && edge.length > 2; i++) {
+    const at = Math.floor(rnd() * edge.length), a = edge[at], b = edge[(at + 1) % edge.length];
+    const tx = b[0] - a[0], ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1, r = 2.5 + rnd() * 9 * (0.4 + k);
+    const push = (rnd() - 0.45) * r;
+    cuts.push(blob(a[0] - (ty / tl) * push, a[1] + (tx / tl) * push, r, rnd));
+  }
+  const w = box.x1 - box.x0, h = box.y1 - box.y0;
+  const scratches = Math.round(k * 7 + (k > 0.3 ? 1 : 0));
+  for (let i = 0; i < scratches; i++) {
+    const x = box.x0 + rnd() * w, y = box.y0 + rnd() * h, ang = rnd() * Math.PI, len = 40 + rnd() * 150 * (0.4 + k), wd = 0.8 + rnd() * 2.2;
+    const dx = Math.cos(ang), dy = Math.sin(ang), nx = -dy * wd, ny = dx * wd;
+    cuts.push([[x - dx * len / 2 - nx, y - dy * len / 2 - ny], [x + dx * len / 2 - nx, y + dy * len / 2 - ny], [x + dx * len / 2 + nx, y + dy * len / 2 + ny], [x - dx * len / 2 + nx, y - dy * len / 2 + ny]]);
+  }
+  const specks = k > 0.4 ? Math.round(k * 9) : 0;
+  for (let i = 0; i < specks; i++) cuts.push(blob(box.x0 + rnd() * w, box.y0 + rnd() * h, 1.5 + rnd() * 4.5, rnd));
+  if (!cuts.length) return g;
+  const clip = new ClipperLib.Paths();
+  {
+    const u = new ClipperLib.Clipper();
+    u.AddPaths(cuts.map((c) => toCP(shoelace(c) < 0 ? [...c].reverse() : c)), ClipperLib.PolyType.ptSubject, true);
+    u.Execute(ClipperLib.ClipType.ctUnion, clip, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
+  }
+  const res = new ClipperLib.Paths();
+  const c = new ClipperLib.Clipper();
+  c.AddPaths(solid(g), ClipperLib.PolyType.ptSubject, true);
+  c.AddPaths(clip, ClipperLib.PolyType.ptClip, true);
+  c.Execute(ClipperLib.ClipType.ctDifference, res, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
+  const contours = pathsToContours(res, outerSign(g), 0.35, 45, 6);
+  return contours.length ? { ...g, contours } : g;
 }
 
 /** Make every stroke thicker (positive) or thinner (negative) by the same amount on both sides. */
@@ -188,7 +299,9 @@ export function applyShape(g: Glyph, s: Shape): Glyph {
   if (isIdentity(s) || !g.contours.length) return g;
   let out = weightGlyph(g, s.weight * 0.6);
   out = smoothGlyph(out, s.smooth);
-  out = roughenGlyph(out, s.rough);
+  out = bleedGlyph(out, s.bleed);
+  out = roughenGlyph(out, s.rough, s.seed);
+  out = chipGlyph(out, s.chips, s.seed);
   out = placeGlyph(out, s);
   return out.contours.length ? fitAdvance(out) : g;
 }

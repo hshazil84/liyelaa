@@ -58,13 +58,14 @@ def main():
         # the marker is first in the toolbar, selected for an empty letter, with its nib panel
         assert tool(pg, "Marker").get_attribute("aria-pressed") == "true"
         assert pg.get_by_test_id("marker-panel").is_visible()
-        names = pg.get_by_test_id("editor").locator("button[aria-label][title]").evaluate_all("els => els.map(e => e.getAttribute('aria-label'))")
-        assert names[0] == "Marker", names
+        names = pg.get_by_test_id("editor").get_by_role("toolbar").locator("button").evaluate_all("els => els.map(e => e.innerText.trim())")
+        assert names[:4] == ["Marker", "Shape", "Edit", "Erase"], names
         assert pg.get_by_test_id("nib-chisel").get_attribute("aria-checked") == "true"
 
         # a stroke with the round nib is an even line, one shape, saved
         pg.get_by_test_id("nib-round").click()
         assert pg.get_by_test_id("nib-angle").is_disabled(), "a round nib has no angle"
+        pg.evaluate("document.querySelector('[data-testid=marker-more]').open = true")
         pg.get_by_test_id("nib-size").fill("76"); pg.get_by_test_id("nib-smooth").fill("0")
         drag(pg, [(120, 150), (200, 150), (300, 150), (400, 150)])
         g = glyph(pg, "0784")
@@ -108,6 +109,7 @@ def main():
         assert len(glyph(pg, "0780")["contours"]) == len(old["contours"]) + 1
 
         # the nib is remembered
+        pg.evaluate("document.querySelector('[data-testid=marker-more]').open = true")
         pg.get_by_test_id("nib-taper").fill("60")
         pg.reload(); pg.locator('[data-cell="0780"]').click(); pg.wait_for_selector("[data-testid=editor-svg]")
         tool(pg, "Marker").click()
@@ -121,6 +123,21 @@ def main():
         pg.keyboard.press("Escape"); pg.mouse.up(); pg.wait_for_timeout(450)
         assert len(glyph(pg, "0780")["contours"]) == cnt and pg.get_by_test_id("marker-live").count() == 0
         pg.screenshot(path=str(Path(__file__).parent / "out" / "marker.png"))
+
+        # ink: a clean stroke is one smooth shape; a dry stroke is streaked, so it has far more points and gaps
+        pg.locator('[data-cell="0784"]').click(); pg.wait_for_selector("[data-testid=editor-svg]")
+        tool(pg, "Marker").click(); pg.get_by_test_id("ink-clean").click(); pg.get_by_test_id("nib-round").click(); pg.get_by_test_id("nib-size").fill("110")
+        drag(pg, [(100, -100), (250, -60), (400, -100), (550, -60), (700, -100)])
+        clean_pts = sum(len(c) for c in glyph(pg, "0784")["contours"])
+        pg.get_by_test_id("ink-dry").click()
+        assert pg.get_by_test_id("ink-dry").get_attribute("aria-checked") == "true"
+        drag(pg, [(100, 100), (250, 140), (400, 100), (550, 140), (700, 100)])
+        both = glyph(pg, "0784")["contours"]
+        dry_pts = sum(len(c) for c in both) - clean_pts
+        assert dry_pts > clean_pts * 3 and len(both) >= 3, (clean_pts, dry_pts, len(both))
+        pg.get_by_test_id("ink-felt").click()
+        pg.get_by_label("Undo").click(); pg.wait_for_timeout(300)
+        assert pg.get_by_test_id("ink-felt").get_attribute("aria-checked") == "true"
         assert not errors, errors
         b.close()
     print("marker flow ok")

@@ -98,11 +98,11 @@ def main():
         assert nodes(pg) == n1, (n1, nodes(pg))
 
         # 6. eraser removes a point; so does clicking a speck
-        tool(pg, "Eraser").click()
+        tool(pg, "Erase").click()
         x, y = centre(pg, '[data-node="0-3"]')
         pg.mouse.click(x, y); settle(pg)
         assert nodes(pg) == n1 - 1, (n1, nodes(pg))
-        tool(pg, "Move points").click()
+        tool(pg, "Edit").click()
 
         # 7. back to the traced drawing
         tool(pg, "Back to my drawing").click(); settle(pg)
@@ -113,7 +113,7 @@ def main():
         pg.locator('[data-cell="0786"]').click()
         pg.wait_for_selector("[data-testid=editor-svg]")
         assert tool(pg, "Marker").get_attribute("aria-pressed") == "true", "an empty letter starts with the marker"
-        tool(pg, "Pen").click()
+        tool(pg, "Shape").click()
         pts = [(150, 0), (350, 0), (250, 300)]
         for fx, fy in pts:
             sx, sy, _ = to_screen(pg, fx, fy)
@@ -126,7 +126,7 @@ def main():
         assert g["adv"] >= 350 + 40, g["adv"]
         assert pg.locator('[data-cell="0786"]').get_attribute("data-status") == "traced"
         # a curved point: click and drag
-        tool(pg, "Pen").click()
+        tool(pg, "Shape").click()
         a = to_screen(pg, 100, -150); c2 = to_screen(pg, 300, -150); d = to_screen(pg, 200, -250)
         pg.mouse.move(a[0], a[1]); pg.mouse.down(); pg.mouse.move(a[0] + 20, a[1] + 20, steps=4); pg.mouse.up()
         pg.mouse.click(c2[0], c2[1])

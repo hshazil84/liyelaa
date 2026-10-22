@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { inkBox } from "@/lib/handwriting/marks";
 import { MarkerPanel } from "@/components/MarkerPanel";
 import { ShapePanel } from "@/components/ShapePanel";
+import { SizeCheck } from "@/components/SizeCheck";
 import {
   addContour, clone, deleteContour, deletePoint, dist, emptyGlyph, fitAdvance, insertPoint, isSmooth,
   makeCorner, makeSmooth, movePoint, moveHandle, nearestOnOutline, nudge, reverseContour, type Sel,
@@ -16,6 +17,7 @@ import { contoursToD } from "@/lib/handwriting/svg";
 import { UNITS_PER_MM, type Glyph, type LayoutCell, type Pt, type Seg } from "@/lib/handwriting/types";
 
 type Tool = "move" | "pen" | "marker" | "erase";
+type Panel = "tool" | "letter" | "check";
 const NIB_KEY = "myakuru.nib";
 
 const TOP = Math.round((layout.guides.baseY - layout.guides.topY) * UNITS_PER_MM);          // 494
@@ -50,6 +52,23 @@ function ToolButton({ label, on, disabled, onClick, children }: { label: string;
   );
 }
 
+/** A tool with its name under the icon, so a first-timer can tell what each one does. */
+function LabelTool({ label, on, onClick, children }: { label: string; on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className={`flex min-w-[68px] flex-col items-center gap-0.5 rounded-[14px] border-[1.5px] px-2.5 pb-1.5 pt-2 text-[13px] font-bold ${on ? "border-ink bg-ink text-white" : "border-[#BDCFC2] bg-white text-ink hover:bg-paper"}`}
+    >
+      {children}
+      {label}
+    </button>
+  );
+}
+
+const bigIcon = { ...iconProps, width: 22, height: 22 } as const;
+
 /**
  * Edit one letter: move points and handles, add points, draw new shapes with the pen, delete.
  * `key` the component by letter so history starts fresh for each one.
@@ -66,6 +85,7 @@ export function GlyphEditor({
   const [past, setPast] = useState<Glyph[]>([]);
   const [future, setFuture] = useState<Glyph[]>([]);
   const [tool, setTool] = useState<Tool>(glyph ? "move" : "marker");
+  const [panel, setPanel] = useState<Panel>("tool");
   const [sel, setSel] = useState<Sel>(null);
   const [pen, setPen] = useState<Seg[] | null>(null);
   const [nib, setNib] = useState<Nib>(DEFAULT_NIB);
@@ -337,7 +357,7 @@ export function GlyphEditor({
       const v = liveRef.current;
       setLive(null);
       if (v) {
-        const next = addStroke(g, strokeHulls(v.pts, nib, v.press), nib);
+        const next = addStroke(g, strokeHulls(v.pts, nib, v.press), nib, v.pts);
         if (next !== g) commit(next);
       }
       return;
@@ -387,41 +407,47 @@ export function GlyphEditor({
     return d;
   })();
 
+  const hint = previewing
+    ? "Previewing. Press Apply to keep it."
+    : tool === "marker"
+    ? "Drag to draw with the marker."
+    : tool === "pen"
+    ? pen?.length
+      ? pen.length < 3 ? "Keep clicking to add dots." : "Click the first dot or press Enter to close."
+      : "Click to place dots. Drag to curve."
+    : tool === "erase"
+      ? "Click a dot or a shape to remove it."
+      : hasShape
+        ? "Drag any dot to fix the shape."
+        : "Nothing drawn yet. Use Marker or Shape, or paste from Illustrator with Ctrl or ⌘ V.";
+
   const node = 4 * u, hit = 9 * u, line = 1.4 * u;
 
   return (
     <div className="flex flex-col gap-3" onKeyDown={onKey} onKeyUp={(e) => { if (e.key === " ") spaceDown.current = false; }} tabIndex={0} role="group" aria-label="Letter editor" data-testid="editor">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <ToolButton label="Marker" on={tool === "marker"} onClick={() => { setTool("marker"); setSel(null); setPen(null); }}>
-          <svg {...iconProps}><path d="M11 3l6 6-5.5 5.5-6-6z" /><path d="M5.5 8.5L4 14l3 3 5.5-1.5" /><path d="M3 18.5h4.5" strokeWidth={2.4} /></svg>
-        </ToolButton>
-        <ToolButton label="Pen" on={tool === "pen"} onClick={() => { setTool("pen"); setSel(null); setLive(null); }}>
-          <svg {...iconProps}><path d="M3 17l1-4 9-9 3 3-9 9-4 1zM12 5l3 3" /></svg>
-        </ToolButton>
-        <ToolButton label="Move points" on={tool === "move"} onClick={() => { setTool("move"); setPen(null); setLive(null); }}>
-          <svg {...iconProps}><path d="M5 3l10 6-4 1.5L9 15 5 3z" /></svg>
-        </ToolButton>
-        <ToolButton label="Eraser" on={tool === "erase"} onClick={() => { setTool("erase"); setPen(null); setSel(null); setLive(null); }}>
-          <svg {...iconProps}><path d="M8 16l-4-4 8-8 5 5-6 7H8zM7 8l5 5" /></svg>
-        </ToolButton>
-        <span className="mx-1 h-6 w-px bg-line" />
+      <div className="flex flex-wrap items-stretch gap-2" role="toolbar" aria-label="Tools">
+        <LabelTool label="Marker" on={tool === "marker"} onClick={() => { setTool("marker"); setPanel("tool"); setSel(null); setPen(null); }}>
+          <svg {...bigIcon}><path d="M8 2.5h4a1 1 0 011 1V9H7V3.5a1 1 0 011-1z" /><path d="M7 9h6l-1 4.5a1 1 0 01-1 .8H9a1 1 0 01-1-.8z" /><path d="M9.2 14.3v1.8h1.6v-1.8" /><path d="M3 18.2c1.4-1.5 2.6-1.5 4 0s2.6 1.5 4 0 2.6-1.5 4 0" strokeWidth={2} /></svg>
+        </LabelTool>
+        <LabelTool label="Shape" on={tool === "pen"} onClick={() => { setTool("pen"); setPanel("tool"); setSel(null); setLive(null); }}>
+          <svg {...bigIcon} viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z" /><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" /><path d="M2 2l7.586 7.586" /><circle cx="11" cy="11" r="2" /></svg>
+        </LabelTool>
+        <LabelTool label="Edit" on={tool === "move"} onClick={() => { setTool("move"); setPanel("tool"); setPen(null); setLive(null); }}>
+          <svg {...bigIcon}><path d="M5 3l10 6-4 1.5L9 15 5 3z" /></svg>
+        </LabelTool>
+        <LabelTool label="Erase" on={tool === "erase"} onClick={() => { setTool("erase"); setPanel("tool"); setPen(null); setSel(null); setLive(null); }}>
+          <svg {...bigIcon}><path d="M8 16l-4-4 8-8 5 5-6 7H8zM7 8l5 5" /></svg>
+        </LabelTool>
+        <span className="flex-1" />
         <ToolButton label="Undo" disabled={!past.length} onClick={undo}>
           <svg {...iconProps}><path d="M7 5L3 9l4 4M3 9h9a4 4 0 010 8h-2" /></svg>
         </ToolButton>
         <ToolButton label="Redo" disabled={!future.length} onClick={redo}>
           <svg {...iconProps}><path d="M13 5l4 4-4 4M17 9H8a4 4 0 000 8h2" /></svg>
         </ToolButton>
-        <span className="mx-1 h-6 w-px bg-line" />
-        <button type="button" disabled={!selSeg || isSmooth(selSeg)} onClick={() => sel && commit(makeSmooth(g, sel.c, sel.s))} className="h-10 rounded-[10px] border border-[#BDCFC2] bg-white px-3 text-sm font-bold hover:bg-paper disabled:opacity-40">
-          Make smooth
-        </button>
-        <button type="button" disabled={!selSeg || (!selSeg.hi.x && !selSeg.hi.y && !selSeg.ho.x && !selSeg.ho.y)} onClick={() => sel && commit(makeCorner(g, sel.c, sel.s))} className="h-10 rounded-[10px] border border-[#BDCFC2] bg-white px-3 text-sm font-bold hover:bg-paper disabled:opacity-40">
-          Make corner
-        </button>
-        <button type="button" disabled={!sel} onClick={() => sel && commit(reverseContour(g, sel.c))} title="Turns a filled shape into a hole, or a hole into a filled shape" className="h-10 rounded-[10px] border border-[#BDCFC2] bg-white px-3 text-sm font-bold hover:bg-paper disabled:opacity-40">
-          Fill ↔ hole
-        </button>
       </div>
+
+      <p className="rounded-[14px] bg-[#D6EADC] px-3.5 py-2.5 text-sm" aria-live="polite" data-testid="editor-hint">{hint}</p>
 
       <div className="flex flex-wrap items-start gap-4">
       <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-3">
@@ -533,22 +559,6 @@ export function GlyphEditor({
           <button type="button" aria-label="Zoom to the letter" onClick={fitInk} disabled={!hasShape} className="h-8 rounded-lg px-2 text-[13px] font-bold hover:bg-paper disabled:opacity-40">Fit letter</button>
         </div>
       </div>
-      <p className="px-1 text-[13px] leading-snug text-muted" aria-live="polite">
-        {previewing
-          ? "Previewing your changes. Press Apply to keep them, or Reset."
-          : tool === "marker"
-          ? "Drag to draw. Lift to finish a stroke. A stroke that touches a shape joins it."
-          : tool === "pen"
-          ? pen?.length
-            ? pen.length < 3 ? "Keep clicking to add points. Drag while clicking to make a curve." : "Click the first point or press Enter to close the shape."
-            : "Click to start a shape. Drag while clicking to make a curve."
-          : tool === "erase"
-            ? "Click a point to remove it, or click a shape to remove all of it."
-            : hasShape
-              ? "Drag a point or its handles. Double-click the outline to add a point."
-              : "Nothing drawn yet. Use the marker or the pen, or paste artwork from Illustrator with Ctrl or ⌘ V."}
-      </p>
-
       {notice && (
         <p role="status" data-testid="paste-notice" className="flex items-start justify-between gap-3 rounded-xl bg-sand px-3.5 py-2.5 text-[13px] leading-snug">
           <span>{notice}</span>
@@ -556,10 +566,6 @@ export function GlyphEditor({
         </p>
       )}
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-        <label className="flex items-center gap-2 font-medium">
-          <input type="checkbox" checked={showPts} onChange={(e) => setShowPts(e.target.checked)} className="h-[18px] w-[18px] accent-teal" />
-          Show points
-        </label>
         <button
           type="button"
           disabled={!original && !hasShape}
@@ -574,10 +580,39 @@ export function GlyphEditor({
         </button>
       </div>
       </div>
-      <div className="flex w-full flex-col gap-4 xl:w-[300px] xl:shrink-0">
-        {tool === "marker" && <MarkerPanel nib={nib} onNib={changeNib} />}
-        <ShapePanel shape={shape} onShape={setShape} onApply={applyShapeNow} view={view} disabled={!hasShape} />
-      </div>
+      <aside aria-label="Adjust" className="flex w-full flex-col gap-3.5 rounded-2xl border border-line bg-white p-3.5 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:w-[320px] xl:shrink-0 xl:overflow-y-auto">
+        <div role="tablist" aria-label="Panels" className="flex gap-1 rounded-xl bg-[#F3F9F5] p-1">
+          {([["tool", "Tool"], ["letter", "Letter"], ["check", "Check"]] as const).map(([id, name]) => (
+            <button key={id} type="button" role="tab" aria-selected={panel === id} data-testid={`tab-${id}`} onClick={() => setPanel(id)}
+              className={`min-h-[36px] flex-1 rounded-[9px] text-[13.5px] font-bold ${panel === id ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink"}`}>
+              {name}
+            </button>
+          ))}
+        </div>
+        {panel === "tool" && (
+          tool === "marker" ? <MarkerPanel nib={nib} onNib={changeNib} /> : tool === "move" ? (
+            <div className="flex flex-col gap-3" data-testid="dot-panel">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted">Selected dot</span>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" disabled={!selSeg || isSmooth(selSeg)} onClick={() => sel && commit(makeSmooth(g, sel.c, sel.s))} className="min-h-[44px] rounded-xl border border-[#BDCFC2] bg-white px-2 text-sm font-bold hover:bg-paper disabled:opacity-40">Curved</button>
+                <button type="button" disabled={!selSeg || (!selSeg.hi.x && !selSeg.hi.y && !selSeg.ho.x && !selSeg.ho.y)} onClick={() => sel && commit(makeCorner(g, sel.c, sel.s))} className="min-h-[44px] rounded-xl border border-[#BDCFC2] bg-white px-2 text-sm font-bold hover:bg-paper disabled:opacity-40">Sharp corner</button>
+              </div>
+              <details className="border-t border-line pt-3">
+                <summary className="cursor-pointer text-sm font-bold">More</summary>
+                <div className="mt-3 flex flex-col gap-3">
+                  <button type="button" disabled={!sel} onClick={() => sel && commit(reverseContour(g, sel.c))} title="Turns a filled shape into a hole, or a hole into a filled shape" className="min-h-[44px] rounded-xl border border-[#BDCFC2] bg-white px-2 text-sm font-bold hover:bg-paper disabled:opacity-40">Fill ↔ hole</button>
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input type="checkbox" checked={showPts} onChange={(e) => setShowPts(e.target.checked)} className="h-[18px] w-[18px] accent-teal" />
+                    Show dots
+                  </label>
+                </div>
+              </details>
+            </div>
+          ) : <p className="rounded-xl bg-[#F3F9F5] px-3 py-2.5 text-sm text-muted">Nothing to set for this tool.</p>
+        )}
+        {panel === "letter" && <ShapePanel shape={shape} onShape={setShape} onApply={applyShapeNow} disabled={!hasShape} />}
+        {panel === "check" && (hasShape ? <SizeCheck glyph={view} /> : <p className="rounded-xl bg-[#F3F9F5] px-3 py-2.5 text-sm text-muted">Draw the letter first.</p>)}
+      </aside>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import ClipperLib from "clipper-lib";
 import { area } from "./edit";
-import { fitContour, flattenContour, simplify } from "./shape";
+import { fitContour, flattenContour, rng, simplify } from "./shape";
 import { UNITS_PER_MM, type Contour, type Glyph, type Pt } from "./types";
 
 /**
@@ -17,11 +17,13 @@ export type Nib = {
   flat: number;      // 10..100, how flat the nib is: its short side as a share of its long side
   smooth: number;    // 0..90, how much the line is steadied while drawing
   taper: number;     // 0..100, how much the ends narrow
+  bleed: number;     // 0..100, ink spreading into the paper: softer, wobblier edges
+  dry: number;       // 0..100, streaks where the marker is running out of ink, more so towards the end of a stroke
 };
 
 export const SIZE_MIN = Math.round(0.4 * UNITS_PER_MM);
 export const SIZE_MAX = Math.round(5 * UNITS_PER_MM);
-export const DEFAULT_NIB: Nib = { shape: "chisel", size: Math.round(1.8 * UNITS_PER_MM), angle: -40, flat: 22, smooth: 55, taper: 0 };
+export const DEFAULT_NIB: Nib = { shape: "chisel", size: Math.round(1.8 * UNITS_PER_MM), angle: -40, flat: 22, smooth: 55, taper: 0, bleed: 0, dry: 0 };
 
 export const NIB_LABEL: Record<NibShape, string> = { round: "Round", oval: "Oval", chisel: "Chisel", square: "Square" };
 /** What flatness a shape starts with, and whether its angle matters. */
@@ -31,6 +33,14 @@ export const NIB_START: Record<NibShape, { flat: number; angled: boolean }> = {
   chisel: { flat: 22, angled: true },
   square: { flat: 100, angled: true },
 };
+
+/** The ready-made inks: how much the ink spreads and how dry the marker is. */
+export const INKS = [
+  { id: "clean", label: "Clean", bleed: 0, dry: 0 },
+  { id: "felt", label: "Felt tip", bleed: 35, dry: 0 },
+  { id: "dry", label: "Dry", bleed: 12, dry: 60 },
+  { id: "wet", label: "Wet", bleed: 80, dry: 0 },
+] as const;
 
 /** Switching shape also resets the flatness to what that shape normally has. */
 export const withShape = (n: Nib, shape: NibShape): Nib => ({ ...n, shape, flat: NIB_START[shape].flat });
@@ -42,6 +52,7 @@ export const cleanNib = (x: unknown): Nib => {
   return {
     shape, size: num(o.size, SIZE_MIN, SIZE_MAX, DEFAULT_NIB.size), angle: num(o.angle, -90, 90, DEFAULT_NIB.angle),
     flat: num(o.flat, 10, 100, NIB_START[shape].flat), smooth: num(o.smooth, 0, 90, DEFAULT_NIB.smooth), taper: num(o.taper, 0, 100, DEFAULT_NIB.taper),
+    bleed: num(o.bleed, 0, 100, 0), dry: num(o.dry, 0, 100, 0),
   };
 };
 
@@ -116,21 +127,123 @@ type CP = { X: number; Y: number }[];
 const toPath = (poly: P[]): CP => poly.map(([x, y]) => ({ X: Math.round(x * SC), Y: Math.round(y * SC) }));
 const shoelace = (poly: P[]) => { let s = 0; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; s += a[0] * b[1] - b[0] * a[1]; } return s / 2; };
 
+
+const unionHulls = (hulls: P[][], sign: number): CP[] => {
+  const out = new ClipperLib.Paths();
+  const c = new ClipperLib.Clipper();
+  c.AddPaths(hulls.map((h) => toPath(sign > 0 ? h : [...h].reverse())), ClipperLib.PolyType.ptSubject, true);
+  c.Execute(ClipperLib.ClipType.ctUnion, out, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
+  return out as CP[];
+};
+
+const offsetPaths = (paths: CP[], d: number, join: number, end: number): CP[] => {
+  const co = new ClipperLib.ClipperOffset(2, 0.2 * SC);
+  co.AddPaths(paths, join, end);
+  const out = new ClipperLib.Paths();
+  co.Execute(out, d * SC);
+  return out as CP[];
+};
+
+/** The hand's path at an even spacing, steadied a little so the lanes of a streak run smoothly. */
+function resample(pts: Pt[], step: number): Pt[] {
+  const out: Pt[] = [pts[0]];
+  let carry = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i], d = Math.hypot(b.x - a.x, b.y - a.y);
+    let at = step - carry;
+    while (at <= d) { const t = at / d; out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }); at += step; }
+    carry = d - (at - step);
+  }
+  return out.map((p, i) => {
+    const a = out[Math.max(0, i - 2)], b = out[Math.min(out.length - 1, i + 2)];
+    return { x: (p.x * 2 + a.x + b.x) / 4, y: (p.y * 2 + a.y + b.y) / 4 };
+  });
+}
+
+/** Wet ink: it spreads out a little, loses its sharp corners and gets a soft wobble along the edge. */
+function bleedInk(ink: CP[], nib: Nib, rnd: () => number): CP[] {
+  const k = nib.bleed / 100;
+  let out = offsetPaths(offsetPaths(ink, 1 + k * 0.05 * nib.size, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon), -(0.4 + k * 0.016 * nib.size), ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon);
+  const amp = 0.8 + k * 3.2;
+  out = out.map((path) => {
+    const pts: P[] = path.map(({ X, Y }) => [X / SC, Y / SC] as P);
+    const fine: P[] = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length], d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(d / 4));
+      for (let j = 0; j < n; j++) fine.push([a[0] + ((b[0] - a[0]) * j) / n, a[1] + ((b[1] - a[1]) * j) / n]);
+    }
+    const knots = Array.from({ length: Math.ceil(fine.length / 6) + 2 }, () => rnd() * 2 - 1);
+    return toPath(fine.map((q, i) => {
+      const a = fine[(i - 1 + fine.length) % fine.length], b = fine[(i + 1) % fine.length];
+      const tx = b[0] - a[0], ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1;
+      const f = i / 6, kk = Math.floor(f), lf = knots[kk] * (1 - (f - kk)) + knots[kk + 1] * (f - kk);
+      const d = amp * (0.5 * (rnd() * 2 - 1) + 0.5 * lf);
+      return [q[0] - (ty / tl) * d, q[1] + (tx / tl) * d] as P;
+    }));
+  });
+  return out;
+}
+
+/** Dry marker: thin streaks along the stroke where the felt has run out of ink. They get longer and more frequent towards the end. */
+function dryInk(ink: CP[], pts: Pt[], nib: Nib, rnd: () => number): CP[] {
+  const path = resample(pts, 5);
+  if (path.length < 6) return ink;
+  const k = nib.dry / 100, half = nib.size * 0.42, lanes = Math.round(3 + k * 8);
+  const cuts: CP[] = [];
+  for (let l = 0; l < lanes; l++) {
+    const lat = (rnd() * 2 - 1) * half, wd = 0.8 + rnd() * 1.8 + k * 1.2;
+    let i = Math.floor(rnd() * 8), seg: Pt[] = [];
+    const flush = () => { if (seg.length >= 3) cuts.push(...offsetPaths([toPath(seg.map((p) => [p.x, p.y] as P))], wd / 2, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etOpenButt)); seg = []; };
+    while (i < path.length) {
+      const t = i / (path.length - 1), on = rnd() < k * (0.1 + 0.9 * t), len = 4 + Math.floor(rnd() * 16);
+      for (let j = 0; j < len && i < path.length; j++, i++) {
+        if (!on) continue;
+        const a = path[Math.max(0, i - 1)], b = path[Math.min(path.length - 1, i + 1)];
+        const tx = b.x - a.x, ty = b.y - a.y, tl = Math.hypot(tx, ty) || 1;
+        seg.push({ x: path[i].x - (ty / tl) * lat, y: path[i].y + (tx / tl) * lat });
+      }
+      flush();
+    }
+  }
+  if (!cuts.length) return ink;
+  const clipU = new ClipperLib.Paths();
+  const u = new ClipperLib.Clipper();
+  u.AddPaths(cuts, ClipperLib.PolyType.ptSubject, true);
+  u.Execute(ClipperLib.ClipType.ctUnion, clipU, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
+  const res = new ClipperLib.Paths();
+  const c = new ClipperLib.Clipper();
+  c.AddPaths(ink, ClipperLib.PolyType.ptSubject, true);
+  c.AddPaths(clipU, ClipperLib.PolyType.ptClip, true);
+  c.Execute(ClipperLib.ClipType.ctDifference, res, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
+  return res as CP[];
+}
+
+/** The ink of a stroke with the nib's ink applied: spread and wobble for wet ink, streaks for a dry marker. */
+function styleInk(ink: CP[], pts: Pt[] | undefined, nib: Nib): CP[] {
+  if (!pts || !pts.length || (nib.bleed <= 0 && nib.dry <= 0)) return ink;
+  const rnd = rng(Math.abs(Math.round(pts[0].x * 7 + pts[0].y * 13 + pts.length * 31)) + 1);
+  let out = ink;
+  if (nib.bleed > 0) out = bleedInk(out, nib, rnd);
+  if (nib.dry > 0) out = dryInk(out, pts, nib, rnd);
+  return out;
+}
+
+/** What a stroke through `pts` looks like with this nib and ink, as SVG path text, for the preview. */
+export function strokeToD(pts: Pt[], nib: Nib, press?: number[]): string {
+  const paths = styleInk(unionHulls(strokeHulls(pts, nib, press), 1), pts, nib);
+  return paths.map((p) => `M${p.map(({ X, Y }) => `${(X / SC).toFixed(1)} ${(Y / SC).toFixed(1)}`).join("L")}Z`).join("");
+}
+
 /** The letter with the stroke's ink merged in. Shapes the stroke touches become one clean outline; every other shape is left exactly as it was. */
-export function addStroke(g: Glyph, hulls: P[][], nib: Nib): Glyph {
+export function addStroke(g: Glyph, hulls: P[][], nib: Nib, pts?: Pt[]): Glyph {
   if (!hulls.length) return g;
   const sign = (() => {
     let best = 0, s = 1;
     for (const ct of g.contours) { const a = area(ct); if (Math.abs(a) > Math.abs(best)) { best = a; s = Math.sign(a) || 1; } }
     return s;
   })();
-  const ink = new ClipperLib.Paths();
-  {
-    const c = new ClipperLib.Clipper();
-    // the pieces run the same way round as the letter's own filled shapes, so they add to them instead of cancelling
-    c.AddPaths(hulls.map((h) => toPath(sign > 0 ? h : [...h].reverse())), ClipperLib.PolyType.ptSubject, true);
-    c.Execute(ClipperLib.ClipType.ctUnion, ink, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
-  }
+  // the pieces run the same way round as the letter's own filled shapes, so they add to them instead of cancelling
+  const ink = styleInk(unionHulls(hulls, sign), pts, nib);
   if (!ink.length) return g;
 
   // group each filled shape with the holes inside it, so a stroke that crosses a hole takes the whole shape with it
@@ -174,7 +287,8 @@ export function addStroke(g: Glyph, hulls: P[][], nib: Nib): Glyph {
   c.AddPaths(ink, ClipperLib.PolyType.ptClip, true);
   c.Execute(ClipperLib.ClipType.ctUnion, all, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
 
-  const tol = 0.5 + nib.size * 0.012;
+  const styled = nib.bleed > 0 || nib.dry > 0;
+  const tol = styled ? 0.4 : 0.5 + nib.size * 0.012;
   const made: Contour[] = [];
   for (const path of all as CP[]) {
     const hole = !ClipperLib.Clipper.Orientation(path);
@@ -182,7 +296,7 @@ export function addStroke(g: Glyph, hulls: P[][], nib: Nib): Glyph {
     poly = simplify(poly, tol);
     if (poly.length < 3) continue;
     if (Math.sign(shoelace(poly)) !== (hole ? -sign : sign)) poly = [...poly].reverse();     // filled shapes keep the letter's direction, holes the opposite
-    made.push(fitContour(poly, 50));
+    made.push(fitContour(poly, styled ? 40 : 50));
   }
   return { ...g, contours: [...keep, ...made] };
 }

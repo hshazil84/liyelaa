@@ -31,6 +31,7 @@ def bbox(g):
 
 
 def slide(pg, id_, value):
+    pg.evaluate("document.querySelector('[data-testid=shape-more]').open = true")
     pg.locator(f"#shape-{id_}").fill(str(value))
     pg.wait_for_timeout(120)
 
@@ -47,6 +48,7 @@ def main():
         g = {"id": "0780", "cp": [0x780], "kind": "letter", "contours": traced(), "adv": 520, "source": "photo", "checked": False}
         pg.evaluate(SEED, {"v": 1, "glyphs": {"0780": g}, "updatedAt": 1, "path": "photo"})
         pg.goto(f"{WEB}/handwriting/letters")
+        pg.get_by_test_id("tab-letter").click()
         pg.wait_for_selector("[data-testid=shape-panel]")
         pg.wait_for_selector("[data-node='0-69']")
         start = pg.evaluate(READ)["glyphs"]["0780"]
@@ -98,6 +100,22 @@ def main():
         pg.get_by_label("Undo").click(); pg.get_by_label("Undo").click()
         pg.wait_for_timeout(500)
         assert pg.evaluate(READ)["glyphs"]["0780"]["contours"] == start["contours"], "two more undos return the traced letter"
+
+        # grunge: a preset previews chips and scratches, Shuffle gives different damage, Apply keeps it, Undo takes it back
+        plain = pg.evaluate(READ)["glyphs"]["0780"]
+        pg.get_by_test_id("grunge-horror").click(); pg.wait_for_timeout(400)
+        assert pg.get_by_test_id("grunge-horror").get_attribute("aria-checked") == "true"
+        d1 = pg.locator("[data-contour]").evaluate_all("els => els.map(e => e.getAttribute('d')).join('|')")
+        pg.get_by_test_id("grunge-shuffle").click(); pg.wait_for_timeout(400)
+        d2 = pg.locator("[data-contour]").evaluate_all("els => els.map(e => e.getAttribute('d')).join('|')")
+        assert d1 != d2, "Shuffle gives different damage"
+        pg.get_by_test_id("shape-apply").click(); pg.wait_for_timeout(500)
+        worn = pg.evaluate(READ)["glyphs"]["0780"]
+        assert sum(len(c) for c in worn["contours"]) > sum(len(c) for c in plain["contours"]) * 2, "chips add points"
+        pg.get_by_label("Undo").click(); pg.wait_for_timeout(500)
+        assert pg.evaluate(READ)["glyphs"]["0780"]["contours"] == plain["contours"]
+        pg.get_by_test_id("grunge-clean").click()
+        assert pg.get_by_test_id("shape-apply").is_disabled(), "Clean is no change"
         assert not errors, errors
         print("shape flow ok")
         b.close()
