@@ -69,7 +69,7 @@ export function HowArt({ step, label }: { step: 1 | 2 | 3; label?: string }) {
           <rect x="14" y="12" width="212" height="126" rx="12" fill="#fff" {...stroke} />
           <circle cx="28" cy="25" r="3.5" fill="#DCE8DF" /><circle cx="40" cy="25" r="3.5" fill="#DCE8DF" /><circle cx="52" cy="25" r="3.5" fill="#DCE8DF" />
           <path d="M14 38H226" {...line} />
-          <text x="120" y="82" textAnchor="middle" fontSize="66" className={th} fill={INK}>ތާނަ ފޮންޓު</text>
+          <text x="120" y="82" textAnchor="middle" fontSize="70" fill={INK} style={{ fontFamily: "Hawwa, sans-serif" }}>ތާނަ ފޮންޓު</text>
           <path d="M72 94H168" stroke={ORANGE} strokeWidth="2" strokeLinecap="round" strokeDasharray="1 5" />
           <rect x="26" y="108" width="36" height="20" rx="6" {...line} />
           <text x="44" y="122" textAnchor="middle" fontSize="9" fontWeight="700" fill={MUTED}>TTF</text>
