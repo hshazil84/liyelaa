@@ -112,7 +112,8 @@ def main():
         # 8. draw a missing letter with the pen
         pg.locator('[data-cell="0786"]').click()
         pg.wait_for_selector("[data-testid=editor-svg]")
-        assert tool(pg, "Pen").get_attribute("aria-pressed") == "true"
+        assert tool(pg, "Marker").get_attribute("aria-pressed") == "true", "an empty letter starts with the marker"
+        tool(pg, "Pen").click()
         pts = [(150, 0), (350, 0), (250, 300)]
         for fx, fy in pts:
             sx, sy, _ = to_screen(pg, fx, fy)

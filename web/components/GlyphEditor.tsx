@@ -2,18 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { inkBox } from "@/lib/handwriting/marks";
+import { MarkerPanel } from "@/components/MarkerPanel";
 import { ShapePanel } from "@/components/ShapePanel";
 import {
   addContour, clone, deleteContour, deletePoint, dist, emptyGlyph, fitAdvance, insertPoint, isSmooth,
   makeCorner, makeSmooth, movePoint, moveHandle, nearestOnOutline, nudge, reverseContour, type Sel,
 } from "@/lib/handwriting/edit";
+import { addStroke, cleanNib, DEFAULT_NIB, follow, hullsToD, strokeHulls, type Nib } from "@/lib/handwriting/marker";
 import { layout } from "@/lib/handwriting/pipeline";
 import { importOne } from "@/lib/handwriting/svgimport";
 import { IDENTITY, applyShape, isIdentity, type Shape } from "@/lib/handwriting/shape";
 import { contoursToD } from "@/lib/handwriting/svg";
 import { UNITS_PER_MM, type Glyph, type LayoutCell, type Pt, type Seg } from "@/lib/handwriting/types";
 
-type Tool = "move" | "pen" | "erase";
+type Tool = "move" | "pen" | "marker" | "erase";
+const NIB_KEY = "myakuru.nib";
 
 const TOP = Math.round((layout.guides.baseY - layout.guides.topY) * UNITS_PER_MM);          // 494
 const DESC = -Math.round((layout.guides.writeEnd - layout.guides.baseY) * UNITS_PER_MM);     // -304
@@ -23,6 +26,7 @@ const INK = "#264022", TEAL = "#264022", CORAL = "#FA7E00";
 type Drag =
   | { kind: "pt" | "hi" | "ho"; c: number; s: number; base: Glyph; started: boolean; sx: number; sy: number; off: Pt }
   | { kind: "pen" }
+  | { kind: "marker" }
   | { kind: "pan"; sx: number; sy: number; cx: number; cy: number };
 
 const ZOOM_MIN = 1, ZOOM_MAX = 12;
@@ -61,9 +65,13 @@ export function GlyphEditor({
   const [g, setG] = useState<Glyph>(() => (glyph ? clone(glyph) : emptyGlyph(cell.id, cell.cp, cell.kind)));
   const [past, setPast] = useState<Glyph[]>([]);
   const [future, setFuture] = useState<Glyph[]>([]);
-  const [tool, setTool] = useState<Tool>(glyph ? "move" : "pen");
+  const [tool, setTool] = useState<Tool>(glyph ? "move" : "marker");
   const [sel, setSel] = useState<Sel>(null);
   const [pen, setPen] = useState<Seg[] | null>(null);
+  const [nib, setNib] = useState<Nib>(DEFAULT_NIB);
+  const [live, setLiveState] = useState<{ pts: Pt[]; press: number[] } | null>(null);   // the marker line being drawn right now
+  const liveRef = useRef<{ pts: Pt[]; press: number[] } | null>(null);                  // the same line, always current, for the moment the pointer is let go
+  const setLive = (v: { pts: Pt[]; press: number[] } | null) => { liveRef.current = v; setLiveState(v); };
   const [shape, setShape] = useState<Shape>({ ...IDENTITY });
   const [showPts, setShowPts] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
@@ -104,6 +112,10 @@ export function GlyphEditor({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  useEffect(() => { try { const t = localStorage.getItem(NIB_KEY); if (t) setNib(cleanNib(JSON.parse(t))); } catch { /* the default nib is fine */ } }, []);
+  const changeNib = (n: Nib) => { setNib(n); try { localStorage.setItem(NIB_KEY, JSON.stringify(n)); } catch { /* not kept, still works */ } };
+  const liveD = useMemo(() => (live ? hullsToD(strokeHulls(live.pts, nib, live.press)) : ""), [live, nib]);
 
   const previewing = !isIdentity(shape);
   // while a slider is away from its middle, the canvas shows what Apply would do and the letter itself is not touched
@@ -242,7 +254,12 @@ export function GlyphEditor({
     }
     if (e.button !== 0 || previewing) return;
     const pos = toFont(e);
-    if (tool === "pen") {
+    if (tool === "marker") {
+      setSel(null);
+      setLive({ pts: [pos], press: [pressureOf(e)] });
+      drag.current = { kind: "marker" };
+      svgRef.current!.setPointerCapture(e.pointerId);
+    } else if (tool === "pen") {
       if (pen && pen.length >= 3 && dist(pos, pen[0].p) < 14 * u) { closePen(); return; }
       setPen([...(pen ?? []), { p: pos, hi: { x: 0, y: 0 }, ho: { x: 0, y: 0 } }]);
       drag.current = { kind: "pen" };
@@ -256,6 +273,9 @@ export function GlyphEditor({
       }
     }
   };
+
+  /** A pen or finger that can tell how hard it presses widens the line; a mouse does not. */
+  const pressureOf = (e: React.PointerEvent) => (e.pointerType === "pen" && e.pressure > 0 ? Math.min(1.6, Math.max(0.3, e.pressure * 1.6)) : 1);
 
   const onNodeDown = (e: React.PointerEvent, kind: "pt" | "hi" | "ho", c: number, s: number) => {
     if (e.button !== 0) return;
@@ -283,6 +303,13 @@ export function GlyphEditor({
       setCam((v) => ({ ...v, cx: d.cx - (e.clientX - d.sx) * k, cy: d.cy - (e.clientY - d.sy) * k }));
       return;
     }
+    if (d.kind === "marker") {
+      const to = toFont(e), pr = pressureOf(e);
+      const v = liveRef.current;
+      const q = v ? follow(v.pts[v.pts.length - 1], to, nib.smooth, 1.5 * u) : null;
+      if (v && q) setLive({ pts: [...v.pts, q], press: [...v.press, pr] });
+      return;
+    }
     const raw = toFont(e);
     const pos = d.kind === "pen" ? raw : { x: raw.x - d.off.x, y: raw.y - d.off.y };
     if (d.kind === "pen") {
@@ -306,6 +333,15 @@ export function GlyphEditor({
   const onUp = () => {
     const d = drag.current;
     drag.current = null;
+    if (d?.kind === "marker") {
+      const v = liveRef.current;
+      setLive(null);
+      if (v) {
+        const next = addStroke(g, strokeHulls(v.pts, nib, v.press), nib);
+        if (next !== g) commit(next);
+      }
+      return;
+    }
     if (d && d.kind !== "pen" && d.kind !== "pan" && d.started) {
       const fitted = fitAdvance(g);
       setG(fitted);
@@ -331,7 +367,7 @@ export function GlyphEditor({
     if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
     if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
     if (e.key === "Enter" && pen) { e.preventDefault(); closePen(); return; }
-    if (e.key === "Escape") { setPen(null); setSel(null); return; }
+    if (e.key === "Escape") { setPen(null); setSel(null); setLive(null); drag.current = null; return; }
     if (!sel) return;
     if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); commit(deletePoint(g, sel.c, sel.s)); setSel(null); return; }
     const step = e.shiftKey ? 20 : 4;
@@ -356,13 +392,16 @@ export function GlyphEditor({
   return (
     <div className="flex flex-col gap-3" onKeyDown={onKey} onKeyUp={(e) => { if (e.key === " ") spaceDown.current = false; }} tabIndex={0} role="group" aria-label="Letter editor" data-testid="editor">
       <div className="flex flex-wrap items-center gap-1.5">
-        <ToolButton label="Pen" on={tool === "pen"} onClick={() => { setTool("pen"); setSel(null); }}>
+        <ToolButton label="Marker" on={tool === "marker"} onClick={() => { setTool("marker"); setSel(null); setPen(null); }}>
+          <svg {...iconProps}><path d="M11 3l6 6-5.5 5.5-6-6z" /><path d="M5.5 8.5L4 14l3 3 5.5-1.5" /><path d="M3 18.5h4.5" strokeWidth={2.4} /></svg>
+        </ToolButton>
+        <ToolButton label="Pen" on={tool === "pen"} onClick={() => { setTool("pen"); setSel(null); setLive(null); }}>
           <svg {...iconProps}><path d="M3 17l1-4 9-9 3 3-9 9-4 1zM12 5l3 3" /></svg>
         </ToolButton>
-        <ToolButton label="Move points" on={tool === "move"} onClick={() => { setTool("move"); setPen(null); }}>
+        <ToolButton label="Move points" on={tool === "move"} onClick={() => { setTool("move"); setPen(null); setLive(null); }}>
           <svg {...iconProps}><path d="M5 3l10 6-4 1.5L9 15 5 3z" /></svg>
         </ToolButton>
-        <ToolButton label="Eraser" on={tool === "erase"} onClick={() => { setTool("erase"); setPen(null); setSel(null); }}>
+        <ToolButton label="Eraser" on={tool === "erase"} onClick={() => { setTool("erase"); setPen(null); setSel(null); setLive(null); }}>
           <svg {...iconProps}><path d="M8 16l-4-4 8-8 5 5-6 7H8zM7 8l5 5" /></svg>
         </ToolButton>
         <span className="mx-1 h-6 w-px bg-line" />
@@ -391,7 +430,7 @@ export function GlyphEditor({
           ref={svgRef}
           viewBox={`${vbx} ${vby} ${vw} ${vh}`}
           className="block h-auto w-full touch-none select-none"
-          style={{ cursor: tool === "pen" ? "crosshair" : tool === "erase" ? "not-allowed" : cam.z > 1 ? "grab" : "default" }}
+          style={{ cursor: tool === "pen" || tool === "marker" ? "crosshair" : tool === "erase" ? "not-allowed" : cam.z > 1 ? "grab" : "default" }}
           data-testid="editor-svg"
           data-vb={`${vbx} ${vby} ${vw} ${vh}`}
           data-zoom={cam.z}
@@ -418,7 +457,7 @@ export function GlyphEditor({
             {isMark && <line x1={0} x2={0} y1={DESC} y2={TOP} stroke="#BDCFC2" strokeWidth={1 * u} strokeDasharray={`${3 * u} ${4 * u}`} />}
 
             {/* the starter letter, only as a hint for a letter that has no drawing yet */}
-            {!hasShape && !pen && (
+            {!hasShape && !pen && !live && (
               <text transform={`translate(${cx} 0) scale(${ghostS} ${-ghostS}) translate(${-cx} 0)`} x={cx} y={0} textAnchor="middle" fontSize={1000} fontFamily="AKRasmee, NotoThaana, sans-serif" fill={INK} opacity={0.1} aria-hidden>
                 {cell.label}
               </text>
@@ -441,7 +480,7 @@ export function GlyphEditor({
             ))}
 
             {/* points */}
-            {tool !== "pen" && showPts && !previewing && g.contours.map((ct, c) => ct.map((sg, s) => {
+            {tool !== "pen" && tool !== "marker" && showPts && !previewing && g.contours.map((ct, c) => ct.map((sg, s) => {
               const on = sel?.c === c && sel.s === s;
               return (
                 <g key={`${c}-${s}`}>
@@ -452,7 +491,7 @@ export function GlyphEditor({
             }))}
 
             {/* handles of the selected point */}
-            {tool !== "pen" && showPts && !previewing && sel && selSeg && (["hi", "ho"] as const).map((k) => {
+            {tool !== "pen" && tool !== "marker" && showPts && !previewing && sel && selSeg && (["hi", "ho"] as const).map((k) => {
               const h = selSeg[k];
               if (!h.x && !h.y) return null;
               const pos = { x: selSeg.p.x + h.x, y: selSeg.p.y + h.y };
@@ -464,6 +503,9 @@ export function GlyphEditor({
                 </g>
               );
             })}
+
+            {/* the line being drawn with the marker */}
+            {live && <path d={liveD} fill={CORAL} fillOpacity={0.85} fillRule="nonzero" pointerEvents="none" data-testid="marker-live" />}
 
             {/* the shape being drawn with the pen */}
             {pen && (
@@ -494,6 +536,8 @@ export function GlyphEditor({
       <p className="px-1 text-[13px] leading-snug text-muted" aria-live="polite">
         {previewing
           ? "Previewing your changes. Press Apply to keep them, or Reset."
+          : tool === "marker"
+          ? "Drag to draw. Lift to finish a stroke. A stroke that touches a shape joins it."
           : tool === "pen"
           ? pen?.length
             ? pen.length < 3 ? "Keep clicking to add points. Drag while clicking to make a curve." : "Click the first point or press Enter to close the shape."
@@ -502,7 +546,7 @@ export function GlyphEditor({
             ? "Click a point to remove it, or click a shape to remove all of it."
             : hasShape
               ? "Drag a point or its handles. Double-click the outline to add a point."
-              : "Nothing drawn yet. Use the pen, or paste artwork from Illustrator with Ctrl or ⌘ V."}
+              : "Nothing drawn yet. Use the marker or the pen, or paste artwork from Illustrator with Ctrl or ⌘ V."}
       </p>
 
       {notice && (
@@ -530,7 +574,10 @@ export function GlyphEditor({
         </button>
       </div>
       </div>
-      <ShapePanel shape={shape} onShape={setShape} onApply={applyShapeNow} view={view} disabled={!hasShape} />
+      <div className="flex w-full flex-col gap-4 xl:w-[300px] xl:shrink-0">
+        {tool === "marker" && <MarkerPanel nib={nib} onNib={changeNib} />}
+        <ShapePanel shape={shape} onShape={setShape} onApply={applyShapeNow} view={view} disabled={!hasShape} />
+      </div>
       </div>
     </div>
   );
