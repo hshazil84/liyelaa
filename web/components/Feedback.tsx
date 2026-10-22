@@ -32,8 +32,8 @@ export function Feedback() {
           <button type="button" onClick={() => void copy()} className="flex min-h-10 items-center justify-center rounded-xl border border-[#BDCFC2] px-3 text-sm font-bold hover:bg-paper">{copied ? "Copied" : "Copy the address"}</button>
         </div>
       )}
-      <button type="button" aria-expanded={open} data-testid="feedback-open" onClick={() => setOpen((o) => !o)} className="min-h-10 rounded-full border border-[#BDCFC2] bg-white px-4 text-[13px] font-bold shadow hover:bg-paper">
-        Send feedback
+      <button type="button" aria-expanded={open} data-testid="feedback-open" onClick={() => setOpen((o) => !o)} aria-label="Send feedback" className="min-h-9 rounded-full border border-[#BDCFC2] bg-white/95 px-3 text-xs font-bold shadow hover:bg-paper sm:min-h-10 sm:px-4 sm:text-[13px]">
+        <span className="sm:hidden">Feedback</span><span className="hidden sm:inline">Send feedback</span>
       </button>
     </div>
   );

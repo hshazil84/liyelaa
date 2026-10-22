@@ -12,6 +12,7 @@ export function FontSwitcher() {
   const [fonts, setFonts] = useState<FontMeta[] | null>(null);
   const [open, setOpen] = useState(false);
   const [making, setMaking] = useState(false);
+  const [top, setTop] = useState(0);        // on a phone the menu spans the screen, below the button
   const box = useRef<HTMLDivElement>(null);
   const file = useRef<HTMLInputElement>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -48,14 +49,15 @@ export function FontSwitcher() {
 
   return (
     <div ref={box} className="relative">
-      <button type="button" data-testid="font-switcher" aria-haspopup="true" aria-expanded={open} onClick={() => setOpen((o) => !o)}
+      <button type="button" data-testid="font-switcher" aria-haspopup="true" aria-expanded={open} onClick={(e) => { setTop(Math.round(e.currentTarget.getBoundingClientRect().bottom + 6)); setOpen((o) => !o); }}
         className="flex h-[42px] max-w-[280px] items-center gap-2.5 rounded-xl border border-[#BDCFC2] bg-white px-3.5 text-[15px] font-bold hover:bg-paper">
         <span className="truncate">{cur.title}</span>
         <span className="hidden whitespace-nowrap text-xs font-medium text-muted sm:inline">{cur.count} of 38 letters</span>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="flex-none"><path d="M3 5l4 4 4-4" /></svg>
       </button>
       {open && (
-        <div role="menu" data-testid="font-menu" className="absolute left-0 top-[48px] z-40 flex min-w-[290px] max-w-[calc(100vw-32px)] flex-col gap-0.5 rounded-2xl border border-line bg-white p-2 shadow-lg">
+        <div role="menu" data-testid="font-menu" style={{ ["--t" as string]: `${top}px` }}
+          className="fixed inset-x-4 top-[var(--t)] z-40 flex max-h-[calc(100vh-var(--t)-16px)] flex-col gap-0.5 overflow-y-auto rounded-2xl border border-line bg-white p-2 shadow-lg sm:absolute sm:inset-x-auto sm:left-0 sm:top-[48px] sm:max-h-none sm:min-w-[290px] sm:overflow-visible">
           <p className="px-3 pb-1 pt-1.5 text-[13px] text-muted">My fonts</p>
           {fonts.map((f) => (
             <button key={f.id} type="button" role="menuitem" data-testid={`font-${f.id}`} onClick={() => open_(f)} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left font-medium hover:bg-paper">
