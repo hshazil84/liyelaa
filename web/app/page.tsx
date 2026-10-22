@@ -110,8 +110,8 @@ export default function Home() {
             <TemplateSheet />
           </Card>
           <Card
-            title="Draw or import my own"
-            text="Draw with the pen tool, or bring in SVG artwork from Illustrator or other vector apps."
+            title="Draw my own"
+            text="Draw letters with the pen. Designers can bring in SVG from Illustrator."
             cta="Open the editor"
             href="/draw"
             tone="bg-coral-soft"
