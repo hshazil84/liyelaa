@@ -1,7 +1,11 @@
 # ThaanaFont
 
 Make a Dhivehi (Thaana) font: restyle an open one, or build one from your own handwriting.
-No account needed. Projects are kept in the user's own browser.
+Projects are kept in the user's own browser. The tools need a free account (Supabase sign-in).
+
+**Sign-in is off until these two are set** (Vercel, Type=Config, then redeploy):
+`NEXT_PUBLIC_SUPABASE_URL` (Project URL) and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (anon key, never the service-role key).
+In Supabase, Authentication > Providers > Email: turn "Confirm email" off for the beta. Test with `e2e/auth_flow.py` (header explains the dev-server env).
 
 ```
 web/       Next.js 14 (App Router) + TypeScript + Tailwind. Deploy on Vercel, root directory `web`.

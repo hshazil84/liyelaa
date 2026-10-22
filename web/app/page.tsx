@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { Logo } from "@/components/Logo";
+import { Faq } from "@/components/Faq";
+import { HomeHeader } from "@/components/HomeHeader";
+import { HowItWorks } from "@/components/HowItWorks";
+import { IntroModal } from "@/components/IntroModal";
+import { SiteFooter } from "@/components/SiteFooter";
 import { ThaanaOutline } from "@/components/ThaanaOutline";
 
 function Arrow() {
@@ -74,10 +78,9 @@ function Card({ title, text, cta, href, tone, peek, children }: CardProps) {
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex items-center justify-between gap-8 border-b border-line bg-white px-10 py-4">
-        <Logo />
-      </header>
-      <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-9 px-10 py-14">
+      <HomeHeader />
+      <IntroModal />
+      <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-9 px-4 py-10 sm:px-10 sm:py-14">
         <div className="flex flex-col gap-2.5">
           <h1 className="font-display text-5xl font-bold leading-[1.05]">What do you want to do?</h1>
           <p className="text-lg text-muted">Pick one. You can always come back and try another.</p>
@@ -122,11 +125,11 @@ export default function Home() {
             </svg>
           </Card>
         </div>
-        <div className="flex flex-col gap-1">
-          <p className="text-sm text-muted">No account needed to try it.</p>
-          <p className="text-sm text-muted" data-testid="beta-note"><b className="text-ink">ThaanaFont is in beta.</b> Things may break. Your work is saved in this browser only, so save a project file now and then.</p>
-        </div>
+        <p className="text-sm text-muted" data-testid="beta-note"><b className="text-ink">ThaanaFont is in beta.</b> Things may break. Your work is saved in this browser only, so save a project file now and then.</p>
+        <HowItWorks />
+        <Faq />
       </main>
+      <SiteFooter />
     </div>
   );
 }
