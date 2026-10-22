@@ -3,6 +3,7 @@ import type { Extras, Ligature } from "./extras";
 import type { Levelled } from "./level";
 import type { Offsets } from "./marks";
 import type { Spacing } from "./spacing";
+import type { TailSettings } from "./tails";
 import type { Glyph } from "./types";
 
 const KEY = "dfm.handwriting.v1";
@@ -15,6 +16,9 @@ export type Project = {
   levelled?: Levelled;                   // how far each letter was moved by Level your letters, so it can be undone
   levelHand?: Levelled;                  // the part of each letter's move the person made with the nudge buttons
   levelMethod?: "baseline" | "middle";    // how Snap finds each letter's place
+  tails?: TailSettings;                  // the cursive tail style chosen on the Tails step
+  tailBase?: Record<string, Glyph>;      // each letter as it was before tails, so tails can be changed or undone
+  tailLev?: Levelled;                    // where Level had each letter when tailBase was taken
   markOffsets?: Offsets;                 // hand adjustments, one per letter and vowel mark pair
   spacing?: Spacing;                     // letter spacing and pair adjustments
   info?: FontInfo;                       // name, designer and so on, for the export step
@@ -44,6 +48,7 @@ export async function saveGlyphs(glyphs: Glyph[], source: "photo" | "drawn" = "p
     if (p.originals) delete p.originals[g.id];      // a fresh photo replaces the old trace
     if (p.levelled) delete p.levelled[g.id];
     if (p.levelHand) delete p.levelHand[g.id];
+    if (p.tailBase) delete p.tailBase[g.id];
   }
   p.updatedAt = Date.now();
   try { await set(KEY, p); } catch {}
@@ -65,6 +70,7 @@ export async function updateGlyph(g: Glyph): Promise<Project> {
   const before = p.glyphs[g.id];
   if (before?.source === "photo" && !p.originals?.[g.id]) p.originals = { ...p.originals, [g.id]: before };
   p.glyphs[g.id] = g;
+  if (p.tailBase) delete p.tailBase[g.id];           // an edit after tails keeps the tail as it is drawn
   p.updatedAt = Date.now();
   try { await set(KEY, p); } catch {}
   return p;
@@ -74,6 +80,7 @@ export async function removeGlyph(id: string): Promise<Project> {
   const p = await loadProject();
   delete p.glyphs[id];
   if (p.originals) delete p.originals[id];
+  if (p.tailBase) delete p.tailBase[id];
   p.updatedAt = Date.now();
   try { await set(KEY, p); } catch {}
   changed();
@@ -87,6 +94,17 @@ export async function saveLevelled(glyphs: Record<string, Glyph>, levelled: Leve
   p.levelled = levelled;
   if (extra.hand) p.levelHand = extra.hand;
   if (extra.method) p.levelMethod = extra.method;
+  p.updatedAt = Date.now();
+  try { await set(KEY, p); } catch {}
+  return p;
+}
+
+/** Save the letters with their tails, and what is needed to change or undo the tails. With no `tails` the letters go back to how they were and the tail record is dropped. */
+export async function saveTails(glyphs: Record<string, Glyph>, tails: TailSettings | null, base: Record<string, Glyph> | null, lev: Levelled | null): Promise<Project> {
+  const p = await loadProject();
+  for (const id of Object.keys(glyphs)) if (p.glyphs[id]) p.glyphs[id] = glyphs[id];
+  if (tails && base) { p.tails = tails; p.tailBase = base; p.tailLev = lev ?? {}; }
+  else { delete p.tails; delete p.tailBase; delete p.tailLev; }
   p.updatedAt = Date.now();
   try { await set(KEY, p); } catch {}
   return p;

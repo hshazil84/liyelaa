@@ -52,9 +52,11 @@ export function LevelClient() {
   const [hand, setHand] = useState<Levelled>({});
   const [picked, setPicked] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [hasTails, setHasTails] = useState(false);
 
   useEffect(() => {
     loadProject().then((p) => {
+      setHasTails(Boolean(p.tails && p.tails.style !== "off"));
       setGlyphs(p.glyphs); setLevelled(p.levelled ?? {}); setHand(p.levelHand ?? {});
       if (p.levelMethod) setMethod(p.levelMethod);
       setLoaded(true);
@@ -118,6 +120,12 @@ export function LevelClient() {
             </p>
           </div>
 
+          {hasTails && (
+            <p role="status" data-testid="tails-notice" className="rounded-xl bg-sand px-4 py-3 text-sm">
+              Cursive tails are on. A tail can pull a letter off the line when it snaps, so for the cleanest result turn them off first on the{" "}
+              <Link href="/handwriting/tails" className="font-bold text-teal underline underline-offset-4">Tails step</Link>, snap, then turn them back on.
+            </p>
+          )}
           {loaded && !drawn.length ? (
             <p role="status" className="rounded-xl bg-sand px-4 py-3 text-sm">
               Draw or photograph some letters first.{" "}
@@ -198,9 +206,9 @@ export function LevelClient() {
               <p className="text-sm text-muted">Click a letter to snap, put back or nudge just that one.</p>
             )}
           </div>
-          <Link href="/handwriting/anchors" data-testid="continue-anchors"
+          <Link href="/handwriting/tails" data-testid="continue-tails"
             className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark">
-            Place the vowel marks <span aria-hidden>→</span>
+            Add cursive tails <span aria-hidden>→</span>
           </Link>
           <Link href="/handwriting/letters" className="text-center text-sm font-bold text-teal underline underline-offset-4">Back to clean up</Link>
         </aside>

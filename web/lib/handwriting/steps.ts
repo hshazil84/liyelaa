@@ -6,6 +6,7 @@ import { loadProject } from "./store";
 
 const REST: Step[] = [
   { label: "Level", href: "/handwriting/level" },
+  { label: "Tails", href: "/handwriting/tails" },
   { label: "Anchors", href: "/handwriting/anchors" },
   { label: "Spacing and extras", href: "/handwriting/spacing" },
   { label: "Test and export", href: "/handwriting/export" },

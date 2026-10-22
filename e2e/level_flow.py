@@ -130,6 +130,7 @@ def main():
 
         # the next step still works after a snap
         pg.get_by_test_id("strength").fill("100"); pg.get_by_test_id("snap").click(); pg.wait_for_timeout(500)
+        pg.get_by_test_id("continue-tails").click(); pg.wait_for_url("**/handwriting/tails")
         pg.get_by_test_id("continue-anchors").click(); pg.wait_for_url("**/handwriting/anchors")
         pg.wait_for_selector("[data-testid=anchor-dot]")
         print("flags after level:", pg.get_by_test_id("flag-count").inner_text())

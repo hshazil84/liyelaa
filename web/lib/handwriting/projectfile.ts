@@ -32,6 +32,11 @@ function clean(raw: unknown): Project | null {
   if (numberMap(raw.levelled)) p.levelled = raw.levelled as Project["levelled"];
   if (numberMap(raw.levelHand)) p.levelHand = raw.levelHand as Project["levelHand"];
   if (raw.levelMethod === "baseline" || raw.levelMethod === "middle") p.levelMethod = raw.levelMethod;
+  const t = raw.tails;
+  if (isObj(t) && ["off", "long", "flick", "joined"].includes(String(t.style)) && ["len", "cur", "hook", "tap"].every((k) => num(t[k])) && numberMap(t.extra) && (t.off === undefined || (isObj(t.off) && Object.values(t.off).every((v) => typeof v === "boolean")))
+    && isObj(raw.tailBase) && Object.values(raw.tailBase).every(goodGlyph) && numberMap(raw.tailLev ?? {})) {
+    p.tails = t as unknown as Project["tails"]; p.tailBase = raw.tailBase as Project["tailBase"]; p.tailLev = (raw.tailLev ?? {}) as Project["tailLev"];
+  }
   if (isObj(raw.markOffsets)) p.markOffsets = raw.markOffsets as Project["markOffsets"];
   if (isObj(raw.spacing) && num(raw.spacing.all) && isObj(raw.spacing.side) && isObj(raw.spacing.pairs) && numberMap(raw.spacing.pairs)) p.spacing = raw.spacing as Project["spacing"];
   if (isObj(raw.info) && ["name", "designer", "website", "description", "version"].every((k) => typeof (raw.info as Record<string, unknown>)[k] === "string")) p.info = raw.info as Project["info"];
