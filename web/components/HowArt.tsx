@@ -6,7 +6,7 @@ const stroke = { stroke: LINE, strokeWidth: 1.5 } as const;
 const line = { fill: "none", ...stroke } as const;
 const inkLine = { fill: "none", stroke: INK, strokeWidth: 2.5, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 const orLine = { fill: "none", stroke: ORANGE, strokeWidth: 2.5, strokeLinecap: "round", strokeLinejoin: "round" } as const;
-const th = "font-noto";
+const th = "font-sangu";
 
 /** Small pictures of the three steps. Drawn here so they stay sharp at any size and need no image files. */
 export function HowArt({ step, label }: { step: 1 | 2 | 3; label?: string }) {
@@ -17,7 +17,7 @@ export function HowArt({ step, label }: { step: 1 | 2 | 3; label?: string }) {
           <g>
             <rect x="12" y="22" width="68" height="108" rx="10" fill="#fff" {...stroke} />
             <rect x="22" y="32" width="26" height="5" rx="2.5" fill={INK} />
-            <text x="46" y="82" textAnchor="middle" fontSize="30" className={th} fill={INK}>ދި</text>
+            <text x="46" y="82" textAnchor="middle" fontSize="62" className={th} fill={INK}>ދި</text>
             <rect x="22" y="104" width="48" height="14" rx="7" fill={INK} />
           </g>
           <g>
@@ -25,7 +25,7 @@ export function HowArt({ step, label }: { step: 1 | 2 | 3; label?: string }) {
             <rect x="96" y="32" width="26" height="5" rx="2.5" fill={INK} />
             <rect x="102" y="48" width="36" height="46" {...line} />
             <path d="M102 60H138M102 72H138M102 84H138M114 48V94M126 48V94" {...line} />
-            <text x="120" y="68" textAnchor="middle" fontSize="14" className={th} fill={INK}>ގ</text>
+            <text x="120" y="68" textAnchor="middle" fontSize="32" className={th} fill={INK}>ގ</text>
             <rect x="96" y="104" width="48" height="14" rx="7" fill={INK} />
           </g>
           <g>
@@ -47,11 +47,11 @@ export function HowArt({ step, label }: { step: 1 | 2 | 3; label?: string }) {
             <rect x="19" y="127" width="8" height="8" fill={INK} /><rect x="105" y="127" width="8" height="8" fill={INK} />
             <rect x="32" y="30" width="68" height="90" {...line} />
             <path d="M49 30V120M66 30V120M83 30V120M32 48H100M32 66H100M32 84H100M32 102H100" {...line} />
-            <text x="40.5" y="62" textAnchor="middle" fontSize="14" className={th} fill={INK}>ގ</text>
-            <text x="57.5" y="44" textAnchor="middle" fontSize="14" className={th} fill={INK}>ބ</text>
-            <text x="74.5" y="80" textAnchor="middle" fontSize="14" className={th} fill={INK}>ދ</text>
-            <text x="91.5" y="98" textAnchor="middle" fontSize="14" className={th} fill={INK}>ކ</text>
-            <text x="40.5" y="116" textAnchor="middle" fontSize="14" className={th} fill={INK}>ލ</text>
+            <text x="40.5" y="62" textAnchor="middle" fontSize="32" className={th} fill={INK}>ގ</text>
+            <text x="57.5" y="44" textAnchor="middle" fontSize="32" className={th} fill={INK}>ބ</text>
+            <text x="74.5" y="80" textAnchor="middle" fontSize="32" className={th} fill={INK}>ދ</text>
+            <text x="91.5" y="98" textAnchor="middle" fontSize="32" className={th} fill={INK}>ކ</text>
+            <text x="40.5" y="116" textAnchor="middle" fontSize="32" className={th} fill={INK}>ލ</text>
           </g>
           <path d="M124 76h20m-6-6l6 6-6 6" {...orLine} />
           <rect x="150" y="8" width="76" height="134" rx="14" fill="#fff" stroke={INK} strokeWidth="3" />
@@ -60,7 +60,7 @@ export function HowArt({ step, label }: { step: 1 | 2 | 3; label?: string }) {
           <path d="M162 40v-10h10M214 30h-10M204 30h10v10M162 104v10h10M214 114h-10M214 114v-10" {...orLine} />
           <rect x="169" y="44" width="38" height="52" {...line} />
           <path d="M182 44V96M194 44V96M169 61H207M169 78H207" {...line} />
-          <text x="175.5" y="74" textAnchor="middle" fontSize="10" className={th} fill={INK}>ގ</text>
+          <text x="175.5" y="74" textAnchor="middle" fontSize="22" className={th} fill={INK}>ގ</text>
           <circle cx="188" cy="130" r="6" fill={ORANGE} />
         </>
       )}
@@ -69,7 +69,7 @@ export function HowArt({ step, label }: { step: 1 | 2 | 3; label?: string }) {
           <rect x="14" y="12" width="212" height="126" rx="12" fill="#fff" {...stroke} />
           <circle cx="28" cy="25" r="3.5" fill="#DCE8DF" /><circle cx="40" cy="25" r="3.5" fill="#DCE8DF" /><circle cx="52" cy="25" r="3.5" fill="#DCE8DF" />
           <path d="M14 38H226" {...line} />
-          <text x="120" y="82" textAnchor="middle" fontSize="36" className={th} fill={INK}>ދިވެހި ބަސް</text>
+          <text x="120" y="82" textAnchor="middle" fontSize="66" className={th} fill={INK}>ދިވެހި ބަސް</text>
           <path d="M72 94H168" stroke={ORANGE} strokeWidth="2" strokeLinecap="round" strokeDasharray="1 5" />
           <rect x="26" y="108" width="36" height="20" rx="6" {...line} />
           <text x="44" y="122" textAnchor="middle" fontSize="9" fontWeight="700" fill={MUTED}>TTF</text>
