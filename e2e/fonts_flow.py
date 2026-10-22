@@ -97,7 +97,7 @@ def main():
             card.get_by_role("button", name="Save a backup").click()
         path = out / dl.value.suggested_filename
         dl.value.save_as(str(path))
-        assert path.suffix == ".myakuru"
+        assert path.suffix == ".thaanafont"
         data = json.loads(path.read_text())
         assert data["kind"] == "font" and data["title"] == "Illustrator set" and list(data["project"]["glyphs"]) == ["0780"], data["title"]
         pg.get_by_test_id("backup-input").set_input_files(str(path))
@@ -105,9 +105,9 @@ def main():
         pg.goto(f"{WEB}/handwriting/fonts")
         pg.wait_for_selector("[data-testid=font-cards] li")
         assert pg.locator("[data-testid=font-cards] li").count() == 4, pg.locator("[data-testid=font-cards] li").count()
-        pg.get_by_test_id("backup-input").set_input_files({"name": "x.myakuru", "mimeType": "application/json", "buffer": b"nope"})
+        pg.get_by_test_id("backup-input").set_input_files({"name": "x.thaanafont", "mimeType": "application/json", "buffer": b"nope"})
         pg.wait_for_selector("[data-testid=fonts-message]")
-        assert "not a MyAkuru backup" in pg.get_by_test_id("fonts-message").inner_text()
+        assert "not a ThaanaFont backup" in pg.get_by_test_id("fonts-message").inner_text()
         pg.screenshot(path=str(out / "fonts-page.png"))
         card = pg.locator("[data-testid=font-cards] li", has_text="Brush letters")
         card.get_by_role("button", name="Delete").click()

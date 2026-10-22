@@ -18,7 +18,7 @@ import { UNITS_PER_MM, type Glyph, type LayoutCell, type Pt, type Seg } from "@/
 
 type Tool = "move" | "pen" | "marker" | "erase";
 type Panel = "tool" | "letter" | "check";
-const NIB_KEY = "myakuru.nib";
+const NIB_KEY = "thaanafont.nib";
 
 const TOP = Math.round((layout.guides.baseY - layout.guides.topY) * UNITS_PER_MM);          // 494
 const DESC = -Math.round((layout.guides.writeEnd - layout.guides.baseY) * UNITS_PER_MM);     // -304

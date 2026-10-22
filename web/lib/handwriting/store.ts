@@ -8,7 +8,7 @@ import type { Glyph } from "./types";
 
 const KEY = "dfm.handwriting.v1";
 /** Tells the header, if it is on screen, that the list of fonts or a count changed. */
-const changed = () => { if (typeof window !== "undefined") window.dispatchEvent(new Event("myakuru-fonts")); };
+const changed = () => { if (typeof window !== "undefined") window.dispatchEvent(new Event("thaanafont-fonts")); };
 
 export type Project = {
   v: 1; glyphs: Record<string, Glyph>; updatedAt: number;
@@ -313,16 +313,16 @@ export async function exportFont(id: string): Promise<{ filename: string; text: 
   } catch {}
   if (!p) return null;
   const title = fontTitle(p);
-  const text = JSON.stringify({ app: "myakuru", kind: "font", v: 1, title, project: { ...p, fontId: undefined } });
-  return { filename: `${title.replace(/[\\/:*?"<>|]+/g, "").trim().replace(/\s+/g, "-") || "font"}.myakuru`, text };
+  const text = JSON.stringify({ app: "thaanafont", kind: "font", v: 1, title, project: { ...p, fontId: undefined } });
+  return { filename: `${title.replace(/[\\/:*?"<>|]+/g, "").trim().replace(/\s+/g, "-") || "font"}.thaanafont`, text };
 }
 
 /** Open a backup file as a new font. The open font is put away first. */
 export async function importFont(text: string): Promise<{ ok: true; title: string } | { ok: false; reason: string }> {
   let data: { app?: string; kind?: string; title?: string; project?: Project };
-  try { data = JSON.parse(text); } catch { return { ok: false, reason: "That is not a MyAkuru backup file." }; }
-  if (data.app !== "myakuru" || data.kind !== "font" || !data.project || typeof data.project.glyphs !== "object") {
-    return { ok: false, reason: "That is not a MyAkuru backup file." };
+  try { data = JSON.parse(text); } catch { return { ok: false, reason: "That is not a ThaanaFont backup file." }; }
+  if (typeof data.app !== "string" || !["thaanafont", "myakuru"].includes(data.app) || data.kind !== "font" || !data.project || typeof data.project.glyphs !== "object") {
+    return { ok: false, reason: "That is not a ThaanaFont backup file." };
   }
   const cur = await ensureActive();
   await parkOrDrop(cur);

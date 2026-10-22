@@ -207,11 +207,11 @@ def _rename(font: TTFont, family: str, params: PlayParams) -> None:
     for plat, enc, lang in ((3, 1, 0x409), (1, 0, 0)):
         names.setName(family, 1, plat, enc, lang)
         names.setName(style, 2, plat, enc, lang)
-        names.setName(f"{ps}-{style.replace(' ', '')};myakuru", 3, plat, enc, lang)
+        names.setName(f"{ps}-{style.replace(' ', '')};thaanafont", 3, plat, enc, lang)
         names.setName(f"{family} {style}".strip(), 4, plat, enc, lang)
         names.setName(f"{ps}-{style.replace(' ', '')}", 6, plat, enc, lang)
         names.setName(
-            f"Derived from {BASES[params.base].credit} (SIL Open Font License 1.1), restyled with MyAkuru.",
+            f"Derived from {BASES[params.base].credit} (SIL Open Font License 1.1), restyled with ThaanaFont.",
             10, plat, enc, lang,
         )
     # style flags must agree with each other or validators complain

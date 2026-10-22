@@ -34,7 +34,7 @@ export function ProjectBackup() {
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => void save()} data-testid="save-project" className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-teal px-4 py-2 text-[15px] font-bold text-white hover:bg-teal-dark">Save project file</button>
         <button type="button" onClick={() => input.current?.click()} data-testid="open-project" className="flex min-h-11 flex-1 items-center justify-center rounded-xl border border-[#BDCFC2] bg-white px-4 py-2 text-[15px] font-bold hover:bg-paper">Open a project file</button>
-        <input ref={input} type="file" accept=".myakuru,application/json" className="sr-only" data-testid="project-file" aria-label="Open a project file"
+        <input ref={input} type="file" accept=".thaanafont,.myakuru,application/json" className="sr-only" data-testid="project-file" aria-label="Open a project file"
           onChange={(e) => { void open(e.target.files?.[0]); e.target.value = ""; }} />
       </div>
       {msg && (

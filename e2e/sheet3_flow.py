@@ -70,7 +70,7 @@ def main():
         with pg.expect_download() as dl:
             pg.get_by_test_id("print-sheet").click()
         dl.value.save_as(str(pdf))
-        assert dl.value.suggested_filename == "myakuru-joined-letters.pdf" and len(pg.context.pages) == 1
+        assert dl.value.suggested_filename == "thaanafont-joined-letters.pdf" and len(pg.context.pages) == 1
         pages = int([l for l in subprocess.check_output(["pdfinfo", str(pdf)], text=True).splitlines() if l.startswith("Pages")][0].split()[1])
         assert pages == 2, pages
         txt = subprocess.check_output(["pdftotext", "-layout", str(pdf), "-"], text=True)

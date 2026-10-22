@@ -67,9 +67,9 @@ def main():
             pg.get_by_test_id("save-project").click()
         f = OUT / dl.value.suggested_filename
         dl.value.save_as(str(f))
-        assert f.name == "Test-font.myakuru", f.name
+        assert f.name == "Test-font.thaanafont", f.name
         body = json.loads(f.read_text())
-        assert body["app"] == "myakuru" and body["kind"] == "project" and body["v"] == 1
+        assert body["app"] == "thaanafont" and body["kind"] == "project" and body["v"] == 1
         assert len(body["project"]["glyphs"]) == 5 and body["project"]["spacing"]["all"] == 12 and "fontId" not in body["project"]
         assert "Saved." in pg.get_by_test_id("project-msg").inner_text()
 
@@ -83,25 +83,31 @@ def main():
         parked = pg.evaluate(GET, f"dfm.font.{idx['ids'][1]}")
         assert parked["title"] == "Test font (opened)" and len(parked["glyphs"]) == 5 and parked["fontId"] == idx["ids"][1]
 
+        # a file saved before the site was renamed (.myakuru, app "myakuru") still opens
+        old = OUT / "Old-font.myakuru"; body["app"] = "myakuru"; old.write_text(json.dumps(body))
+        pg.get_by_test_id("project-file").set_input_files(str(old))
+        pg.wait_for_timeout(900)
+        assert len(pg.evaluate(GET, "dfm.fonts.v1")["ids"]) == 3, "the old file was added as a font"
+
         # it shows in the font menu, and switching to it works
         pg.get_by_test_id("font-switcher").click()
         assert "Test font (opened)" in pg.get_by_test_id("font-menu").inner_text()
         pg.keyboard.press("Escape")
 
         # files that are not projects are refused plainly
-        junk = OUT / "junk.myakuru"; junk.write_text("not json")
-        other = OUT / "other.myakuru"; other.write_text(json.dumps({"hello": 1}))
-        broken = OUT / "broken.myakuru"; broken.write_text(json.dumps({"app": "myakuru", "kind": "project", "v": 1, "project": {"v": 1, "glyphs": {"0780": {"id": 5}}}}))
-        for fpath, text in ((junk, "not a MyAkuru project"), (other, "not a MyAkuru project"), (broken, "damaged")):
+        junk = OUT / "junk.thaanafont"; junk.write_text("not json")
+        other = OUT / "other.thaanafont"; other.write_text(json.dumps({"hello": 1}))
+        broken = OUT / "broken.thaanafont"; broken.write_text(json.dumps({"app": "thaanafont", "kind": "project", "v": 1, "project": {"v": 1, "glyphs": {"0780": {"id": 5}}}}))
+        for fpath, text in ((junk, "not a ThaanaFont project"), (other, "not a ThaanaFont project"), (broken, "damaged")):
             pg.get_by_test_id("project-file").set_input_files(str(fpath))
             pg.wait_for_function(f"document.querySelector('[data-testid=project-msg]')?.textContent.includes('{text}')", timeout=5000)
-        assert len(pg.evaluate(GET, "dfm.fonts.v1")["ids"]) == 2, "refused files add nothing"
+        assert len(pg.evaluate(GET, "dfm.fonts.v1")["ids"]) == 3, "refused files add nothing"
 
         # the menu can open a file too
         pg.get_by_test_id("font-switcher").click()
         pg.get_by_test_id("project-file-menu").set_input_files(str(f))
         pg.wait_for_function("document.querySelector('[data-testid=project-note]')?.textContent.includes('Opened as')")
-        assert len(pg.evaluate(GET, "dfm.fonts.v1")["ids"]) == 3
+        assert len(pg.evaluate(GET, "dfm.fonts.v1")["ids"]) == 4
         assert not errors, errors
         b.close()
     print("beta flow ok")

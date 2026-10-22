@@ -17,7 +17,7 @@ from fontmaker.svgoutline import OutlineRequest, outline_strokes
 
 ALLOWED = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
 
-app = FastAPI(title="MyAkuru builder", version="0.1.0")
+app = FastAPI(title="ThaanaFont builder", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=ALLOWED, allow_methods=["POST", "GET"], allow_headers=["content-type"],
                    expose_headers=["content-disposition", "x-dfm-filled", "x-dfm-drawn"])
 

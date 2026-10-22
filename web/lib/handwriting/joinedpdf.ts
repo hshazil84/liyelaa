@@ -55,7 +55,7 @@ export async function makeJoinedPdf(ligs: Ligature[]): Promise<Blob> {
   const pages = joinedPages(ligs);
   const total = 2 + pages.length;
   const doc = await PDFDocument.create();
-  doc.setTitle("MyAkuru joined letters");
+  doc.setTitle("ThaanaFont joined letters");
   const regular = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const images = new Map<string, Awaited<ReturnType<typeof doc.embedPng>>>();
@@ -79,8 +79,8 @@ export async function makeJoinedPdf(ligs: Ligature[]): Promise<Blob> {
       if (m.hole) page.drawRectangle({ x: X(m.cx - MARK / 2 + 2.2), y: Y(m.cy - MARK / 2 + 2.2 + 2.6), width: 2.6 * PT, height: 2.6 * PT, color: rgb(1, 1, 1) });
     }
 
-    page.drawText("MyAkuru", { x: X(20), y: Y(11) - 10, size: 12, font: bold, color: grey(34) });
-    page.drawText(`${String.fromCharCode(0xb7)}  Joined letters`, { x: X(20) + bold.widthOfTextAtSize("MyAkuru", 12) + 6, y: Y(11) - 10, size: 12, font: regular, color: grey(34) });
+    page.drawText("ThaanaFont", { x: X(20), y: Y(11) - 10, size: 12, font: bold, color: grey(34) });
+    page.drawText(`${String.fromCharCode(0xb7)}  Joined letters`, { x: X(20) + bold.widthOfTextAtSize("ThaanaFont", 12) + 6, y: Y(11) - 10, size: 12, font: regular, color: grey(34) });
     const pn = `Sheet ${pg.id} of ${total}`;
     page.drawText(pn, { x: X(190) - regular.widthOfTextAtSize(pn, 10), y: Y(11) - 10, size: 10, font: regular, color: grey(102) });
 

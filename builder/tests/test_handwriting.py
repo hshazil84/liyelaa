@@ -349,7 +349,7 @@ def test_designer_details_are_optional():
     font, _ = build()
     assert font["name"].getDebugName(12) is None
     assert font["name"].getDebugName(5) == "Version 1.000"
-    assert "Made with MyAkuru" in font["name"].getDebugName(10)
+    assert "Made with ThaanaFont" in font["name"].getDebugName(10)
 
 
 @pytest.mark.parametrize("kw", [{"website": "not a site"}, {"website": "ftp://x.mv"}, {"website": "nodots"}, {"version": "v2"}, {"version": "1.2345"}])

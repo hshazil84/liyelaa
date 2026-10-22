@@ -5,7 +5,7 @@ import "./globals.css";
 import { Feedback } from "@/components/Feedback";
 
 export const metadata: Metadata = {
-  title: "MyAkuru",
+  title: "ThaanaFont",
   description: "Make a Dhivehi (Thaana) font from your handwriting, or restyle an open one.",
 };
 

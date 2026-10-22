@@ -124,7 +124,7 @@ export default function Home() {
         </div>
         <div className="flex flex-col gap-1">
           <p className="text-sm text-muted">No account needed to try it.</p>
-          <p className="text-sm text-muted" data-testid="beta-note"><b className="text-ink">MyAkuru is in beta.</b> Things may break. Your work is saved in this browser only, so save a project file now and then.</p>
+          <p className="text-sm text-muted" data-testid="beta-note"><b className="text-ink">ThaanaFont is in beta.</b> Things may break. Your work is saved in this browser only, so save a project file now and then.</p>
         </div>
       </main>
     </div>

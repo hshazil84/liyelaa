@@ -5,10 +5,13 @@ import { addFont, fontTitle, loadProject, type Project } from "./store";
  * A project file: the open font's letters, spacing and settings as one file the person keeps.
  * Photos are never stored, so they are not in it. Opening a file adds a new font and never replaces one.
  */
-export const PROJECT_EXT = ".myakuru";
+export const PROJECT_EXT = ".thaanafont";
+const OLD_EXT = ".myakuru";           // files saved before the site was renamed still open
+const APP_IDS = ["thaanafont", "myakuru"];
+export const PROJECT_ACCEPT = `${PROJECT_EXT},${OLD_EXT},application/json`;
 const MAX_BYTES = 40 * 1024 * 1024;
 
-type FileBody = { app: "myakuru"; kind: "project"; v: 1; savedAt: number; project: Project };
+type FileBody = { app: "thaanafont"; kind: "project"; v: 1; savedAt: number; project: Project };
 
 const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x);
 const num = (x: unknown) => typeof x === "number" && Number.isFinite(x);
@@ -52,7 +55,7 @@ export async function saveProjectFile(): Promise<string> {
   const p = await loadProject();
   const { fontId: _id, ...rest } = p;
   void _id;
-  const body: FileBody = { app: "myakuru", kind: "project", v: 1, savedAt: Date.now(), project: rest as Project };
+  const body: FileBody = { app: "thaanafont", kind: "project", v: 1, savedAt: Date.now(), project: rest as Project };
   const name = (fontTitle(p).replace(/[^A-Za-z0-9 \-]/g, "").trim().replace(/\s+/g, "-") || "My-font") + PROJECT_EXT;
   saveBlob(new Blob([JSON.stringify(body)], { type: "application/json" }), name);
   return name;
@@ -63,11 +66,11 @@ export type OpenResult = { ok: true; id: string; title: string } | { ok: false; 
 /** Read a project file and add it as a new font. */
 export async function openProjectFile(file: File): Promise<OpenResult> {
   const bad = (reason: string): OpenResult => ({ ok: false, reason });
-  if (file.size > MAX_BYTES) return bad("That file is too big to be a MyAkuru project.");
+  if (file.size > MAX_BYTES) return bad("That file is too big to be a ThaanaFont project.");
   let body: unknown;
-  try { body = JSON.parse(await file.text()); } catch { return bad(`That file is not a MyAkuru project. Choose a file ending in ${PROJECT_EXT}.`); }
-  if (!isObj(body) || body.app !== "myakuru" || body.kind !== "project") return bad(`That file is not a MyAkuru project. Choose a file ending in ${PROJECT_EXT}.`);
-  if (body.v !== 1) return bad("That project was saved by a newer version of MyAkuru. Reload the page and try again.");
+  try { body = JSON.parse(await file.text()); } catch { return bad(`That file is not a ThaanaFont project. Choose a file ending in ${PROJECT_EXT}.`); }
+  if (!isObj(body) || typeof body.app !== "string" || !APP_IDS.includes(body.app) || body.kind !== "project") return bad(`That file is not a ThaanaFont project. Choose a file ending in ${PROJECT_EXT}.`);
+  if (body.v !== 1) return bad("That project was saved by a newer version of ThaanaFont. Reload the page and try again.");
   const project = clean(body.project);
   if (!project) return bad("That project file is damaged, so it was not opened.");
   const title = `${fontTitle(project)} (opened)`.slice(0, 60);

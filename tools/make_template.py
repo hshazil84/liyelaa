@@ -105,7 +105,7 @@ def page(title, tip, body, n):
     marks = "".join(
         f'<div class="mk{" hole" if (x, y) == (8, 8) else ""}" style="left:{x}mm;top:{y}mm"></div>'
         for x, y in ((8, 8), (195, 8), (8, 282), (195, 282)))
-    return (f'<section class="pg">{marks}<div class="hd"><b>MyAkuru</b> &nbsp;·&nbsp; {title}'
+    return (f'<section class="pg">{marks}<div class="hd"><b>ThaanaFont</b> &nbsp;·&nbsp; {title}'
             f'<span class="pn">Sheet {n} of 2</span></div><div class="tip">{tip}</div>{body}</section>')
 
 

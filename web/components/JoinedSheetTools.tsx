@@ -18,7 +18,7 @@ export function JoinedSheetTools({ ligs, onScanned, note = true }: { ligs: Ligat
   async function download() {
     setBusy(true); setMsg(null);
     try {
-      saveBlob(await makeJoinedPdf(ligs), "myakuru-joined-letters.pdf");
+      saveBlob(await makeJoinedPdf(ligs), "thaanafont-joined-letters.pdf");
     } catch (e) {
       setMsg("I could not make the PDF. Try again.");
       console.error(e);

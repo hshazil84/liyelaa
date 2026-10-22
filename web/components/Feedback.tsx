@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FEEDBACK_EMAIL, FEEDBACK_SUBJECT } from "@/lib/site";
 
-/** A small "Send feedback" button on every page while MyAkuru is in beta. */
+/** A small "Send feedback" button on every page while ThaanaFont is in beta. */
 export function Feedback() {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);

@@ -114,7 +114,7 @@ export function FontsClient() {
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-line pt-4 text-sm text-muted">
           <span>Your fonts live in this browser only.</span>
           <button type="button" onClick={() => file.current?.click()} className="font-bold text-teal underline underline-offset-4">Open a backup file</button>
-          <input ref={file} data-testid="backup-input" type="file" accept=".myakuru,application/json" className="sr-only" onChange={(e) => { openBackup(e.target.files); e.target.value = ""; }} />
+          <input ref={file} data-testid="backup-input" type="file" accept=".thaanafont,.myakuru,application/json" className="sr-only" onChange={(e) => { openBackup(e.target.files); e.target.value = ""; }} />
         </div>
       </main>
 
