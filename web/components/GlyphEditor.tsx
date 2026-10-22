@@ -451,7 +451,7 @@ export function GlyphEditor({
 
       <div className="flex flex-wrap items-start gap-4">
       <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-3">
-      <div className="relative overflow-hidden rounded-[14px] bg-[#F3F9F5]">
+      <div className="relative select-none overflow-hidden rounded-[14px] bg-[#F3F9F5]">
         <svg
           ref={svgRef}
           viewBox={`${vbx} ${vby} ${vw} ${vh}`}
@@ -466,6 +466,7 @@ export function GlyphEditor({
           onPointerCancel={onUp}
           onLostPointerCapture={onUp}
           onDoubleClick={onDouble}
+          onMouseDown={(e) => { if (e.detail > 1) e.preventDefault(); }}
           onDragOver={(e) => e.preventDefault()}
           onDrop={onDrop}
         >
@@ -474,7 +475,7 @@ export function GlyphEditor({
             {[[TOP, "Top", false], [TOP / 2, "Mid", false], [0, "Baseline", true], [DESC, "Descender", false]].map(([y, name, strong]) => (
               <g key={name as string}>
                 <line x1={vbx} x2={vbx + vw} y1={y as number} y2={y as number} stroke={strong ? TEAL : "#BDCFC2"} strokeWidth={(strong ? 1.6 : 1) * u} strokeDasharray={strong ? undefined : `${6 * u} ${5 * u}`} />
-                <text transform="scale(1,-1)" x={vbx + 12 * u} y={-(y as number) - 6 * u} fontSize={12 * u} fill={strong ? TEAL : "#5D797B"} fontWeight={strong ? 700 : 400}>{name as string}</text>
+                <text transform="scale(1,-1)" x={vbx + 12 * u} y={-(y as number) - 6 * u} fontSize={12 * u} fill={strong ? TEAL : "#5D797B"} fontWeight={strong ? 700 : 400} pointerEvents="none" style={{ userSelect: "none", WebkitUserSelect: "none" }}>{name as string}</text>
               </g>
             ))}
             {!isMark && [0, g.adv].map((x) => (

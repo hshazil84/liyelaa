@@ -10,7 +10,7 @@ WEB = os.environ.get("WEB_URL", "http://localhost:3000")
 OUT = sys.argv[1] if len(sys.argv) > 1 else tempfile.mkdtemp()
 os.makedirs(OUT, exist_ok=True)
 CHROMIUM = "/opt/pw-browsers/chromium" if os.path.exists("/opt/pw-browsers/chromium") else None
-TEXT = "ދިވެހިބަސް"
+TEXT = "ތާނަ ފޮންޓު"
 
 
 def ink_bbox(png: bytes):

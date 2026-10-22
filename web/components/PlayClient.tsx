@@ -10,7 +10,7 @@ import {
 } from "@/lib/play";
 
 const STORAGE_KEY = "dfm.play.v1";
-const SAMPLE = "ދިވެހިބަސް";
+const SAMPLE = "ތާނަ ފޮންޓު";
 const STEPS = [{ label: "Start", href: "/" }, { label: "Play" }, { label: "Save your font" }];
 
 type PreviewState = "idle" | "loading" | "ready" | "error";
