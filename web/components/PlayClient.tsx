@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
+import { BuilderWaking, useSlow } from "@/components/BuilderWaking";
 import { Stepper } from "@/components/Stepper";
 import {
   BASES, BaseId, BuildFormat, DEFAULTS, LIMITS, PRESETS, PlaySettings,
@@ -40,6 +41,7 @@ export function PlayClient() {
   const [busy, setBusy] = useState<BuildFormat | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [failed, setFailed] = useState<BuildFormat | null>(null);
+  const slow = useSlow(busy !== null);
   const [builtFamily, setBuiltFamily] = useState<string | null>(null);
   const [previewState, setPreviewState] = useState<PreviewState>("idle");
   const faceRef = useRef<FontFace | null>(null);
@@ -245,6 +247,7 @@ export function PlayClient() {
               </button>
             ))}
           </div>
+          {busy !== null && slow && <BuilderWaking />}
           {error && (
               <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl bg-coral-soft px-4 py-3 text-sm font-medium text-ink" data-testid="build-error">
                 <span className="min-w-0 flex-1">{error}</span>

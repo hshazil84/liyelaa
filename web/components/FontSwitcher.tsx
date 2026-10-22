@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { NewFontDialog } from "@/components/NewFontDialog";
 import { fontHome, go } from "@/lib/handwriting/fonts";
+import { openProjectFile } from "@/lib/handwriting/projectfile";
 import { listFonts, switchFont, type FontMeta } from "@/lib/handwriting/store";
 
 /** The name of the font being worked on, with a menu to open another one or start a new one. */
@@ -12,6 +13,8 @@ export function FontSwitcher() {
   const [open, setOpen] = useState(false);
   const [making, setMaking] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const file = useRef<HTMLInputElement>(null);
+  const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
     const load = () => { listFonts().then(setFonts); };
@@ -37,6 +40,12 @@ export function FontSwitcher() {
     if (await switchFont(f.id)) go(fontHome(f));
   }
 
+  async function openFile(f: File | undefined) {
+    if (!f) return;
+    const r = await openProjectFile(f);
+    setNote(r.ok ? `Opened as “${r.title}”.` : r.reason);
+  }
+
   return (
     <div ref={box} className="relative">
       <button type="button" data-testid="font-switcher" aria-haspopup="true" aria-expanded={open} onClick={() => setOpen((o) => !o)}
@@ -59,6 +68,9 @@ export function FontSwitcher() {
           <button type="button" role="menuitem" data-testid="new-font-open" onClick={() => { setOpen(false); setMaking(true); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left font-bold text-teal hover:bg-paper">
             <span className="w-4">+</span>New font
           </button>
+          <button type="button" role="menuitem" data-testid="open-project-menu" onClick={() => file.current?.click()} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left font-medium hover:bg-paper"><span className="w-4" />Open a project file</button>
+          <input ref={file} type="file" accept=".myakuru,application/json" className="sr-only" data-testid="project-file-menu" aria-label="Open a project file" onChange={(e) => { void openFile(e.target.files?.[0]); e.target.value = ""; }} />
+          {note && <p role="status" data-testid="project-note" className="mx-2 rounded-lg bg-[#F3F9F5] px-3 py-2 text-xs leading-snug">{note}</p>}
           <Link href="/handwriting/fonts" role="menuitem" className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium hover:bg-paper"><span className="w-4" />Manage my fonts</Link>
           <p className="flex items-center gap-2 px-3 pb-1 pt-2 text-xs text-muted"><span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser</p>
         </div>

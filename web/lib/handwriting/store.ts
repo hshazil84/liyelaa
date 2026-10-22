@@ -243,6 +243,17 @@ export async function createFont(title: string, path: "photo" | "draw"): Promise
   return id;
 }
 
+/** Add a font that came from a project file, without opening it or touching the one being worked on. */
+export async function addFont(p: Project, title: string): Promise<string> {
+  await ensureActive();
+  const id = newId();
+  try { await set(fontKey(id), { ...p, fontId: id, title, updatedAt: Date.now() }); } catch { throw new Error("This browser would not save the font."); }
+  const idx = await readIndex();
+  await writeIndex({ ...idx, ids: [...idx.ids, id] });
+  changed();
+  return id;
+}
+
 export async function renameFont(id: string, title: string): Promise<void> {
   const name = title.trim().slice(0, 60);
   if (!name) return;

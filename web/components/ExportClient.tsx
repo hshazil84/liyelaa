@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FontSwitcher } from "@/components/FontSwitcher";
 import { Logo } from "@/components/Logo";
+import { ProjectBackup } from "@/components/ProjectBackup";
+import { BuilderWaking, useSlow } from "@/components/BuilderWaking";
 import { Stepper } from "@/components/Stepper";
 import {
   DEFAULT_INFO, NEEDED_LETTERS, NEEDED_MARKS, allMine, buildHandwritingFont, buildProblem, cleanFontName, cpId, infoProblems, saveBlob,
@@ -64,6 +66,7 @@ export function ExportClient() {
   const [busy, setBusy] = useState<BuildFormat | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [failed, setFailed] = useState<BuildFormat | null>(null);
+  const slow = useSlow(busy !== null);
   const faceRef = useRef<FontFace | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -281,6 +284,8 @@ export function ExportClient() {
             </div>
           </form>
 
+          <ProjectBackup />
+
           <div className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">
             <button
               type="button"
@@ -299,6 +304,7 @@ export function ExportClient() {
                 </button>
               ))}
             </div>
+            {busy !== null && slow && <BuilderWaking />}
             {error && (
               <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl bg-coral-soft px-4 py-3 text-sm font-medium text-ink" data-testid="build-error">
                 <span className="min-w-0 flex-1">{error}</span>
