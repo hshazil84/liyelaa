@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { GlyphTile } from "@/components/GlyphTile";
+import { Loading } from "@/components/Loading";
 import { FontSwitcher } from "@/components/FontSwitcher";
 import { Logo } from "@/components/Logo";
 import { Stepper } from "@/components/Stepper";
@@ -160,7 +161,7 @@ export function HandwritingPhoto() {
           {!result && !error && !busy && (
             <p className="text-base text-muted">Add a photo of a filled-in sheet and it appears here, straightened, with every letter found.</p>
           )}
-          {busy && <p className="text-base text-muted" role="status">Straightening the sheet and tracing your letters…</p>}
+          {busy && <Loading label="Straightening the sheet and tracing your letters…" size={200} />}
           {result && result.ok && (
             <>
               <div className="grid grid-cols-2 gap-4">

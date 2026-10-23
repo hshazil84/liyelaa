@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { Loading } from "@/components/Loading";
 import { Logo } from "@/components/Logo";
 import { go } from "@/lib/handwriting/fonts";
 import { createFont, isBlank, loadProject, setPath, sourceMix } from "@/lib/handwriting/store";
@@ -44,7 +45,7 @@ export function DrawStart() {
             <Link href="/handwriting/letters" className="font-bold text-teal underline underline-offset-4">Open the letters anyway</Link>
           </>
         ) : (
-          <p className="text-muted" role="status">Opening a blank font…</p>
+          <Loading label="Opening a blank font…" />
         )}
       </main>
     </div>

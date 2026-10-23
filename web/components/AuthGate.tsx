@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { Loading } from "@/components/Loading";
 import { useAuth } from "@/lib/auth";
 
 /** The tools need an account. Signed-out visitors are sent to sign up and come back to the page they wanted. */
@@ -16,8 +17,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (!enabled) return <>{children}</>;
   if (!ready || blocked) {
     return (
-      <div className="flex min-h-screen items-center justify-center" role="status" data-testid="auth-wait">
-        <p className="text-base text-muted">{blocked ? "Taking you to sign up…" : "Loading…"}</p>
+      <div className="flex min-h-screen items-center justify-center" data-testid="auth-wait">
+        <Loading label={blocked ? "Taking you to sign up…" : "Loading…"} />
       </div>
     );
   }
