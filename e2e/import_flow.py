@@ -51,7 +51,7 @@ def main():
 
         pg.goto(f"{WEB}/draw")
         pg.get_by_test_id("svg-input").set_input_files([str(d / n.replace("+", "")) for n in files])
-        pg.wait_for_selector("[data-testid=import-summary]", timeout=30000)
+        pg.wait_for_selector("[data-testid=stroke-notice]", timeout=30000)
         ok = pg.locator("[data-cell][data-status=ok]").count()
         fix = pg.locator("[data-cell][data-status=fix]").count()
         print("matched", ok, "need a fix", fix)
@@ -95,8 +95,8 @@ def main():
 
         # pasting SVG code adds a letter the files did not have
         pg.goto(f"{WEB}/draw")
-        pg.get_by_role("tab", name="Paste", exact=True).click()
-        pg.get_by_test_id("paste-for").select_option("0789")
+        pg.locator("[data-cell='0789']").click()
+        pg.get_by_text("Paste SVG code instead").click()
         pg.get_by_test_id("paste-text").fill(files["U+0789.svg"])
         pg.get_by_test_id("paste-add").click()
         pg.wait_for_selector("[data-cell='0789'][data-status=ok]", timeout=30000)
