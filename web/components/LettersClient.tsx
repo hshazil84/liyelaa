@@ -11,6 +11,7 @@ import { layout } from "@/lib/handwriting/pipeline";
 import { stepIndex, useSteps } from "@/lib/handwriting/steps";
 import { loadProject, removeGlyph, updateGlyph } from "@/lib/handwriting/store";
 import type { Glyph, LayoutCell } from "@/lib/handwriting/types";
+import { KeyHint } from "@/components/KeyHint";
 
 type TabId = "letters" | "marks" | "extras";
 
@@ -173,6 +174,7 @@ export function LettersClient() {
           <div className="flex items-baseline gap-3">
             <h1 className="font-display text-xl font-bold" lang="dv"><span className="font-thaana text-[26px]">{cell.label}</span></h1>
             <span className="text-sm text-muted">U+{cell.id}</span>
+            <KeyHint cp={parseInt(cell.id, 16)} />
           </div>
           {loaded && (
             <GlyphEditor

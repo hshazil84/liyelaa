@@ -15,6 +15,7 @@ import { layout } from "@/lib/handwriting/pipeline";
 import { stepIndex, useSteps } from "@/lib/handwriting/steps";
 import { loadProject, removeGlyph, saveExtras, updateGlyph } from "@/lib/handwriting/store";
 import type { Glyph, LayoutCell } from "@/lib/handwriting/types";
+import { KeyHint } from "@/components/KeyHint";
 
 const CELLS = new Map<string, LayoutCell>(layout.sheets[1].cells.map((c) => [c.id, c]));
 const FIRST = SYMBOL_GROUPS[0].items[0].id;
@@ -129,6 +130,7 @@ export function ExtrasClient() {
           <div className="flex items-baseline gap-3">
             <h1 className="font-display text-xl font-bold">{name}</h1>
             <span className="text-sm text-muted">U+{cell.id}</span>
+            <KeyHint cp={parseInt(cell.id, 16)} />
           </div>
           {loaded && (
             <GlyphEditor key={cell.id} cell={cell} glyph={glyphs[cell.id] ?? null} original={originals[cell.id] ?? null} onChange={(g) => onChange(cell.id, g)} />
