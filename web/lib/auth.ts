@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AUTH_ON, supabase } from "@/lib/supabase";
+import { track } from "@/lib/track";
 
 export type Who = { email: string } | null;
 
@@ -44,6 +45,7 @@ export async function signUp(email: string, password: string): Promise<AuthResul
     // An address that already has an account comes back with no identities and no error.
     if (data.user && data.user.identities && data.user.identities.length === 0) return { ok: false, message: friendly("already registered") };
     if (data.session) void sendWelcome(data.session.access_token);
+    track("signup");
     return { ok: true, needsConfirm: !data.session };
   } catch (e) {
     return { ok: false, message: friendly(e instanceof Error ? e.message : "") };
@@ -65,6 +67,7 @@ export async function logIn(email: string, password: string): Promise<AuthResult
   try {
     const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
     if (error) return { ok: false, message: friendly(error.message) };
+    track("login");
     return { ok: true };
   } catch (e) {
     return { ok: false, message: friendly(e instanceof Error ? e.message : "") };

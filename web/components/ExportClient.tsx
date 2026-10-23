@@ -1,5 +1,6 @@
 "use client";
 
+import { track } from "@/lib/track";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FontSwitcher } from "@/components/FontSwitcher";
@@ -159,6 +160,7 @@ export function ExportClient() {
     try {
       const r = await buildHandwritingFont(project, effective, format);
       saveBlob(r.blob, r.filename);
+      track(`download_${format}`, { letters: NEEDED_LETTERS.filter((cp) => !!project.glyphs[cpId(cp)]?.contours.length).length });
     } catch (e) {
       setError(buildProblem(e)); setFailed(format);
     } finally {

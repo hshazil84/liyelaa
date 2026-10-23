@@ -1,5 +1,6 @@
 "use client";
 
+import { track } from "@/lib/track";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { ProjectFileIcon } from "@/components/ProjectFileIcon";
@@ -42,6 +43,7 @@ export function FontsClient() {
     const out = await exportFont(f.id);
     if (!out) { setMessage("I could not read that font."); return; }
     download(out.text, out.filename);
+    track("backup_saved");
     setMessage(`Saved a backup of ${f.title}.`);
   }
   async function rename(f: FontMeta) {

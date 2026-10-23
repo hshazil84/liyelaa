@@ -1,3 +1,4 @@
+import { track } from "@/lib/track";
 import { del, get, set } from "idb-keyval";
 import type { Extras, Ligature } from "./extras";
 import type { Levelled } from "./level";
@@ -267,6 +268,7 @@ export async function createFont(title: string, path: "photo" | "draw"): Promise
   const id = newId();
   await bringIn({ v: 1, glyphs: {}, updatedAt: Date.now(), title: title.trim() || DEFAULT_TITLE, path }, id);
   changed();
+  track("font_started", { path });
   return id;
 }
 

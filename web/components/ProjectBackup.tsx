@@ -1,5 +1,6 @@
 "use client";
 
+import { track } from "@/lib/track";
 import { useRef, useState } from "react";
 import { ProjectFileIcon } from "@/components/ProjectFileIcon";
 import { fontHome, go } from "@/lib/handwriting/fonts";
@@ -16,6 +17,7 @@ export function ProjectBackup() {
   async function save() {
     try {
       const name = await saveProjectFile();
+      track("backup_saved");
       setMsg({ kind: "saved", text: `${name} is in your downloads. It holds your letters, spacing and settings, not your photos.` });
     } catch { setMsg({ kind: "error", text: "I could not save the file. Try again." }); }
   }

@@ -1,5 +1,6 @@
 "use client";
 
+import { track } from "@/lib/track";
 import Link from "next/link";
 import { Upload04Icon } from "@hugeicons/core-free-icons";
 import { Icon } from "@/components/Icon";
@@ -208,6 +209,7 @@ export function ImportClient() {
     if (inNewFont) await createFont("Drawn letters", "draw");
     await saveGlyphs(usable.map((i) => i.glyph!), "drawn");
     setSaved(usable.length);
+    track("import_svg", { letters: usable.length });
     await refresh();
   }
 

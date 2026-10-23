@@ -3,6 +3,7 @@ import "@fontsource-variable/hanken-grotesk";
 import "@fontsource-variable/dm-sans";
 import "./globals.css";
 import { AccountMenu } from "@/components/AccountMenu";
+import { VisitPing } from "@/components/VisitPing";
 
 export const metadata: Metadata = {
   title: "ThaanaFont",
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="pb-20">
         {children}
         <AccountMenu />
+        <VisitPing />
       </body>
     </html>
   );
