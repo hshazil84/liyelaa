@@ -97,8 +97,43 @@ export function SpacingClient() {
       </header>
 
       <ExtrasNav current="spacing" />
-      <main className="mx-auto flex w-full max-w-[1240px] flex-wrap items-start gap-6 px-4 sm:px-10 py-8">
-        <div className="flex w-full flex-col gap-6 lg:w-[320px]">
+      <main className="mx-auto grid w-full max-w-[1240px] grid-cols-1 items-start gap-6 px-4 py-8 sm:px-10 lg:grid-cols-[320px_minmax(0,1fr)] lg:[grid-template-areas:'left_preview'_'left_next']">
+        <section aria-label="Preview" className="order-1 flex min-w-0 flex-col gap-4 rounded-3xl border border-line bg-white p-6 lg:order-none lg:[grid-area:preview]">
+          <h1 className="font-display text-[32px] font-bold leading-[1.1]">Preview and space the letters</h1>
+          <p className="text-[15px] text-muted">Look for gaps that are too big or too small, then fix them with the controls. Click a letter to choose it.</p>
+          {pending ? (
+            <p role="status" className="rounded-xl bg-sand px-4 py-3 text-sm">
+              Nothing to space yet. <Link href="/handwriting/letters" className="font-bold text-teal underline underline-offset-4">Go back to your letters</Link>.
+            </p>
+          ) : (
+            <div className="flex flex-col items-start gap-2 overflow-x-auto rounded-[14px] bg-[#F3F9F5] px-7 py-4" dir="rtl">
+              {WORDS.map((w, i) => (
+                <WordSvg key={w} text={w} glyphs={glyphs} offsets={offsets} spacing={sp} height={size * (i === 0 ? 1 : 0.7)}>
+                  {(line) => (
+                    <>
+                      {line.letters.map((l, j) => {
+                        const on = l.id === sel;
+                        return (
+                          <g key={j}>
+                            {gaps && on && l.left > 0 && <rect x={l.x} y={-200} width={l.left} height={900} fill="#264022" opacity={0.18} />}
+                            {gaps && on && l.right > 0 && <rect x={l.x + l.adv - sp.all - l.right} y={-200} width={l.right} height={900} fill="#264022" opacity={0.18} />}
+                            {gaps && on && <rect x={l.x} y={-200} width={l.adv} height={900} fill="none" stroke="#FA7E00" strokeWidth={5} strokeDasharray="16 10" />}
+                            <rect x={l.x} y={-200} width={l.adv} height={900} fill="transparent" className="cursor-pointer" data-letter={l.id} onClick={() => setSel(l.id)} />
+                          </g>
+                        );
+                      })}
+                    </>
+                  )}
+                </WordSvg>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-3 text-sm text-muted">
+            <label htmlFor="size" className="w-9">Size</label>
+            <input id="size" type="range" min={24} max={160} value={size} onChange={(e) => setSize(Number(e.target.value))} className="max-w-[320px] flex-1" />
+          </div>
+        </section>
+        <div className="order-2 flex w-full flex-col gap-6 lg:order-none lg:[grid-area:left]">
           <section aria-label="Letter spacing" className="flex flex-col gap-[18px] rounded-3xl border border-line bg-white p-5">
             <div className="flex items-center gap-3.5">
               <div className="flex h-16 w-16 items-center justify-center rounded-[14px] border-[1.5px] border-coral">
@@ -152,50 +187,17 @@ export function SpacingClient() {
             )}
           </section>
 
+        </div>
+
+        <div className="order-3 flex justify-end lg:order-none lg:[grid-area:next]">
           <Link
             href="/handwriting/extras"
             data-testid="continue-extras"
-            className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark"
+            className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-teal px-7 text-base font-bold text-white hover:bg-teal-dark sm:w-auto"
           >
             Next: signs and punctuation <Icon icon={ArrowRight02Icon} size={18} />
           </Link>
         </div>
-
-        <section aria-label="Preview" className="flex min-w-0 flex-[1_1_480px] flex-col gap-4 rounded-3xl border border-line bg-white p-6">
-          <h1 className="font-display text-[32px] font-bold leading-[1.1]">Preview and space the letters</h1>
-          <p className="text-[15px] text-muted">Look for gaps that are too big or too small, then fix them on the left. Click a letter to choose it.</p>
-          {pending ? (
-            <p role="status" className="rounded-xl bg-sand px-4 py-3 text-sm">
-              Nothing to space yet. <Link href="/handwriting/letters" className="font-bold text-teal underline underline-offset-4">Go back to your letters</Link>.
-            </p>
-          ) : (
-            <div className="flex flex-col items-start gap-2 overflow-x-auto rounded-[14px] bg-[#F3F9F5] px-7 py-4" dir="rtl">
-              {WORDS.map((w, i) => (
-                <WordSvg key={w} text={w} glyphs={glyphs} offsets={offsets} spacing={sp} height={size * (i === 0 ? 1 : 0.7)}>
-                  {(line) => (
-                    <>
-                      {line.letters.map((l, j) => {
-                        const on = l.id === sel;
-                        return (
-                          <g key={j}>
-                            {gaps && on && l.left > 0 && <rect x={l.x} y={-200} width={l.left} height={900} fill="#264022" opacity={0.18} />}
-                            {gaps && on && l.right > 0 && <rect x={l.x + l.adv - sp.all - l.right} y={-200} width={l.right} height={900} fill="#264022" opacity={0.18} />}
-                            {gaps && on && <rect x={l.x} y={-200} width={l.adv} height={900} fill="none" stroke="#FA7E00" strokeWidth={5} strokeDasharray="16 10" />}
-                            <rect x={l.x} y={-200} width={l.adv} height={900} fill="transparent" className="cursor-pointer" data-letter={l.id} onClick={() => setSel(l.id)} />
-                          </g>
-                        );
-                      })}
-                    </>
-                  )}
-                </WordSvg>
-              ))}
-            </div>
-          )}
-          <div className="flex items-center gap-3 text-sm text-muted">
-            <label htmlFor="size" className="w-9">Size</label>
-            <input id="size" type="range" min={24} max={160} value={size} onChange={(e) => setSize(Number(e.target.value))} className="max-w-[320px] flex-1" />
-          </div>
-        </section>
       </main>
     </div>
   );

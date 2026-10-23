@@ -89,8 +89,8 @@ export function ExtrasClient() {
       </header>
       <ExtrasNav current="symbols" />
 
-      <main className="mx-auto flex w-full max-w-[1280px] flex-wrap items-start gap-6 px-4 sm:px-10 py-6">
-        <section aria-label="Signs and punctuation" className="flex w-full flex-col gap-5 rounded-3xl border border-line bg-white p-5 lg:w-[340px]">
+      <main className="mx-auto grid w-full max-w-[1280px] grid-cols-1 items-start gap-6 px-4 py-6 sm:px-10 lg:grid-cols-[340px_minmax(0,1fr)] lg:[grid-template-areas:'list_editor'_'list_options'_'list_next']">
+        <section aria-label="Signs and punctuation" className="flex w-full flex-col gap-5 rounded-3xl border border-line bg-white p-5 lg:[grid-area:list]">
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-xl font-bold">Signs and punctuation</h2>
             <span className="text-sm text-muted" data-testid="progress">{done} of {total} drawn</span>
@@ -128,7 +128,7 @@ export function ExtrasClient() {
           ))}
         </section>
 
-        <section aria-label="Drawing area" className="flex min-w-0 flex-[1_1_520px] flex-col gap-4 rounded-3xl border border-line bg-white p-5">
+        <section aria-label="Drawing area" className="flex min-w-0 flex-col gap-4 rounded-3xl border border-line bg-white p-5 lg:[grid-area:editor]">
           <div className="flex items-baseline gap-3">
             <h1 className="font-display text-xl font-bold">{name}</h1>
             <span className="text-sm text-muted">U+{cell.id}</span>
@@ -139,7 +139,7 @@ export function ExtrasClient() {
           )}
         </section>
 
-        <aside aria-label="Choices and preview" className="flex w-full flex-col gap-4 lg:w-[320px]">
+        <aside aria-label="Choices and preview" className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:[grid-area:options]">
           <div className="flex flex-col gap-4 rounded-3xl border border-line bg-white p-5">
             <h2 className="font-display text-lg font-bold">What the font does</h2>
             <Switch id="latin" label="Typing , ; ? gives the Thaana marks" hint="On a normal keyboard these keys type the English comma, semicolon and question mark. With this on, they show the ones you drew." checked={ex.latinPunctuation} onChange={(v) => setOpt({ latinPunctuation: v })} />
@@ -161,11 +161,13 @@ export function ExtrasClient() {
             )}
             <p className="text-[12px] leading-snug text-muted">Only your own drawings show here. Gaps are signs you have not drawn.</p>
           </div>
-          <Link href="/handwriting/ligatures" data-testid="continue-ligatures" className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark">
+        </aside>
+        <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-6 lg:[grid-area:next]">
+          <Link href="/handwriting/export" data-testid="skip-export" className="text-center text-sm font-bold text-teal underline underline-offset-4">Skip to test and export</Link>
+          <Link href="/handwriting/ligatures" data-testid="continue-ligatures" className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal px-7 text-base font-bold text-white hover:bg-teal-dark">
             Next: joined letters <Icon icon={ArrowRight02Icon} size={18} />
           </Link>
-          <Link href="/handwriting/export" data-testid="skip-export" className="text-center text-sm font-bold text-teal underline underline-offset-4">Skip to test and export</Link>
-        </aside>
+        </div>
       </main>
     </div>
   );

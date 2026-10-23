@@ -166,6 +166,8 @@ export function ExportClient() {
     }
   }
 
+  const lettersDrawn = project ? NEEDED_LETTERS.filter((cp) => !!project.glyphs[cpId(cp)]?.contours.length).length : 0;
+  const toLook = checks.filter((c) => !c.ok).length;
   const year = new Date().getFullYear();
   const designer = info.designer.trim();
   const writtenIn = [
@@ -286,33 +288,7 @@ export function ExportClient() {
 
           <ProjectBackup />
 
-          <div className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">
-            <button
-              type="button"
-              disabled={busy !== null || hasProblems || !hasGlyphs}
-              onClick={() => download("zip")}
-              data-testid="download-zip"
-              className="h-[52px] rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark disabled:opacity-60"
-            >
-              {busy === "zip" ? "Building…" : "Download both (.zip)"}
-            </button>
-            <div className="flex gap-2">
-              {([["ttf", ".ttf"], ["woff2", ".woff2 for websites"]] as const).map(([f, label]) => (
-                <button key={f} type="button" disabled={busy !== null || hasProblems || !hasGlyphs} onClick={() => download(f)} data-testid={`download-${f}`}
-                  className="h-11 flex-1 rounded-xl border border-[#BDCFC2] bg-white text-sm font-bold hover:bg-paper disabled:opacity-60">
-                  {busy === f ? "Building…" : label}
-                </button>
-              ))}
-            </div>
-            {busy !== null && slow && <BuilderWaking />}
-            {error && (
-              <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl bg-coral-soft px-4 py-3 text-sm font-medium text-ink" data-testid="build-error">
-                <span className="min-w-0 flex-1">{error}</span>
-                {failed && busy === null && (
-                  <button type="button" onClick={() => void download(failed)} data-testid="build-retry" className="h-9 rounded-lg border border-[#BDCFC2] bg-white px-3 font-bold hover:bg-paper">Try again</button>
-                )}
-              </div>
-            )}
+          <div className="rounded-3xl border border-line bg-white p-5">
             <details className="text-sm">
               <summary className="cursor-pointer font-bold text-teal underline underline-offset-4">How to install on your phone or computer</summary>
               <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5 leading-snug text-muted">
@@ -327,6 +303,45 @@ export function ExportClient() {
           <Link href="/handwriting/spacing" className="text-center text-sm font-bold text-teal underline underline-offset-4">Back to spacing</Link>
         </aside>
       </main>
+
+      <div role="region" aria-label="Download" className="sticky bottom-0 z-20 mt-auto border-t border-line bg-white pl-4 pr-[84px] pt-3 sm:pl-10 pb-[max(12px,env(safe-area-inset-bottom))]">
+        <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0" data-testid="download-summary">
+            <p className="truncate font-display text-base font-bold">{info.name || "Your font"}</p>
+            <p className="text-[13px] text-muted">
+              {lettersDrawn} of 38 letters drawn
+              {" · "}
+              {toLook === 0 ? "all checks pass" : `${toLook} ${toLook === 1 ? "check" : "checks"} to look at`}
+            </p>
+          </div>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            {([["ttf", ".ttf"], ["woff2", ".woff2"]] as const).map(([f, label]) => (
+              <button key={f} type="button" disabled={busy !== null || hasProblems || !hasGlyphs} onClick={() => download(f)} data-testid={`download-${f}`}
+                className="h-12 flex-1 rounded-xl border border-[#BDCFC2] bg-white px-4 text-sm font-bold hover:bg-paper disabled:opacity-60 sm:flex-none">
+                {busy === f ? "Building…" : label}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={busy !== null || hasProblems || !hasGlyphs}
+              onClick={() => download("zip")}
+              data-testid="download-zip"
+              className="h-12 w-full rounded-2xl bg-teal px-6 text-base font-bold text-white hover:bg-teal-dark disabled:opacity-60 sm:w-auto"
+            >
+              {busy === "zip" ? "Building…" : "Download both (.zip)"}
+            </button>
+          </div>
+          {busy !== null && slow && <div className="w-full"><BuilderWaking /></div>}
+          {error && (
+            <div role="alert" className="flex w-full flex-wrap items-center gap-3 rounded-xl bg-coral-soft px-4 py-3 text-sm font-medium text-ink" data-testid="build-error">
+              <span className="min-w-0 flex-1">{error}</span>
+              {failed && busy === null && (
+                <button type="button" onClick={() => void download(failed)} data-testid="build-retry" className="h-9 rounded-lg border border-[#BDCFC2] bg-white px-3 font-bold hover:bg-paper">Try again</button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
