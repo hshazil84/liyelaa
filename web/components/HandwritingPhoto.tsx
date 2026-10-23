@@ -11,10 +11,11 @@ import { Logo } from "@/components/Logo";
 import { Stepper } from "@/components/Stepper";
 import { layout, processPhoto, type PhotoOutcome } from "@/lib/handwriting/pipeline";
 import { HANDWRITING_STEPS } from "@/lib/handwriting/steps";
+import { AlphabetSheetTools } from "@/components/AlphabetSheetTools";
 import { JoinedSheetTools } from "@/components/JoinedSheetTools";
 import { MixPrompt } from "@/components/MixPrompt";
 import type { Ligature } from "@/lib/handwriting/extras";
-import { clearProject, createFont, fontTitle, loadProject, saveGlyphs, saveLigatures, sourceMix } from "@/lib/handwriting/store";
+import { clearProject, createFont, fontTitle, loadProject, saveAlphabet, saveGlyphs, saveLigatures, sourceMix } from "@/lib/handwriting/store";
 
 
 const letterCount = layout.sheets[0].cells.length;
@@ -198,6 +199,12 @@ export function HandwritingPhoto() {
                 <JoinedSheetTools ligs={ligs} note={false} onScanned={async (next) => { await saveLigatures(next); await refresh(); }} />
               </>
             )}
+          </div>
+
+          <div className="flex flex-col gap-2 rounded-[20px] border border-line bg-white p-4 text-[14.5px] sm:col-span-2" data-testid="alphabet-card">
+            <h2 className="font-bold">English alphabet <span className="ml-1.5 rounded-full bg-lilac-mid px-2.5 py-0.5 align-middle text-xs font-bold text-grape">Optional</span></h2>
+            <p className="text-muted">Two more pages, A to Z and a to z. Print them, write the letters, add a photo of each page.</p>
+            <AlphabetSheetTools onScanned={async (gs) => { await saveAlphabet(gs); await refresh(); }} />
           </div>
         </div>
 

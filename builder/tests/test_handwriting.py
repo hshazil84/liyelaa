@@ -382,3 +382,48 @@ def test_private_zip_has_no_open_licence_file():
     data, _, _ = build_zip(BuildRequest(glyphs=BASE_GLYPHS, licence="private", fallback="none"))
     z = zipfile.ZipFile(io.BytesIO(data))
     assert "OFL.txt" not in z.namelist() and "All rights reserved" in z.read("README.txt").decode()
+
+
+# ----------------------------------------------------------------------------- English letters
+def test_drawn_english_letters_go_into_the_font_with_their_own_shape():
+    font, report = build([G(0x41, [rect(40, 0, 300, 494)], 380)] + BASE_GLYPHS)
+    assert font.getBestCmap()[0x41] == "uni0041"
+    assert ink(font, "uni0041") == (40, 0, 300, 494)
+    assert font["hmtx"]["uni0041"][0] == 380
+    assert "0041" in report["drawn"]
+
+
+def test_english_letters_not_drawn_come_from_inter_at_thaana_height():
+    font, report = build(fallback="noto")
+    cmap = font.getBestCmap()
+    assert all(c in cmap for c in list(range(0x41, 0x5B)) + list(range(0x61, 0x7B)))
+    assert len(report["filled_from_inter"]) == 52
+    top = ink(font, cmap[0x48])[3]                      # H, a flat top: the capital height
+    assert 485 <= top <= 500, top
+    assert ink(font, cmap[0x78])[3] < top               # x is lower than H
+
+
+def test_a_drawn_english_letter_is_not_replaced_by_inter():
+    font, report = build([G(0x41, [rect(40, 0, 300, 494)], 380)] + BASE_GLYPHS, fallback="noto")
+    assert ink(font, "uni0041") == (40, 0, 300, 494)
+    assert "0041" not in report["filled_from_inter"] and len(report["filled_from_inter"]) == 51
+
+
+def test_no_starter_means_no_inter_letters():
+    font, report = build(fallback="none")
+    assert 0x41 not in font.getBestCmap() and report["filled_from_inter"] == []
+
+
+def test_thaana_marks_are_not_attached_to_english_letters():
+    font, _ = build(fallback="noto")
+    gpos = font["GPOS"].table
+    mark_base = [l for l in gpos.LookupList.Lookup if l.LookupType == 4]
+    covered = {g for l in mark_base for st in l.SubTable for g in st.BaseCoverage.glyphs}
+    assert "uni0041" not in covered and "uni0784" in covered
+
+
+def test_zip_credits_inter_when_it_was_used():
+    z = zipfile.ZipFile(io.BytesIO(build_zip(BuildRequest(glyphs=BASE_GLYPHS, fallback="noto"))[0]))
+    assert "Inter" in z.read("OFL.txt").decode() and "Inter" in z.read("README.txt").decode()
+    z2 = zipfile.ZipFile(io.BytesIO(build_zip(BuildRequest(glyphs=BASE_GLYPHS, fallback="none"))[0]))
+    assert "Inter" not in z2.read("README.txt").decode()

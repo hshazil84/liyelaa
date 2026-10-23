@@ -55,6 +55,15 @@ export async function saveGlyphs(glyphs: Glyph[], source: "photo" | "drawn" = "p
   return p;
 }
 
+/** English letters read from a photo of the alphabet sheet. Added beside the Thaana letters; the font stays on the path it was on. */
+export async function saveAlphabet(glyphs: Glyph[]): Promise<Project> {
+  const p = await loadProject();
+  for (const g of glyphs) p.glyphs[g.id] = { ...g, kind: "latin", source: "photo" };
+  p.updatedAt = Date.now();
+  try { await set(KEY, p); } catch {}
+  return p;
+}
+
 /** Start over: the letters go, the font keeps its name. */
 export async function clearProject(): Promise<void> {
   try {

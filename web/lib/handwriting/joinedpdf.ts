@@ -1,7 +1,10 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
 import type { Ligature } from "./extras";
 import { joinedPages } from "./joined";
+import { X_HEIGHT, isLower } from "./alphabet";
 import { layout } from "./pipeline-layout";
+import { UNITS_PER_MM } from "./types";
+import type { LayoutCell } from "./types";
 
 const { guides, marks, markSize: MARK, page: PAGE } = layout;
 const PT = 72 / 25.4;                       // points per millimetre
@@ -53,14 +56,36 @@ function wrap(runs: Run[], regular: PDFFont, bold: PDFFont, size: number, maxW: 
 /** A printable PDF with one box for each joined letter, built in the browser. 36 boxes to a page, sheets numbered from 3. */
 export async function makeJoinedPdf(ligs: Ligature[]): Promise<Blob> {
   const pages = joinedPages(ligs);
-  const total = 2 + pages.length;
+  return makeSheetPdf(pages, {
+    docTitle: "ThaanaFont joined letters", heading: "Joined letters", pageNo: (pg) => `Sheet ${pg.id} of ${2 + pages.length}`,
+    tip: [
+      { t: "Write the whole joined shape inside its box, sitting on the solid", bold: false }, { t: "baseline,", bold: true },
+      { t: "including any vowel marks that belong to it. Skip any you don't want. Keep the sheet flat, in daylight, and don't cover the four black squares in the corners.", bold: false },
+    ],
+  });
+}
+
+/** The English alphabet: A to Z and a to z, left to right, with a cap line and a line for the height of small letters. */
+export async function makeAlphabetPdf(pages: { id: number; title: string; cells: LayoutCell[] }[]): Promise<Blob> {
+  return makeSheetPdf(pages, {
+    docTitle: "ThaanaFont alphabet", heading: "Alphabet", latin: true, pageNo: (_, i) => `Sheet ${i + 1} of ${pages.length}`,
+    tip: [
+      { t: "Write each letter inside its box, sitting on the solid", bold: false }, { t: "baseline.", bold: true },
+      { t: "Capitals reach the top dashed line; small letters reach the purple dashed line. Letters like g, p and y can drop below the baseline. Keep the sheet flat, in daylight, and don't cover the four black squares in the corners.", bold: false },
+    ],
+  });
+}
+
+type SheetOpts = { docTitle: string; heading: string; tip: Run[]; pageNo: (pg: { id: number }, i: number) => string; latin?: boolean };
+
+async function makeSheetPdf(pages: { id: number; title: string; cells: LayoutCell[] }[], o: SheetOpts): Promise<Blob> {
   const doc = await PDFDocument.create();
-  doc.setTitle("ThaanaFont joined letters");
+  doc.setTitle(o.docTitle);
   const regular = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const images = new Map<string, Awaited<ReturnType<typeof doc.embedPng>>>();
   const sizes = new Map<string, { w: number; h: number }>();
-  for (const pg of pages) for (const c of pg.cells) {
+  for (const pg of o.latin ? [] : pages) for (const c of pg.cells) {
     if (images.has(c.label)) continue;
     const li = await labelImage(c.label);
     if (!li) continue;
@@ -68,7 +93,8 @@ export async function makeJoinedPdf(ligs: Ligature[]): Promise<Blob> {
     sizes.set(c.label, { w: li.w, h: li.h });
   }
 
-  for (const pg of pages) {
+  for (let pageIx = 0; pageIx < pages.length; pageIx++) {
+    const pg = pages[pageIx];
     const page = doc.addPage([PAGE.w * PT, PAGE.h * PT]);
     const H = PAGE.h * PT;
     const X = (mm: number) => mm * PT, Y = (mm: number) => H - mm * PT;
@@ -80,14 +106,11 @@ export async function makeJoinedPdf(ligs: Ligature[]): Promise<Blob> {
     }
 
     page.drawText("ThaanaFont", { x: X(20), y: Y(11) - 10, size: 12, font: bold, color: grey(34) });
-    page.drawText(`${String.fromCharCode(0xb7)}  Joined letters`, { x: X(20) + bold.widthOfTextAtSize("ThaanaFont", 12) + 6, y: Y(11) - 10, size: 12, font: regular, color: grey(34) });
-    const pn = `Sheet ${pg.id} of ${total}`;
+    page.drawText(`${String.fromCharCode(0xb7)}  ${o.heading}`, { x: X(20) + bold.widthOfTextAtSize("ThaanaFont", 12) + 6, y: Y(11) - 10, size: 12, font: regular, color: grey(34) });
+    const pn = o.pageNo(pg, pageIx);
     page.drawText(pn, { x: X(190) - regular.widthOfTextAtSize(pn, 10), y: Y(11) - 10, size: 10, font: regular, color: grey(102) });
 
-    const tip: Run[] = [
-      { t: "Write the whole joined shape inside its box, sitting on the solid", bold: false }, { t: "baseline,", bold: true },
-      { t: "including any vowel marks that belong to it. Skip any you don't want. Keep the sheet flat, in daylight, and don't cover the four black squares in the corners.", bold: false },
-    ];
+    const tip = o.tip;
     wrap(tip, regular, bold, 9, 180 * PT).forEach((line, i) => {
       let x = X(15);
       for (const r of line) {
@@ -102,11 +125,16 @@ export async function makeJoinedPdf(ligs: Ligature[]): Promise<Blob> {
       page.drawRectangle({ x: X(bx), y: Y(by + c.h), width: c.w * PT, height: c.h * PT, borderColor: grey(207), borderWidth: 0.3 * PT });
       page.drawLine({ start: { x: X(bx), y: Y(by + guides.topY) }, end: { x: X(bx + c.w), y: Y(by + guides.topY) }, thickness: 0.25 * PT, color: grey(226), dashArray: [1.5 * PT, 1 * PT] });
       page.drawLine({ start: { x: X(bx), y: Y(by + guides.baseY) }, end: { x: X(bx + c.w), y: Y(by + guides.baseY) }, thickness: 0.35 * PT, color: grey(216) });
+      if (o.latin && isLower(c.label)) {
+        const yx = by + guides.baseY - X_HEIGHT / UNITS_PER_MM;
+        page.drawLine({ start: { x: X(bx), y: Y(yx) }, end: { x: X(bx + c.w), y: Y(yx) }, thickness: 0.25 * PT, color: rgb(0.62, 0.55, 0.78), dashArray: [1.5 * PT, 1 * PT] });
+      }
       const labTop = by + c.h - guides.labelH;
       page.drawLine({ start: { x: X(bx), y: Y(labTop) }, end: { x: X(bx + c.w), y: Y(labTop) }, thickness: 0.25 * PT, color: grey(230) });
       const mid = Y(labTop + guides.labelH / 2);
       const img = images.get(c.label), sz = sizes.get(c.label);
-      if (img && sz) page.drawImage(img, { x: X(bx + 1.5), y: mid - sz.h / 2, width: sz.w, height: sz.h });
+      if (o.latin) page.drawText(c.label, { x: X(bx + 2), y: mid - 4.5, size: 15, font: regular, color: grey(140) });
+      else if (img && sz) page.drawImage(img, { x: X(bx + 1.5), y: mid - sz.h / 2, width: sz.w, height: sz.h });
       const code = c.code ?? "";
       page.drawText(code, { x: X(bx + c.w - 1.5) - regular.widthOfTextAtSize(code, 6), y: mid - 2, size: 6, font: regular, color: grey(154) });
     }

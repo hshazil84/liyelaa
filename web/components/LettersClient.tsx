@@ -9,20 +9,27 @@ import { GlyphSvg } from "@/components/GlyphTile";
 import { FontSwitcher } from "@/components/FontSwitcher";
 import { Logo } from "@/components/Logo";
 import { Stepper } from "@/components/Stepper";
+import { ALPHABET_CELLS } from "@/lib/handwriting/alphabet";
 import { layout } from "@/lib/handwriting/pipeline";
 import { stepIndex, useSteps } from "@/lib/handwriting/steps";
 import { loadProject, removeGlyph, updateGlyph } from "@/lib/handwriting/store";
 import type { Glyph, LayoutCell } from "@/lib/handwriting/types";
 import { KeyHint } from "@/components/KeyHint";
 
-type TabId = "letters" | "marks" | "extras";
+type TabId = "letters" | "marks" | "extras" | "alphabet";
 
 const SHEET2 = layout.sheets[1].cells;
 const TABS: { id: TabId; label: string; cells: LayoutCell[] }[] = [
   { id: "letters", label: "Letters", cells: layout.sheets[0].cells },
   { id: "marks", label: "Vowel marks", cells: SHEET2.filter((c) => c.kind === "fili") },
   { id: "extras", label: "Extras", cells: SHEET2.filter((c) => c.kind === "symbol") },
+  { id: "alphabet", label: "Alphabet", cells: ALPHABET_CELLS },
 ];
+
+/** A letter's name as text: Thaana in its own face, English in the page's. */
+function Name({ cell, className = "" }: { cell: LayoutCell; className?: string }) {
+  return cell.kind === "latin" ? <span className={className}>{cell.label}</span> : <span lang="dv" className={`font-thaana ${className}`}>{cell.label}</span>;
+}
 
 type Status = "checked" | "open" | "traced" | "missing";
 const STATUS_WORD: Record<Status, string> = { checked: "Checked", open: "Open now", traced: "Not checked yet", missing: "Not drawn" };
@@ -48,7 +55,7 @@ function Tile({ cell, glyph, open, onPick }: { cell: LayoutCell; glyph?: Glyph; 
       {glyph ? (
         <GlyphSvg glyph={glyph} className="h-full w-full p-0.5" />
       ) : (
-        <span lang="dv" className="font-thaana text-[22px] leading-none text-muted">{cell.label}</span>
+        <Name cell={cell} className="text-[22px] leading-none text-muted" />
       )}
     </button>
   );
@@ -133,7 +140,7 @@ export function LettersClient() {
             <span className="text-sm text-muted" data-testid="progress">{doneCount} of {cells.length} {drawn ? "drawn" : "cleaned up"}</span>
           </div>
           <div className="h-1.5 rounded-full bg-line"><div className="h-1.5 rounded-full bg-teal" style={{ width: `${(doneCount / cells.length) * 100}%` }} /></div>
-          <div role="tablist" aria-label="Which letters" className="flex flex-wrap gap-1 text-sm font-medium">
+          <div role="tablist" aria-label="Which letters" className="flex flex-wrap gap-x-0.5 gap-y-1 font-medium">
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -141,13 +148,13 @@ export function LettersClient() {
                 type="button"
                 aria-selected={tab === t.id}
                 onClick={() => { setTab(t.id); setSelId(t.cells[0].id); }}
-                className={`rounded-full px-3 py-1.5 ${tab === t.id ? "bg-ink text-white" : "text-muted hover:bg-paper"}`}
+                className={`rounded-full px-1.5 py-1.5 text-[12px] min-[420px]:px-2 min-[420px]:text-[13px] sm:px-2.5 sm:text-sm ${tab === t.id ? "bg-ink text-white" : "text-muted hover:bg-paper"}`}
               >
                 {t.label}
               </button>
             ))}
           </div>
-          <div dir="rtl" className="grid grid-cols-6 justify-between gap-1.5" data-testid="grid">
+          <div dir={tab === "alphabet" ? "ltr" : "rtl"} className="grid grid-cols-6 justify-between gap-1.5" data-testid="grid">
             {cells.map((c) => (
               <Tile key={c.id} cell={c} glyph={glyphs[c.id]} open={c.id === cell.id} onPick={() => setSelId(c.id)} />
             ))}
@@ -168,15 +175,15 @@ export function LettersClient() {
         </section>
           <div className="flex flex-col gap-2 rounded-3xl bg-lilac-soft p-5">
             <h2 className="font-display text-base font-bold text-grape">Keep it on the guides</h2>
-            <p className="text-sm leading-normal">Draw between Top and Baseline so vowel marks have room above and below.</p>
+            <p className="text-sm leading-normal">{tab === "alphabet" ? "Capitals reach the cap line. Small letters reach the x-height line. Letters like g, p and y can drop below the baseline." : "Draw between Top and Baseline so vowel marks have room above and below."}</p>
           </div>
         </div>
 
         <section aria-label="Drawing area" className="flex min-w-0 flex-[1_1_520px] flex-col gap-4 rounded-3xl border border-line bg-white p-5">
           <div className="flex items-baseline gap-3">
-            <h1 className="font-display text-xl font-bold" lang="dv"><span className="font-thaana text-[26px]">{cell.label}</span></h1>
+            <h1 className="font-display text-xl font-bold"><Name cell={cell} className="text-[26px]" /></h1>
             <span className="text-sm text-muted">U+{cell.id}</span>
-            <KeyHint cp={parseInt(cell.id, 16)} />
+            {cell.kind !== "latin" && <KeyHint cp={parseInt(cell.id, 16)} />}
           </div>
           {loaded && (
             <GlyphEditor
@@ -190,12 +197,12 @@ export function LettersClient() {
                   <div className="flex items-center justify-between gap-2 sm:flex-wrap sm:gap-3">
                     <button type="button" disabled={idx <= 0} onClick={() => go(idx - 1, false)} className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-[#BDCFC2] px-4 text-sm font-bold hover:bg-paper disabled:opacity-40">
                       <Icon icon={ArrowLeft02Icon} size={18} />
-                      <span lang="dv" className="font-thaana text-xl leading-none">{idx > 0 ? cells[idx - 1].label : ""}</span>
+                      {idx > 0 && <Name cell={cells[idx - 1]} className="text-xl leading-none" />}
                       <span className="sr-only">Previous letter</span>
                     </button>
                     <button type="button" disabled={idx >= cells.length - 1 && !glyphs[cell.id]} onClick={() => go(idx + 1, true)} className="flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-teal px-3 sm:min-w-[200px] sm:flex-none sm:px-5 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-40" data-testid="next">
                       {glyphs[cell.id] ? "Looks good, next" : "Skip, next"}
-                      <span lang="dv" className="font-thaana text-xl leading-none">{idx < cells.length - 1 ? cells[idx + 1].label : ""}</span>
+                      {idx < cells.length - 1 && <Name cell={cells[idx + 1]} className="text-xl leading-none" />}
                       <Icon icon={ArrowRight02Icon} size={18} />
                     </button>
                   </div>

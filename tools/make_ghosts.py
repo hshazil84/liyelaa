@@ -10,7 +10,7 @@ from fontTools.varLib import instancer
 
 ROOT = Path(__file__).resolve().parent.parent
 layout = json.loads((ROOT / "web/lib/template-layout.json").read_text())
-labels = sorted({c["label"] for s in layout["sheets"] for c in s["cells"] if c.get("label")})
+labels = sorted({c["label"] for s in layout["sheets"] for c in s["cells"] if c.get("label")} - set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"))
 
 def load(path, wght=None):
     f = TTFont(str(path))
@@ -36,6 +36,16 @@ def outline(label):
     return None
 
 out, miss = {}, []
+
+# English letters: Inter, shrunk so capitals are as tall as the Thaana letters (494 units; Inter's capitals are 727)
+LATIN_SCALE = 494 / 727
+inter = TTFont(str(ROOT / "builder/assets/Inter-Latin-Regular.ttf"))
+igs, icm, ik = inter.getGlyphSet(), inter.getBestCmap(), 1000 / inter["head"].unitsPerEm * LATIN_SCALE
+for ch in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz":
+    pen = SVGPathPen(igs, ntos=lambda v: f"{v:.1f}".rstrip("0").rstrip("."))
+    igs[icm[ord(ch)]].draw(TransformPen(pen, (ik, 0, 0, ik, 0, 0)))
+    out[ch] = {"d": pen.getCommands(), "adv": round(igs[icm[ord(ch)]].width * ik, 1)}
+
 for l in labels:
     o = outline(l)
     if o and o["d"]: out[l] = o

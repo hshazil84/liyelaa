@@ -33,6 +33,9 @@ from .play import ASSETS, font_bytes
 
 NOTO = ASSETS / "NotoSansThaana-Variable.ttf"
 NOTO_OFL = ASSETS / "OFL-NotoSansThaana.txt"
+INTER = ASSETS / "Inter-Latin-Regular.ttf"          # fills English letters that were not drawn (SIL OFL 1.1, see OFL-Inter.txt)
+LATIN_LETTERS = list(range(0x41, 0x5B)) + list(range(0x61, 0x7B))
+LATIN_SCALE = 494 / 727                              # Inter's capitals are 727 tall; the template's top line is 494, so English stands as tall as Thaana
 
 UPEM = 1000
 MARK_RANGE = range(0x07A6, 0x07B1)           # the 11 vowel signs (fili) and sukun
@@ -286,6 +289,28 @@ def _starter_items(wanted: list[int], user: dict[int, Item]) -> list[Item]:
     return out
 
 
+def _inter_items(wanted: list[int]) -> list[Item]:
+    """English letters from Inter, shrunk to sit with the Thaana letters."""
+    if not wanted:
+        return []
+    font = TTFont(INTER)
+    cmap, gs, hmtx = font.getBestCmap(), font.getGlyphSet(), font["hmtx"]
+    k = UPEM / font["head"].unitsPerEm * LATIN_SCALE
+    out = []
+    for cp in wanted:
+        if cp not in cmap:
+            continue
+        rec = DecomposingRecordingPen(gs)
+        gs[cmap[cp]].draw(rec)
+        pen = TTGlyphPen(None)
+        rec.replay(TransformPen(pen, (k, 0, 0, k, 0, 0)))
+        g = pen.glyph()
+        g.recalcBounds(None)
+        b = (g.xMin, g.yMin, g.xMax, g.yMax) if g.numberOfContours else None
+        out.append(Item(gname(cp), [cp], int(round(hmtx[cmap[cp]][0] * k)), g, b, False, from_fallback=True))
+    return out
+
+
 # ----------------------------------------------------------------------------- assembling
 def _notdef() -> Item:
     pen = TTGlyphPen(None)
@@ -327,6 +352,12 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
         for it in _starter_items(missing, user):
             items[it.cps[0]] = it
             filled.append(it.cps[0])
+
+    inter_filled: list[int] = []
+    if req.fallback == "noto":
+        for it in _inter_items([cp for cp in LATIN_LETTERS if cp not in user]):
+            items[it.cps[0]] = it
+            inter_filled.append(it.cps[0])
 
     # 3. ligatures drawn by the person
     ligs: list[tuple[LigatureIn, Item]] = []
@@ -396,6 +427,8 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
     desc = req.description.strip() or "Made with ThaanaFont from handwriting."
     if filled:
         desc += " Letters that were not drawn come from Noto Sans Thaana (SIL OFL 1.1)."
+    if inter_filled:
+        desc += " English letters that were not drawn come from Inter (SIL OFL 1.1)."
     names = {
         "familyName": name, "styleName": "Regular", "uniqueFontIdentifier": f"{ps}-{req.version}-Regular;thaanafont",
         "fullName": f"{name} Regular", "psName": f"{ps}-Regular", "version": f"Version {req.version}",
@@ -420,7 +453,7 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
     bases = [it.name for it in order_items if it.name not in (".notdef",) and not it.is_mark and not it.name.startswith("lig_")]
     marks = [it.name for it in order_items if it.is_mark]
     lig_names = [it.name for _, it in ligs]
-    fea = ["languagesystem DFLT dflt;", "languagesystem thaa dflt;"]
+    fea = ["languagesystem DFLT dflt;", "languagesystem thaa dflt;", "languagesystem latn dflt;"]
     if marks:
         mark_cps = [cp for cp in sorted(items) if items[cp].is_mark]
         for cp in mark_cps:
@@ -429,7 +462,7 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
         lines = []
         for cp in sorted(items):
             it = items[cp]
-            if it.is_mark or not it.bounds:
+            if it.is_mark or not it.bounds or cp in LATIN_LETTERS:          # Thaana marks do not sit on English letters
                 continue
             for mcp in mark_cps:
                 anchor = it.anchor_bottom if mcp in MARKS_BELOW else it.anchor_top
@@ -488,6 +521,7 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
         "glyphs": len(order_items),
         "drawn": sorted(f"{cp:04X}" for cp in user),
         "filled_from_starter": sorted(f"{cp:04X}" for cp in filled),
+        "filled_from_inter": sorted(f"{cp:04X}" for cp in inter_filled),
         "ligatures": len(ligs),
         "kern_pairs": len(pairs),
     }
@@ -495,13 +529,15 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
 
 
 # ----------------------------------------------------------------------------- download
-def _ofl_text(req: BuildRequest, filled: bool) -> str:
+def _ofl_text(req: BuildRequest, filled: bool, inter: bool = False) -> str:
     year = date.today().year
     author = req.author.strip() or "the author"
     ofl = NOTO_OFL.read_text().split("\n", 1)[1]            # the licence text without its Noto copyright line
     head = f"Copyright (c) {year} {author}\n" + (f"{req.website}\n" if req.website else "")
     if filled:
         head += "Includes outlines from Noto Sans Thaana. Copyright 2022 The Noto Project Authors (https://github.com/notofonts/thaana)\n"
+    if inter:
+        head += "Includes outlines from Inter. Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)\n"
     return head + ofl
 
 
@@ -511,11 +547,12 @@ def build_zip(req: BuildRequest) -> tuple[bytes, str, dict]:
     slug = re.sub(r"[^A-Za-z0-9]+", "-", name).strip("-") or "font"
     buf = io.BytesIO()
     filled = bool(report["filled_from_starter"])
+    inter = bool(report["filled_from_inter"])
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr(f"{slug}.ttf", font_bytes(font, None))
         z.writestr(f"{slug}.woff2", font_bytes(font, "woff2"))
         if req.licence == "ofl":
-            z.writestr("OFL.txt", _ofl_text(req, filled))
+            z.writestr("OFL.txt", _ofl_text(req, filled, inter))
         z.writestr(
             "README.txt",
             f"{name} {req.version}\n\n"
@@ -527,6 +564,7 @@ def build_zip(req: BuildRequest) -> tuple[bytes, str, dict]:
             "Install the .ttf on your computer, or use the .woff2 on a website.\n"
             "Typing the Latin keys , ; ? gives the Arabic comma, semicolon and question mark.\n"
             + ("Letters that were not drawn come from Noto Sans Thaana (SIL Open Font License 1.1).\n" if filled else "")
+            + ("English letters that were not drawn come from Inter (SIL Open Font License 1.1).\n" if inter else "")
             + ("See OFL.txt for the licence.\n" if req.licence == "ofl" else "All rights reserved by the author.\n"),
         )
     return buf.getvalue(), slug, report

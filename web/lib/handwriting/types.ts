@@ -4,7 +4,7 @@ export type Pt = { x: number; y: number };
 export type Seg = { p: Pt; hi: Pt; ho: Pt };
 export type Contour = Seg[];
 
-export type CellKind = "letter" | "fili" | "symbol";
+export type CellKind = "letter" | "fili" | "symbol" | "latin";   // latin: the English alphabet, kept apart from the Thaana letters
 
 export type LayoutCell = {
   id: string; cp: number[]; kind: CellKind;

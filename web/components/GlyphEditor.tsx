@@ -1,6 +1,7 @@
 "use client";
 
 import GHOSTS_JSON from "@/lib/handwriting/ghosts.json";
+import { X_HEIGHT, isLower } from "@/lib/handwriting/alphabet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { inkBox } from "@/lib/handwriting/marks";
 import { MarkerPanel } from "@/components/MarkerPanel";
@@ -140,13 +141,17 @@ export function GlyphEditor({
   const gRef = useRef<SVGGElement>(null);
   const drag = useRef<Drag | null>(null);
   const isMark = cell.kind === "fili";
+  // English letters: the top line is the cap line, and small letters get a line for their own height
+  const guideLines: [number, string, boolean][] = cell.kind === "latin"
+    ? [[TOP, "Cap line", false], ...(isLower(cell.label) ? [[X_HEIGHT, "x-height", false] as [number, string, boolean]] : []), [0, "Baseline", true], [DESC, "Descender", false]]
+    : [[TOP, "Top", false], [TOP / 2, "Mid", false], [0, "Baseline", true], [DESC, "Descender", false]];
   const cx = useRef(isMark ? 0 : Math.max(glyph?.adv ?? 600, 360) / 2).current;
   const vw = VB_W / cam.z, vh = VB_H / cam.z;
   const vbx = (cam.z === 1 ? cx : cam.cx) - vw / 2, vby = (cam.z === 1 ? VB_Y + VB_H / 2 : cam.cy) - vh / 2;
   const u = vw / px;          // font units per screen pixel, so points and lines stay the same size on screen when zoomed
 
   useEffect(() => {
-    if (cell.kind === "fili") return;
+    if (cell.kind === "fili" || cell.kind === "latin") return;      // English letters have a ready-sized outline
     let stop = false;
     (async () => {
       try { await document.fonts.load("1000px AKRasmee", cell.label); } catch { /* the hint just stays full size */ }
@@ -563,7 +568,7 @@ export function GlyphEditor({
         >
           <g ref={gRef} transform="scale(1,-1)">
             {/* guides */}
-            {[[TOP, "Top", false], [TOP / 2, "Mid", false], [0, "Baseline", true], [DESC, "Descender", false]].map(([y, name, strong]) => (
+            {guideLines.map(([y, name, strong]) => (
               <g key={name as string}>
                 <line x1={vbx} x2={vbx + vw} y1={y as number} y2={y as number} stroke={strong ? TEAL : "#BDCFC2"} strokeWidth={(strong ? 1.6 : 1) * u} strokeDasharray={strong ? undefined : `${6 * u} ${5 * u}`} />
                 <text transform="scale(1,-1)" x={vbx + 12 * u} y={-(y as number) - 6 * u} fontSize={12 * u} fill={strong ? TEAL : "#5D797B"} fontWeight={strong ? 700 : 400} pointerEvents="none" style={{ userSelect: "none", WebkitUserSelect: "none" }}>{name as string}</text>
