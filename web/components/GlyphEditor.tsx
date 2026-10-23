@@ -67,7 +67,6 @@ function LabelTool({ label, on, onClick, children }: { label: string; on: boolea
   );
 }
 
-const bigIcon = { ...iconProps, width: 22, height: 22 } as const;
 
 /** Tool icons: filled 24-unit artwork, so they take the button's text colour. */
 const fillIcon = { width: 24, height: 24, viewBox: "0 0 24 24", fill: "currentColor", "aria-hidden": true } as const;
