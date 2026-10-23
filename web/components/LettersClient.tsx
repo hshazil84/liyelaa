@@ -8,7 +8,7 @@ import { FontSwitcher } from "@/components/FontSwitcher";
 import { Logo } from "@/components/Logo";
 import { Stepper } from "@/components/Stepper";
 import { layout } from "@/lib/handwriting/pipeline";
-import { useSteps } from "@/lib/handwriting/steps";
+import { stepIndex, useSteps } from "@/lib/handwriting/steps";
 import { loadProject, removeGlyph, updateGlyph } from "@/lib/handwriting/store";
 import type { Glyph, LayoutCell } from "@/lib/handwriting/types";
 
@@ -110,14 +110,14 @@ export function LettersClient() {
     setSelId(target.id);
   }
 
-  const doneCount = cells.filter((c) => glyphs[c.id]?.checked).length;
+  const doneCount = cells.filter((c) => (drawn ? glyphs[c.id] : glyphs[c.id]?.checked)).length;
   const anyGlyph = Object.keys(glyphs).length > 0;
 
   return (
     <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
-        <Stepper steps={steps} current={2} />
+        <Stepper steps={steps} current={stepIndex(steps, "/handwriting/letters", 2)} />
         <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>
@@ -128,7 +128,7 @@ export function LettersClient() {
         <section aria-label="Letters" className="flex w-full flex-col gap-4 rounded-3xl border border-line bg-white p-5">
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-xl font-bold">{TABS.find((t) => t.id === tab)!.label}</h2>
-            <span className="text-sm text-muted" data-testid="progress">{doneCount} of {cells.length} cleaned up</span>
+            <span className="text-sm text-muted" data-testid="progress">{doneCount} of {cells.length} {drawn ? "drawn" : "cleaned up"}</span>
           </div>
           <div className="h-1.5 rounded-full bg-line"><div className="h-1.5 rounded-full bg-teal" style={{ width: `${(doneCount / cells.length) * 100}%` }} /></div>
           <div role="tablist" aria-label="Which letters" className="flex flex-wrap gap-1 text-sm font-medium">

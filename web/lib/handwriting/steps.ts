@@ -20,13 +20,18 @@ export const HANDWRITING_STEPS: Step[] = [
   ...REST,
 ];
 
-/** The draw or import path shares every step after the first. */
+/** Drawing has no photo step, and the letter grid is where you draw, so it is one step. */
 export const DRAW_STEPS: Step[] = [
   { label: "Start", href: "/" },
-  { label: "Draw", href: "/draw/start" },
-  { label: "Clean up", href: "/handwriting/letters" },
+  { label: "Draw", href: "/handwriting/letters" },
   ...REST,
 ];
+
+/** Where a page sits in whichever path is open. Pages name themselves by address, so they stay right when a path has fewer steps. */
+export function stepIndex(steps: Step[], href: string, fallback = 0): number {
+  const i = steps.findIndex((s) => s.href === href);
+  return i < 0 ? fallback : i;
+}
 
 export type PathKind = "photo" | "draw";
 export const stepsFor = (path?: PathKind): Step[] => (path === "draw" ? DRAW_STEPS : HANDWRITING_STEPS);

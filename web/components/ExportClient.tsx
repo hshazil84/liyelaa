@@ -14,7 +14,7 @@ import {
 import { DEFAULT_EXTRAS } from "@/lib/handwriting/extras";
 import { checkPair } from "@/lib/handwriting/marks";
 import { layout } from "@/lib/handwriting/pipeline";
-import { useSteps } from "@/lib/handwriting/steps";
+import { stepIndex, useSteps } from "@/lib/handwriting/steps";
 import { loadProject, saveInfo, type FontInfo, type Project } from "@/lib/handwriting/store";
 
 type Tab = "headline" | "paragraph" | "pangram" | "letters";
@@ -180,7 +180,7 @@ export function ExportClient() {
     <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
-        <Stepper steps={steps} current={7} />
+        <Stepper steps={steps} current={stepIndex(steps, "/handwriting/export", 7)} />
         <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>

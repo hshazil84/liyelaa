@@ -11,7 +11,7 @@ import {
   autoAnchor, checkPair, inkBox, isBelow, markShift, offsetKey, shiftContours, type Offset, type Offsets,
 } from "@/lib/handwriting/marks";
 import { emptySpacing, type Spacing } from "@/lib/handwriting/spacing";
-import { useSteps } from "@/lib/handwriting/steps";
+import { stepIndex, useSteps } from "@/lib/handwriting/steps";
 import { loadProject, saveMarkOffsets } from "@/lib/handwriting/store";
 import { contoursToD } from "@/lib/handwriting/svg";
 import type { Glyph } from "@/lib/handwriting/types";
@@ -115,7 +115,7 @@ export function AnchorsClient() {
     <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
-        <Stepper steps={steps} current={5} />
+        <Stepper steps={steps} current={stepIndex(steps, "/handwriting/anchors", 5)} />
         <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>

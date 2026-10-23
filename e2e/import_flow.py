@@ -90,7 +90,7 @@ def main():
         pg.wait_for_selector("[data-cell='0784'][data-status=traced], [data-cell='0784']")
         names = pg.locator("ol[aria-label=Steps] li").all_inner_texts()
         print("steps", [n.replace("\n", " ") for n in names])
-        assert any(n.strip() == "Draw" for n in names)
+        assert any(n.replace("\n", " ").strip().endswith("Draw") for n in names)
         pg.screenshot(path=str(OUT / "import-3.png"), full_page=True)
 
         # pasting SVG code adds a letter the files did not have
