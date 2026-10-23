@@ -64,7 +64,7 @@ def main():
         # draw the semicolon with the pen
         pg.locator('[data-cell="061B"]').click()
         pg.wait_for_selector("[data-testid=editor-svg]")
-        pg.get_by_test_id("editor").get_by_role("button", name="Shape", exact=True).click()
+        pg.get_by_test_id("editor").get_by_role("button", name="Pen", exact=True).click()
         for fx, fy in [(150, 0), (300, 0), (225, 250)]:
             pg.mouse.click(*to_screen(pg, fx, fy))
         pg.mouse.click(*to_screen(pg, 150, 0))
@@ -97,7 +97,7 @@ def main():
         pg.wait_for_selector("[data-lig=lig1]")
         assert pg.locator("[data-lig=lig1]").get_attribute("data-status") == "missing"
         # the preview shows the plain letters until the joined shape is drawn
-        pg.get_by_test_id("editor").get_by_role("button", name="Shape", exact=True).click()
+        pg.get_by_test_id("editor").get_by_role("button", name="Pen", exact=True).click()
         for fx, fy in [(100, 0), (700, 0), (400, 300)]:
             pg.mouse.click(*to_screen(pg, fx, fy))
         pg.mouse.click(*to_screen(pg, 100, 0))

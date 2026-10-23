@@ -56,16 +56,16 @@ def main():
         pg.wait_for_selector("[data-testid=editor-svg]")
 
         # the marker is first in the toolbar, selected for an empty letter, with its nib panel
-        assert tool(pg, "Marker").get_attribute("aria-pressed") == "true"
+        assert tool(pg, "Brush").get_attribute("aria-pressed") == "true"
         assert pg.get_by_test_id("marker-panel").is_visible()
         names = pg.get_by_test_id("editor").get_by_role("toolbar").locator("button").evaluate_all("els => els.map(e => e.innerText.trim())")
-        assert names[:4] == ["Marker", "Shape", "Edit", "Erase"], names
+        assert names[:4] == ["Brush", "Pen", "Edit", "Erase"], names
         assert pg.get_by_test_id("nib-chisel").get_attribute("aria-checked") == "true"
 
         # a stroke with the round nib is an even line, one shape, saved
         pg.get_by_test_id("nib-round").click()
         assert pg.get_by_test_id("nib-angle").is_disabled(), "a round nib has no angle"
-        pg.evaluate("document.querySelector('[data-testid=marker-more]').open = true")
+        pg.evaluate("document.querySelector('[data-testid=marker-more]').open = true"); pg.wait_for_timeout(900)   # the card glides into view after opening
         pg.get_by_test_id("nib-size").fill("76"); pg.get_by_test_id("nib-smooth").fill("0")
         drag(pg, [(120, 150), (200, 150), (300, 150), (400, 150)])
         g = glyph(pg, "0784")
@@ -95,7 +95,7 @@ def main():
         # a stroke across a drawn letter joins it, and the other shapes are untouched
         pg.reload(); pg.locator('[data-cell="0780"]').click(); pg.wait_for_selector("[data-testid=editor-svg]")
         old = glyph(pg, "0780"); ob = box(old)
-        tool(pg, "Marker").click()
+        tool(pg, "Brush").click()
         pg.get_by_test_id("nib-round").click(); pg.get_by_test_id("nib-size").fill("90")
         mid = ((ob[0] + ob[2]) / 2, (ob[1] + ob[3]) / 2)
         drag(pg, [(mid[0] - 40, mid[1] + 60), (mid[0], mid[1]), (mid[0] + 40, mid[1] - 60)])
@@ -109,10 +109,10 @@ def main():
         assert len(glyph(pg, "0780")["contours"]) == len(old["contours"]) + 1
 
         # the nib is remembered
-        pg.evaluate("document.querySelector('[data-testid=marker-more]').open = true")
+        pg.evaluate("document.querySelector('[data-testid=marker-more]').open = true"); pg.wait_for_timeout(900)   # the card glides into view after opening
         pg.get_by_test_id("nib-taper").fill("60")
         pg.reload(); pg.locator('[data-cell="0780"]').click(); pg.wait_for_selector("[data-testid=editor-svg]")
-        tool(pg, "Marker").click()
+        tool(pg, "Brush").click()
         assert pg.get_by_test_id("nib-taper").input_value() == "60" and pg.get_by_test_id("nib-round").get_attribute("aria-checked") == "true"
 
         # Escape cancels a stroke in progress
@@ -126,7 +126,7 @@ def main():
 
         # ink: a clean stroke is one smooth shape; a dry stroke is streaked, so it has far more points and gaps
         pg.locator('[data-cell="0784"]').click(); pg.wait_for_selector("[data-testid=editor-svg]")
-        tool(pg, "Marker").click(); pg.get_by_test_id("ink-clean").click(); pg.get_by_test_id("nib-round").click(); pg.get_by_test_id("nib-size").fill("110")
+        tool(pg, "Brush").click(); pg.get_by_test_id("ink-clean").click(); pg.get_by_test_id("nib-round").click(); pg.get_by_test_id("nib-size").fill("110")
         drag(pg, [(100, -100), (250, -60), (400, -100), (550, -60), (700, -100)])
         clean_pts = sum(len(c) for c in glyph(pg, "0784")["contours"])
         pg.get_by_test_id("ink-dry").click()

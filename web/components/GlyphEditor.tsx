@@ -437,7 +437,7 @@ export function GlyphEditor({
   const hint = previewing
     ? "Previewing. Press Apply to keep it."
     : tool === "marker"
-    ? "Drag to draw with the marker."
+    ? "Drag to draw with the brush."
     : tool === "pen"
     ? pen?.length
       ? pen.length < 3 ? "Keep clicking to add dots." : "Click the first dot or press Enter to close."
@@ -446,17 +446,17 @@ export function GlyphEditor({
       ? "Click a dot or a shape to remove it."
       : hasShape
         ? "Drag any dot to fix the shape."
-        : "Nothing drawn yet. Use Marker or Shape, or paste with Ctrl or ⌘ V.";
+        : "Nothing drawn yet. Use Brush or Pen, or paste with Ctrl or ⌘ V.";
 
   const node = 4 * u, hit = 9 * u, line = 1.4 * u;
 
   return (
     <div className="flex flex-col gap-3" onKeyDown={onKey} onKeyUp={(e) => { if (e.key === " ") spaceDown.current = false; }} tabIndex={0} role="group" aria-label="Letter editor" data-testid="editor">
       <div className="flex flex-wrap items-stretch gap-2" role="toolbar" aria-label="Tools">
-        <LabelTool label="Marker" on={tool === "marker"} onClick={() => { setTool("marker"); setPanel("tool"); setSel(null); setPen(null); }}>
+        <LabelTool label="Brush" on={tool === "marker"} onClick={() => { setTool("marker"); setPanel("tool"); setSel(null); setPen(null); }}>
           <ToolIcon name="brush" />
         </LabelTool>
-        <LabelTool label="Shape" on={tool === "pen"} onClick={() => { setTool("pen"); setPanel("tool"); setSel(null); setLive(null); }}>
+        <LabelTool label="Pen" on={tool === "pen"} onClick={() => { setTool("pen"); setPanel("tool"); setSel(null); setLive(null); }}>
           <ToolIcon name="pen" />
         </LabelTool>
         <LabelTool label="Edit" on={tool === "move"} onClick={() => { setTool("move"); setPanel("tool"); setPen(null); setLive(null); }}>
