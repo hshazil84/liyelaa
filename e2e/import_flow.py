@@ -49,9 +49,7 @@ def main():
         pg.on("pageerror", lambda e: errors.append(str(e)))
         pg.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
 
-        pg.goto(f"{WEB}/")
-        pg.get_by_role("link", name="Open the editor").click()
-        pg.wait_for_url("**/draw")
+        pg.goto(f"{WEB}/draw")
         pg.get_by_test_id("svg-input").set_input_files([str(d / n.replace("+", "")) for n in files])
         pg.wait_for_selector("[data-testid=import-summary]", timeout=30000)
         ok = pg.locator("[data-cell][data-status=ok]").count()
@@ -92,7 +90,7 @@ def main():
         pg.wait_for_selector("[data-cell='0784'][data-status=traced], [data-cell='0784']")
         names = pg.locator("ol[aria-label=Steps] li").all_inner_texts()
         print("steps", [n.replace("\n", " ") for n in names])
-        assert any("Draw or import" in n for n in names)
+        assert any(n.strip() == "Draw" for n in names)
         pg.screenshot(path=str(OUT / "import-3.png"), full_page=True)
 
         # pasting SVG code adds a letter the files did not have

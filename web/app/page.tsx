@@ -113,7 +113,7 @@ export default function Home() {
             title="Draw my own"
             text="Draw letters with the pen. Designers can bring in SVG from Illustrator."
             cta="Open the editor"
-            href="/draw"
+            href="/draw/start"
             tone="bg-coral-soft"
           >
             <svg aria-hidden viewBox="0 0 220 100" width="200" height="90">

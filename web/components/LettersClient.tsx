@@ -56,6 +56,7 @@ export function LettersClient() {
   const [glyphs, setGlyphs] = useState<Record<string, Glyph>>({});
   const [originals, setOriginals] = useState<Record<string, Glyph>>({});
   const [loaded, setLoaded] = useState(false);
+  const [drawn, setDrawn] = useState(false);
   const [tab, setTab] = useState<TabId>("letters");
   const [selId, setSelId] = useState<string>(TABS[0].cells[0].id);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
@@ -64,6 +65,7 @@ export function LettersClient() {
     loadProject().then((p) => {
       setGlyphs(p.glyphs);
       setOriginals(p.originals ?? {});
+      setDrawn(p.path === "draw");
       // start on the first letter that has not been checked
       const first = TABS[0].cells.find((c) => !p.glyphs[c.id]?.checked) ?? TABS[0].cells[0];
       setSelId(first.id);
@@ -174,9 +176,15 @@ export function LettersClient() {
             <span className="text-sm text-muted">U+{cell.id}</span>
           </div>
           {loaded && !anyGlyph && (
-            <p className="rounded-xl bg-sand px-4 py-3 text-sm" role="status">
-              Nothing traced yet. <Link href="/handwriting" className="font-bold text-teal underline underline-offset-4">Add a photo of your sheet</Link>, or draw letters here with the pen.
-            </p>
+            drawn ? (
+              <p className="rounded-xl bg-sand px-4 py-3 text-sm" role="status" data-testid="draw-hint">
+                Draw this letter with the marker. Have SVG files already? <Link href="/draw" className="font-bold text-teal underline underline-offset-4" data-testid="bring-svg">Bring in SVG files</Link>
+              </p>
+            ) : (
+              <p className="rounded-xl bg-sand px-4 py-3 text-sm" role="status">
+                Nothing traced yet. <Link href="/handwriting" className="font-bold text-teal underline underline-offset-4">Add a photo of your sheet</Link>, or draw letters here with the pen.
+              </p>
+            )
           )}
           {loaded && (
             <GlyphEditor

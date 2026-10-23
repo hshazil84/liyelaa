@@ -76,9 +76,10 @@ def main():
         pg.get_by_test_id("new-font-open").click()
         pg.get_by_test_id("new-font-name").fill("Brush letters")
         pg.get_by_test_id("make-font").click()
-        pg.wait_for_url("**/draw")
-        pg.wait_for_selector("[data-testid=font-switcher]")
-        assert "Brush letters" in pg.get_by_test_id("font-switcher").inner_text()
+        pg.wait_for_url("**/handwriting/letters")
+        pg.wait_for_load_state("load")
+        pg.wait_for_function("() => document.querySelector('[data-testid=font-switcher]')?.innerText.includes('Brush letters')")
+        pg.wait_for_selector("[data-testid=progress]"); pg.wait_for_timeout(800)
         assert pg.evaluate(GET, "dfm.handwriting.v1")["glyphs"] == {}
         assert len(pg.evaluate(GET, "dfm.fonts.v1")["ids"]) == 3
 

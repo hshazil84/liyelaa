@@ -23,7 +23,7 @@ export const HANDWRITING_STEPS: Step[] = [
 /** The draw or import path shares every step after the first. */
 export const DRAW_STEPS: Step[] = [
   { label: "Start", href: "/" },
-  { label: "Draw or import", href: "/draw" },
+  { label: "Draw", href: "/draw/start" },
   { label: "Clean up", href: "/handwriting/letters" },
   ...REST,
 ];

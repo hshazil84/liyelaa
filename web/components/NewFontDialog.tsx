@@ -5,7 +5,7 @@ import { go } from "@/lib/handwriting/fonts";
 import { createFont } from "@/lib/handwriting/store";
 
 const WAYS = [
-  { id: "draw", title: "Draw or import", text: "Paste from Illustrator, drop SVG files, or draw with the pen.", href: "/draw" },
+  { id: "draw", title: "Draw my own", text: "Draw letters with the pen, or bring in SVG files from Illustrator.", href: "/draw/start" },
   { id: "photo", title: "A photo of my handwriting", text: "Print the sheet, write on it, take a photo.", href: "/handwriting" },
 ] as const;
 
