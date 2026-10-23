@@ -96,12 +96,13 @@ function ToolIcon({ name }: { name: keyof typeof ICON }) {
  * `key` the component by letter so history starts fresh for each one.
  */
 export function GlyphEditor({
-  cell, glyph, original, onChange,
+  cell, glyph, original, onChange, below,
 }: {
   cell: LayoutCell;
   glyph: Glyph | null;
   original: Glyph | null;
   onChange: (g: Glyph | null) => void;
+  below?: React.ReactNode;           // sits right under the drawing board, e.g. the previous and next letter buttons
 }) {
   const [g, setG] = useState<Glyph>(() => (glyph ? clone(glyph) : emptyGlyph(cell.id, cell.cp, cell.kind)));
   const [past, setPast] = useState<Glyph[]>([]);
@@ -582,6 +583,7 @@ export function GlyphEditor({
           <button type="button" aria-label="Zoom to the letter" onClick={fitInk} disabled={!hasShape} className="h-8 rounded-lg px-2 text-[13px] font-bold hover:bg-paper disabled:opacity-40">Fit letter</button>
         </div>
       </div>
+      {below}
       {notice && (
         <p role="status" data-testid="paste-notice" className="flex items-start justify-between gap-3 rounded-xl bg-sand px-3.5 py-2.5 text-[13px] leading-snug">
           <span>{notice}</span>

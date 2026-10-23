@@ -111,7 +111,6 @@ export function LettersClient() {
   }
 
   const doneCount = cells.filter((c) => (drawn ? glyphs[c.id] : glyphs[c.id]?.checked)).length;
-  const anyGlyph = Object.keys(glyphs).length > 0;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -156,6 +155,13 @@ export function LettersClient() {
             <li className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-[3px] border border-line bg-white" />Not checked yet</li>
             <li className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-[3px] border border-dashed border-[#BDCFC2] bg-[#F3F9F5]" />Not drawn</li>
           </ul>
+          <p className="border-t border-line pt-3 text-sm text-muted">
+            {drawn ? (
+              <>Have SVG files already? <Link href="/draw" className="font-bold text-teal underline underline-offset-4" data-testid="bring-svg">Bring in SVG files</Link></>
+            ) : (
+              <>Missing letters? <Link href="/handwriting" className="font-bold text-teal underline underline-offset-4" data-testid="add-photo">Add a photo of your sheet</Link></>
+            )}
+          </p>
         </section>
           <div className="flex flex-col gap-2 rounded-3xl bg-teal-soft p-5">
             <h2 className="font-display text-base font-bold text-teal">Keep it on the guides</h2>
@@ -175,17 +181,6 @@ export function LettersClient() {
             <h1 className="font-display text-xl font-bold" lang="dv"><span className="font-thaana text-[26px]">{cell.label}</span></h1>
             <span className="text-sm text-muted">U+{cell.id}</span>
           </div>
-          {loaded && !anyGlyph && (
-            drawn ? (
-              <p className="rounded-xl bg-sand px-4 py-3 text-sm" role="status" data-testid="draw-hint">
-                Draw this letter with the marker. Have SVG files already? <Link href="/draw" className="font-bold text-teal underline underline-offset-4" data-testid="bring-svg">Bring in SVG files</Link>
-              </p>
-            ) : (
-              <p className="rounded-xl bg-sand px-4 py-3 text-sm" role="status">
-                Nothing traced yet. <Link href="/handwriting" className="font-bold text-teal underline underline-offset-4">Add a photo of your sheet</Link>, or draw letters here with the pen.
-              </p>
-            )
-          )}
           {loaded && (
             <GlyphEditor
               key={`${tab}-${cell.id}`}
@@ -193,20 +188,22 @@ export function LettersClient() {
               glyph={glyphs[cell.id] ?? null}
               original={originals[cell.id] ?? null}
               onChange={(g) => onChange(cell.id, g)}
+              below={
+          <div className="flex flex-wrap items-center justify-between gap-3">
+        <button type="button" disabled={idx <= 0} onClick={() => go(idx - 1, false)} className="flex h-11 items-center gap-2 rounded-xl border border-[#BDCFC2] px-4 text-sm font-bold hover:bg-paper disabled:opacity-40">
+          <span aria-hidden>←</span>
+          <span lang="dv" className="font-thaana text-xl leading-none">{idx > 0 ? cells[idx - 1].label : ""}</span>
+          <span className="sr-only">Previous letter</span>
+        </button>
+        <button type="button" disabled={idx >= cells.length - 1 && !glyphs[cell.id]} onClick={() => go(idx + 1, true)} className="flex h-11 min-w-[200px] items-center justify-center gap-2 rounded-xl bg-teal px-5 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-40" data-testid="next">
+          {glyphs[cell.id] ? "Looks good, next" : "Skip, next"}
+          <span lang="dv" className="font-thaana text-xl leading-none">{idx < cells.length - 1 ? cells[idx + 1].label : ""}</span>
+          <span aria-hidden>→</span>
+        </button>
+      </div>
+              }
             />
           )}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-            <button type="button" disabled={idx <= 0} onClick={() => go(idx - 1, false)} className="flex h-11 items-center gap-2 rounded-xl border border-[#BDCFC2] px-4 text-sm font-bold hover:bg-paper disabled:opacity-40">
-              <span aria-hidden>←</span>
-              <span lang="dv" className="font-thaana text-xl leading-none">{idx > 0 ? cells[idx - 1].label : ""}</span>
-              <span className="sr-only">Previous letter</span>
-            </button>
-            <button type="button" disabled={idx >= cells.length - 1 && !glyphs[cell.id]} onClick={() => go(idx + 1, true)} className="flex h-11 items-center gap-2 rounded-xl bg-teal px-5 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-40" data-testid="next">
-              {glyphs[cell.id] ? "Looks good, next" : "Skip, next"}
-              <span lang="dv" className="font-thaana text-xl leading-none">{idx < cells.length - 1 ? cells[idx + 1].label : ""}</span>
-              <span aria-hidden>→</span>
-            </button>
-          </div>
         </section>
 
       </main>

@@ -40,7 +40,7 @@ def main():
         pg.goto(f"{WEB}/")
         pg.get_by_role("link", name="Open the editor").click()
         pg.wait_for_url("**/handwriting/letters")
-        pg.wait_for_selector("[data-testid=draw-hint]")
+        pg.wait_for_selector("[data-testid=bring-svg]")
         cur = pg.evaluate(GET, "dfm.handwriting.v1")
         check(cur["glyphs"] == {} and cur["path"] == "draw" and cur["title"] == "Drawn letters", "blank drawn font is open")
         idx = pg.evaluate(GET, "dfm.fonts.v1")
@@ -68,7 +68,7 @@ def main():
         # the mix-up case: photo letters in a project already marked as drawing
         pg.evaluate(WIPE)
         pg.evaluate(PUT, ["dfm.handwriting.v1", {"v": 1, "path": "draw", "title": "My font", "updatedAt": 1, "glyphs": {glyph(i, "photo")["id"]: glyph(i, "photo") for i in range(5)}}])
-        pg.goto(f"{WEB}/draw/start"); pg.wait_for_url("**/handwriting/letters"); pg.wait_for_selector("[data-testid=draw-hint]")
+        pg.goto(f"{WEB}/draw/start"); pg.wait_for_url("**/handwriting/letters"); pg.wait_for_selector("[data-testid=bring-svg]")
         cur = pg.evaluate(GET, "dfm.handwriting.v1")
         check(cur["glyphs"] == {} and cur["title"] == "Drawn letters", "photo letters marked as drawn still get a blank font")
         idx = pg.evaluate(GET, "dfm.fonts.v1")
@@ -76,7 +76,7 @@ def main():
         check(len(old["glyphs"]) == 5 and old["path"] == "photo", "old font parked with its 5 letters, marked as photo")
 
         # a brand new browser: the empty font is used as it is
-        pg.evaluate(WIPE); pg.goto(f"{WEB}/draw/start"); pg.wait_for_url("**/handwriting/letters"); pg.wait_for_selector("[data-testid=draw-hint]")
+        pg.evaluate(WIPE); pg.goto(f"{WEB}/draw/start"); pg.wait_for_url("**/handwriting/letters"); pg.wait_for_selector("[data-testid=bring-svg]")
         check(pg.evaluate(GET, "dfm.handwriting.v1")["path"] == "draw", "empty project becomes a drawing one")
 
         # the SVG page still works from the link
