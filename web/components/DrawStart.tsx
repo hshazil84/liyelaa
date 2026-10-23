@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { go } from "@/lib/handwriting/fonts";
-import { createFont, isBlank, loadProject, setPath } from "@/lib/handwriting/store";
+import { createFont, isBlank, loadProject, setPath, sourceMix } from "@/lib/handwriting/store";
 
 /**
  * Where "Draw my own" lands. Drawing gets a font of its own, so it never opens the one made from photos:
- * an empty font is used as it is, a font already begun by drawing carries on, and anything else is put aside and a blank one opened.
+ * an empty font is used as it is, a font with only drawn letters carries on, and anything else is put aside and a blank one opened.
  */
 export function DrawStart() {
   const [failed, setFailed] = useState(false);
@@ -21,7 +21,12 @@ export function DrawStart() {
       try {
         const p = await loadProject();
         if (isBlank(p)) await setPath("draw");
-        else if (p.path !== "draw") await createFont("Drawn letters", "draw");
+        else if (p.path === "draw" && sourceMix(p).photo === 0) { /* already a drawn font: carry on */ }
+        else {
+          // the path flag alone is not trusted: an older visit may have marked a photo font as drawn
+          if (sourceMix(p).photo > 0 && p.path !== "photo") await setPath("photo");
+          await createFont("Drawn letters", "draw");
+        }
         go("/handwriting/letters");
       } catch {
         setFailed(true);

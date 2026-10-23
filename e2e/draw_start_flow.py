@@ -65,6 +65,16 @@ def main():
         check(len(pg.evaluate(GET, "dfm.fonts.v1")["ids"]) == 2, "second visit carries on, no extra font")
         check(len(pg.evaluate(GET, "dfm.handwriting.v1")["glyphs"]) == 1, "drawn letter still there")
 
+        # the mix-up case: photo letters in a project already marked as drawing
+        pg.evaluate(WIPE)
+        pg.evaluate(PUT, ["dfm.handwriting.v1", {"v": 1, "path": "draw", "title": "My font", "updatedAt": 1, "glyphs": {glyph(i, "photo")["id"]: glyph(i, "photo") for i in range(5)}}])
+        pg.goto(f"{WEB}/draw/start"); pg.wait_for_url("**/handwriting/letters"); pg.wait_for_selector("[data-testid=draw-hint]")
+        cur = pg.evaluate(GET, "dfm.handwriting.v1")
+        check(cur["glyphs"] == {} and cur["title"] == "Drawn letters", "photo letters marked as drawn still get a blank font")
+        idx = pg.evaluate(GET, "dfm.fonts.v1")
+        old = [pg.evaluate(GET, f"dfm.font.{i}") for i in idx["ids"] if i != cur["fontId"]][0]
+        check(len(old["glyphs"]) == 5 and old["path"] == "photo", "old font parked with its 5 letters, marked as photo")
+
         # a brand new browser: the empty font is used as it is
         pg.evaluate(WIPE); pg.goto(f"{WEB}/draw/start"); pg.wait_for_url("**/handwriting/letters"); pg.wait_for_selector("[data-testid=draw-hint]")
         check(pg.evaluate(GET, "dfm.handwriting.v1")["path"] == "draw", "empty project becomes a drawing one")
