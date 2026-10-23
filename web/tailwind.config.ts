@@ -13,6 +13,8 @@ const config: Config = {
         sand: "#FFE6CC",
         coral: { DEFAULT: "#FA7E00", soft: "#FFE9D2" },
         plum: "#55303C",
+        lilac: { DEFAULT: "#E59FFF", soft: "#F3E4FF", mid: "#E3C4FA" },   // tips and optional labels, from the loading animation
+        grape: "#7A2E75",
         edge: "#8FA894",
       },
       fontFamily: {

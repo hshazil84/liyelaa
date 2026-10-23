@@ -104,7 +104,7 @@ export default function Home() {
             text="Write the letters on paper, take a photo, and turn them into a font."
             cta="Start with a photo"
             href="/handwriting"
-            tone="bg-teal-soft"
+            tone="bg-lilac-soft"
             peek
           >
             <TemplateSheet />

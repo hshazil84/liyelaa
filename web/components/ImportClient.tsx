@@ -333,7 +333,7 @@ export function ImportClient() {
             </p>
           </div>
 
-          <div className="rounded-[14px] bg-teal-soft px-3.5 py-3 text-[14.5px] leading-snug" data-testid="paste-tip">
+          <div className="rounded-[14px] bg-lilac-soft px-3.5 py-3 text-[14.5px] leading-snug" data-testid="paste-tip">
             {way === "sheet" ? (
               <b>Press Ctrl or ⌘ V to paste the whole page {sheetId} sheet. Or drop the file above.</b>
             ) : (

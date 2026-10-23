@@ -163,8 +163,8 @@ export function LettersClient() {
             )}
           </p>
         </section>
-          <div className="flex flex-col gap-2 rounded-3xl bg-teal-soft p-5">
-            <h2 className="font-display text-base font-bold text-teal">Keep it on the guides</h2>
+          <div className="flex flex-col gap-2 rounded-3xl bg-lilac-soft p-5">
+            <h2 className="font-display text-base font-bold text-grape">Keep it on the guides</h2>
             <p className="text-sm leading-normal">Draw between Top and Baseline so vowel marks have room above and below.</p>
           </div>
           <Link

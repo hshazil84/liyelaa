@@ -96,7 +96,7 @@ export function HandwritingPhoto() {
           </div>
 
           <div className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5" data-testid="joined-card">
-            <h2 className="font-display text-xl font-bold">Joined letters <span className="ml-1 rounded-full bg-sand px-2.5 py-0.5 align-middle font-sans text-xs font-bold">Optional</span></h2>
+            <h2 className="font-display text-xl font-bold">Joined letters <span className="ml-1 rounded-full bg-lilac-mid px-2.5 py-0.5 align-middle font-sans text-xs font-bold text-grape">Optional</span></h2>
             {ligs.length === 0 ? (
               <>
                 <p className="text-sm leading-normal text-muted">None yet. Pick the letters that join on the Joined letters step and a printable sheet appears here.</p>

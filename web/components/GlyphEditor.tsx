@@ -470,7 +470,7 @@ export function GlyphEditor({
         </ToolButton>
       </div>
 
-      <p className="flex min-h-[60px] items-center rounded-[14px] bg-[#D6EADC] px-3.5 py-2.5 text-sm sm:min-h-[40px]" aria-live="polite" data-testid="editor-hint">{hint}</p>
+      <p className="flex min-h-[60px] items-center rounded-[14px] bg-lilac-soft px-3.5 py-2.5 text-sm sm:min-h-[40px]" aria-live="polite" data-testid="editor-hint">{hint}</p>
 
       <div className="flex flex-wrap items-start gap-4">
       <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-3">
