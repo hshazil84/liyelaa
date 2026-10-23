@@ -64,6 +64,10 @@ with sync_playwright() as p:
     pg.get_by_test_id("open-intro").click()
     check("How it works link reopens it", pg.get_by_test_id("intro-modal").is_visible())
     pg.get_by_test_id("intro-close").click()
+    pg.get_by_test_id("account-open").click()
+    check("logged-out panel has no My fonts section", pg.get_by_test_id("account-fonts").count() == 0 and pg.get_by_test_id("account-save").count() == 0)
+    check("logged-out panel keeps Help and Terms", pg.get_by_test_id("feedback-open").is_visible() and pg.get_by_test_id("account-panel").get_by_role("link", name="Terms").is_visible())
+    pg.keyboard.press("Escape")
     check("home shows Log in and Sign up", pg.get_by_test_id("nav-login").is_visible() and pg.get_by_test_id("nav-signup").is_visible())
     check("home shows the sign-up button under How it works", pg.get_by_test_id("cta-signup").is_visible())
     check("footer has Terms, Privacy and Instagram",
@@ -113,6 +117,7 @@ with sync_playwright() as p:
     pg.goto(BASE + "/"); pg.wait_for_timeout(1500)
     check("no pop-up when signed in", pg.get_by_test_id("intro-modal").count() == 0)
     pg.get_by_test_id("account-open").click()
+    check("signed-in panel has My fonts", pg.get_by_test_id("account-fonts").is_visible() and pg.get_by_test_id("account-save").is_visible())
     check("the account panel shows the email and Log out", pg.get_by_test_id("nav-email").inner_text() == "ada@example.com" and pg.get_by_test_id("nav-logout").is_visible())
     check("no sign-up button when signed in", pg.get_by_test_id("cta-signup").count() == 0)
     pg.keyboard.press("Escape")

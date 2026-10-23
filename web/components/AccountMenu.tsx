@@ -86,19 +86,23 @@ export function AccountMenu() {
                   </div>
                 )}
 
-                <div className="flex flex-col gap-0.5 border-t border-line p-2.5">
-                  <p className="px-2.5 pb-1 pt-1 text-xs font-bold uppercase tracking-[.08em] text-muted">My fonts</p>
-                  {cur && (
-                    <div className="mx-0.5 mb-1 flex items-center gap-2.5 rounded-[14px] bg-lilac-soft px-3 py-2.5 text-sm">
-                      <b className="truncate">{cur.title}</b>
-                      <span className="ml-auto whitespace-nowrap text-xs font-bold text-grape">{cur.count} of 38</span>
-                    </div>
-                  )}
-                  <Link href="/handwriting/fonts" onClick={() => setOpen(false)} data-testid="account-fonts" className={row}><Icon icon={FolderLibraryIcon} />All my fonts{fonts && <span className="ml-auto text-[13px] font-medium text-muted">{fonts.length}</span>}</Link>
-                  <button type="button" onClick={() => { setOpen(false); setMaking(true); }} data-testid="account-new-font" className={row}><Icon icon={Add01Icon} />New font</button>
-                  <button type="button" onClick={() => void save()} data-testid="account-save" className={row}><Icon icon={FloppyDiskIcon} />Save project file</button>
-                  {note && <p role="status" className="mx-2 rounded-lg bg-[#F3F9F5] px-3 py-2 text-xs leading-snug">{note}</p>}
-                </div>
+                {!signedOut && (
+                  <div className="flex flex-col gap-0.5 border-t border-line p-2.5">
+                    <p className="px-2.5 pb-1 pt-1 text-xs font-bold uppercase tracking-[.08em] text-muted">My fonts</p>
+                    {cur && (
+                      <div className="mx-0.5 mb-1 flex items-center gap-2.5 rounded-[14px] bg-lilac-soft px-3 py-2.5 text-sm">
+                        <b className="truncate">{cur.title}</b>
+                        <span className="ml-auto whitespace-nowrap text-xs font-bold text-grape">{cur.count} of 38</span>
+                      </div>
+                    )}
+                    <Link href="/handwriting/fonts" onClick={() => setOpen(false)} data-testid="account-fonts" className={row}><Icon icon={FolderLibraryIcon} />All my fonts{fonts && <span className="ml-auto text-[13px] font-medium text-muted">{fonts.length}</span>}</Link>
+                    <button type="button" onClick={() => { setOpen(false); setMaking(true); }} data-testid="account-new-font" className={row}><Icon icon={Add01Icon} />New font</button>
+                    <button type="button" onClick={() => void save()} data-testid="account-save" className={row}><Icon icon={FloppyDiskIcon} />Save project file</button>
+                    <p className="px-2.5 pb-1 text-xs leading-snug text-muted">Fonts stay on this device. Save a project file to open them elsewhere.</p>
+                    {note && <p role="status" className="mx-2 rounded-lg bg-[#F3F9F5] px-3 py-2 text-xs leading-snug">{note}</p>}
+                  </div>
+
+                )}
 
                 <div className="flex flex-col gap-0.5 border-t border-line p-2.5">
                   <p className="px-2.5 pb-1 pt-1 text-xs font-bold uppercase tracking-[.08em] text-muted">Help</p>
