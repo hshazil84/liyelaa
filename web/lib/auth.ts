@@ -43,10 +43,20 @@ export async function signUp(email: string, password: string): Promise<AuthResul
     if (error) return { ok: false, message: friendly(error.message) };
     // An address that already has an account comes back with no identities and no error.
     if (data.user && data.user.identities && data.user.identities.length === 0) return { ok: false, message: friendly("already registered") };
+    if (data.session) void sendWelcome(data.session.access_token);
     return { ok: true, needsConfirm: !data.session };
   } catch (e) {
     return { ok: false, message: friendly(e instanceof Error ? e.message : "") };
   }
+}
+
+/** Asks the server to send the welcome email, then marks the account so it is not sent twice. Never blocks or fails a sign-up. */
+async function sendWelcome(token: string): Promise<void> {
+  try {
+    const res = await fetch("/api/welcome", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+    const body = (await res.json()) as { sent?: boolean };
+    if (body.sent) await supabase()?.auth.updateUser({ data: { welcomed: true } });
+  } catch { /* the welcome email is a nice extra, not part of signing up */ }
 }
 
 export async function logIn(email: string, password: string): Promise<AuthResult> {
