@@ -62,6 +62,9 @@ def main():
         assert names == ["Select", "Brush", "Pen", "Edit", "Erase"], names
         x0, y0, x1, y1 = box(pg)
 
+        # 1b. the board fills the whole letter as one shape, so holes cut through like they do in the font
+        assert pg.get_by_test_id("glyph-fill").count() == 1
+
         # 2. a tap on the box changes nothing
         cx, cy = centre(pg, "select-move")
         pg.mouse.click(cx, cy); pg.wait_for_timeout(300)

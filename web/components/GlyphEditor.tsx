@@ -611,15 +611,16 @@ export function GlyphEditor({
             )}
 
             {/* outlines */}
+            {/* one fill for the whole letter, so a hole (a dry streak, a chip, the counter of a ring) cuts through like it does in the font */}
+            <path d={contoursToD(view.contours)} fill={INK} fillOpacity={previewing ? 0.7 : 0.88} fillRule="nonzero" pointerEvents="none" data-testid="glyph-fill" />
             {view.contours.map((ct, c) => (
               <path
                 key={c}
                 d={contoursToD([ct])}
-                fill={INK}
-                fillOpacity={previewing ? 0.7 : sel?.c === c ? 0.78 : 0.88}
-                fillRule="nonzero"
+                fill="transparent"
                 stroke={sel?.c === c ? TEAL : "none"}
                 strokeWidth={2 * u}
+                pointerEvents={tool === "erase" ? "visiblePainted" : "none"}
                 style={{ cursor: tool === "erase" ? "pointer" : undefined }}
                 data-contour={c}
                 onPointerDown={tool === "erase" ? (e) => { e.stopPropagation(); commit(deleteContour(g, c)); setSel(null); } : undefined}
