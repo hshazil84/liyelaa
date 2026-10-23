@@ -8,7 +8,7 @@ import { FontSwitcher } from "@/components/FontSwitcher";
 import { Logo } from "@/components/Logo";
 import { Stepper } from "@/components/Stepper";
 import { layout, processPhoto, type PhotoOutcome } from "@/lib/handwriting/pipeline";
-import { stepIndex, useSteps } from "@/lib/handwriting/steps";
+import { HANDWRITING_STEPS } from "@/lib/handwriting/steps";
 import { JoinedSheetTools } from "@/components/JoinedSheetTools";
 import { MixPrompt } from "@/components/MixPrompt";
 import type { Ligature } from "@/lib/handwriting/extras";
@@ -19,7 +19,6 @@ const letterCount = layout.sheets[0].cells.length;
 const filiCount = layout.sheets[1].cells.filter((c) => c.kind === "fili").length;
 
 export function HandwritingPhoto() {
-  const steps = useSteps();
   const [sheet, setSheet] = useState<1 | 2>(1);
   const [ask, setAsk] = useState<{ font: string; have: number } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -74,97 +73,79 @@ export function HandwritingPhoto() {
   }
 
   const problems = result && result.ok ? result.cells.filter((c) => c.status === "light" || c.warn) : [];
+  const usable = result && result.ok ? result.cells.filter((c) => c.glyph).length : 0;
+  const total = saved ? saved.letters + saved.fili + saved.symbols : 0;
+  const card = "flex flex-col gap-3.5 rounded-3xl border border-line bg-white p-5";
 
   return (
     <div className="flex min-h-screen flex-col">
       <header className="z-30 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white lg:sticky lg:top-0 px-10 py-4">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
-        <Stepper steps={steps} current={stepIndex(steps, "/handwriting", 1)} />
+        <Stepper steps={HANDWRITING_STEPS} current={1} />
         <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex">
           <span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser
         </span>
       </header>
 
-      <main className="mx-auto flex w-full max-w-[1240px] flex-wrap items-start gap-6 px-10 py-8">
-        <section aria-label="Get your photo in" className="flex w-full flex-col gap-5 lg:w-[360px]">
-          <div className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">
-            <h2 className="font-display text-xl font-bold">1. Print the template</h2>
-            <p className="text-sm leading-normal text-muted">Two A4 pages: letters, then vowel marks, extras and numbers.</p>
-            <a href="/templates/dhivehi-handwriting-template.pdf" download className="flex h-12 items-center justify-center rounded-xl border border-[#BDCFC2] text-base font-bold hover:bg-paper">
-              Download the template (PDF)
+      <main className="mx-auto flex w-full max-w-[980px] flex-col gap-5 px-5 py-8 sm:px-10">
+        {/* top left: what this page is. top right: the first thing to do */}
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
+          <div className="min-w-0">
+            <h1 className="font-display text-3xl font-bold leading-tight">Make a font from a photo</h1>
+            <p className="mt-1 max-w-[44ch] text-base text-muted">Print the sheet, write your letters, take a photo.</p>
+          </div>
+          <div className="flex items-center gap-3 rounded-[18px] border border-line bg-white px-3.5 py-3">
+            <span aria-hidden className="grid h-7 w-7 flex-none place-items-center rounded-full bg-ink text-[13px] font-extrabold text-white">1</span>
+            <div className="min-w-0">
+              <h2 className="text-[15px] font-bold leading-tight">Print the template</h2>
+              <p className="text-[13.5px] text-muted">Two A4 pages</p>
+            </div>
+            <a href="/templates/dhivehi-handwriting-template.pdf" download className="flex h-11 items-center whitespace-nowrap rounded-xl border-[1.5px] border-[#BDCFC2] px-4 text-[15px] font-bold hover:bg-paper">
+              Download PDF
             </a>
           </div>
+        </div>
 
-          <div className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5" data-testid="joined-card">
-            <h2 className="font-display text-xl font-bold">Joined letters <span className="ml-1 rounded-full bg-lilac-mid px-2.5 py-0.5 align-middle font-sans text-xs font-bold text-grape">Optional</span></h2>
-            {ligs.length === 0 ? (
-              <>
-                <p className="text-sm leading-normal text-muted">None yet. Pick the letters that join on the Joined letters step and a printable sheet appears here.</p>
-                <Link href="/handwriting/ligatures" className="flex h-11 items-center justify-center rounded-xl border border-[#BDCFC2] text-[15px] font-bold hover:bg-paper">Go to joined letters</Link>
-              </>
-            ) : (
-              <>
-                <p className="text-sm leading-normal text-muted">You have {ligs.length} joined letter{ligs.length === 1 ? "" : "s"}. Download a sheet with a box for each.</p>
-                <JoinedSheetTools ligs={ligs} note={false} onScanned={async (next) => { await saveLigatures(next); await refresh(); }} />
-              </>
-            )}
+        {/* the middle: the photo, where the eye lands */}
+        <section aria-label="Add a photo" className={`${card} p-5 sm:p-6`}>
+          <div className="flex items-center gap-2.5">
+            <span aria-hidden className="grid h-7 w-7 flex-none place-items-center rounded-full bg-ink text-[13px] font-extrabold text-white">2</span>
+            <h2 className="font-display text-xl font-bold">Add a photo</h2>
           </div>
+          <fieldset className="flex flex-wrap gap-2">
+            <legend className="sr-only">Which sheet is it?</legend>
+            {([1, 2] as const).map((n) => (
+              <label key={n} className={`min-w-[150px] flex-1 cursor-pointer rounded-xl border px-3 py-2.5 text-center text-sm font-bold ${sheet === n ? "border-ink bg-ink text-white" : "border-[#BDCFC2] bg-white"}`}>
+                <input type="radio" name="sheet" className="sr-only" checked={sheet === n} onChange={() => setSheet(n)} />
+                {n === 1 ? "Sheet 1 · Letters" : "Sheet 2 · Marks"}
+              </label>
+            ))}
+          </fieldset>
 
-          <div className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">
-            <h2 className="font-display text-xl font-bold">2. Add a photo</h2>
-            <fieldset className="flex gap-2">
-              <legend className="sr-only">Which sheet is it?</legend>
-              {([1, 2] as const).map((n) => (
-                <label key={n} className={`flex-1 cursor-pointer rounded-xl border px-3 py-2 text-center text-sm font-bold ${sheet === n ? "border-ink bg-ink text-white" : "border-[#BDCFC2] bg-white"}`}>
-                  <input type="radio" name="sheet" className="sr-only" checked={sheet === n} onChange={() => setSheet(n)} />
-                  {n === 1 ? "Sheet 1 · Letters" : "Sheet 2 · Marks"}
-                </label>
-              ))}
-            </fieldset>
+          {error && <p role="alert" data-testid="photo-error" className="rounded-xl bg-coral-soft px-4 py-3 text-sm font-medium">{error}</p>}
+
+          {busy ? (
+            <Loading label="Straightening the sheet and tracing your letters…" size={200} />
+          ) : !(result && result.ok) ? (
             <label
               htmlFor="photo"
               onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
               onDragLeave={() => setDrag(false)}
               onDrop={(e) => { e.preventDefault(); setDrag(false); handleFile(e.dataTransfer.files[0]); }}
-              className={`flex h-36 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border-[1.5px] border-dashed px-4 text-center text-[15px] font-medium ${drag ? "border-teal bg-teal-soft" : "border-[#BDCFC2] bg-[#F3F9F5]"}`}
+              className={`flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-2 rounded-[18px] border-[1.5px] border-dashed px-5 py-5 text-center ${drag ? "border-teal bg-teal-soft" : "border-[#BDCFC2] bg-[#F3F9F5]"}`}
             >
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#264022" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <svg width="30" height="30" viewBox="0 0 28 28" fill="none" stroke="#264022" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M14 20V6M8 12l6-6 6 6M5 23h18" />
               </svg>
-              {busy ? "Reading your photo…" : "Choose a photo, or drop it here"}
+              <span className="text-[17px] font-bold">Choose a photo, or drop it here</span>
+              <span className="max-w-[44ch] text-sm text-muted">Dark marker, daylight, sheet flat, all four black squares in the photo.</span>
             </label>
-            <input id="photo" data-testid="photo-input" type="file" accept="image/*" className="sr-only" onChange={(e) => { handleFile(e.target.files?.[0]); e.target.value = ""; }} />
-            <ul className="list-disc space-y-1.5 pl-5 text-sm leading-normal text-muted">
-              <li>Use a dark marker, not pencil.</li>
-              <li>Daylight, sheet flat, all four black squares in the photo.</li>
-              <li>Your photo stays on this device. Only the traced letters are saved.</li>
-            </ul>
-          </div>
+          ) : null}
+          <input id="photo" data-testid="photo-input" type="file" accept="image/*" className="sr-only" onChange={(e) => { handleFile(e.target.files?.[0]); e.target.value = ""; }} />
 
-          {saved && (saved.letters + saved.fili + saved.symbols > 0) && (
-            <div className="flex flex-col gap-2 rounded-3xl border border-line bg-white p-5" data-testid="saved-summary">
-              <h2 className="font-display text-lg font-bold">Saved so far</h2>
-              <p className="text-sm text-muted">{saved.letters} of {letterCount} letters · {saved.fili} of {filiCount} vowel marks · {saved.symbols} extras</p>
-              <Link href="/handwriting/letters" data-testid="continue-letters" className="flex h-12 items-center justify-center rounded-xl bg-teal text-base font-bold text-white hover:bg-teal-dark">
-                Clean up my letters
-              </Link>
-              <button type="button" onClick={async () => { await clearProject(); await refresh(); }} className="self-start text-sm font-bold text-teal underline underline-offset-4">
-                Start again
-              </button>
-            </div>
-          )}
-        </section>
-
-        <section aria-label="Check your photo" className="flex min-w-0 flex-[1_1_520px] flex-col gap-5 rounded-3xl border border-line bg-white p-6">
-          <h1 className="font-display text-3xl font-bold leading-tight">Check your photo</h1>
-          {error && <p role="alert" data-testid="photo-error" className="rounded-xl bg-coral-soft px-4 py-3 text-sm font-medium">{error}</p>}
-          {!result && !error && !busy && (
-            <p className="text-base text-muted">Add a photo of a filled-in sheet and it appears here, straightened, with every letter found.</p>
-          )}
-          {busy && <Loading label="Straightening the sheet and tracing your letters…" size={200} />}
-          {result && result.ok && (
+          {result && result.ok && !busy && (
             <>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <figure className="flex flex-col gap-1.5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={result.originalUrl} alt="Your photo" className="w-full rounded-xl border border-line" />
@@ -176,7 +157,7 @@ export function HandwritingPhoto() {
                   <figcaption className="text-xs text-muted">Straightened</figcaption>
                 </figure>
               </div>
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl bg-[#F3F9F5] px-4 py-3 text-[15px]" data-testid="summary">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl bg-[#F3F9F5] px-3.5 py-2.5 text-[15px]" data-testid="summary">
                 <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-teal" />{result.counts.ok} found</span>
                 {result.counts.light > 0 && <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-coral" />{result.counts.light} too light</span>}
                 {result.counts.edge > 0 && <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-coral" />{result.counts.edge} touching the box edge</span>}
@@ -190,17 +171,61 @@ export function HandwritingPhoto() {
                   Look at: {problems.map((p) => p.label).join(" ")}. Write over those with a darker pen and take the photo again, or keep them and fix them in the next step.
                 </p>
               )}
-              <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={useLetters} data-testid="use-letters" className="h-14 rounded-2xl bg-teal px-6 text-lg font-bold text-white hover:bg-teal-dark">
-                  Use these letters
-                </button>
-                <button type="button" onClick={() => setResult(null)} className="h-14 rounded-2xl border border-[#BDCFC2] px-6 text-base font-bold hover:bg-paper">
-                  Take a new photo
-                </button>
-              </div>
             </>
           )}
         </section>
+
+        <div className="grid gap-4 sm:grid-cols-[1.2fr_1fr]">
+          <div className="flex flex-col gap-1.5 rounded-[20px] bg-lilac-soft p-4 text-[14.5px]">
+            <h2 className="font-bold text-grape">For a clean trace</h2>
+            <ul className="flex list-disc flex-col gap-1 pl-[18px] text-muted">
+              <li>Use a dark marker, not pencil.</li>
+              <li>Daylight, sheet flat, all four black squares in the photo.</li>
+              <li>Your photo stays on this device. Only the traced letters are saved.</li>
+            </ul>
+          </div>
+
+          <div className="flex flex-col gap-2 rounded-[20px] border border-line bg-white p-4 text-[14.5px]" data-testid="joined-card">
+            <h2 className="font-bold">Joined letters <span className="ml-1.5 rounded-full bg-lilac-mid px-2.5 py-0.5 align-middle text-xs font-bold text-grape">Optional</span></h2>
+            {ligs.length === 0 ? (
+              <>
+                <p className="text-muted">Pick letters that join and print a second sheet for them.</p>
+                <Link href="/handwriting/ligatures" className="flex h-11 items-center justify-center self-start rounded-xl border-[1.5px] border-[#BDCFC2] px-4 text-[15px] font-bold hover:bg-paper">Go to joined letters</Link>
+              </>
+            ) : (
+              <>
+                <p className="text-muted">You have {ligs.length} joined letter{ligs.length === 1 ? "" : "s"}. Download a sheet with a box for each.</p>
+                <JoinedSheetTools ligs={ligs} note={false} onScanned={async (next) => { await saveLigatures(next); await refresh(); }} />
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* bottom right: the one button that moves you on */}
+        <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 rounded-[18px] border border-line bg-white px-4 py-3 shadow-[0_-4px_18px_rgba(0,0,0,.08)]">
+          {result && result.ok ? (
+            <p className="text-[14.5px] text-muted">{usable} letters found.{problems.length > 0 ? ` ${problems.length} need a look afterwards.` : ""}</p>
+          ) : total > 0 ? (
+            <p className="text-[14.5px] text-muted" data-testid="saved-summary">
+              Saved {saved?.letters} of {letterCount} letters · {saved?.fili} of {filiCount} vowel marks · {saved?.symbols} extras.{" "}
+              <button type="button" onClick={async () => { await clearProject(); await refresh(); }} className="font-bold text-teal underline underline-offset-4">Start again</button>
+            </p>
+          ) : (
+            <p className="text-[14.5px] text-muted">Add a photo to start.</p>
+          )}
+          <div className="flex flex-wrap gap-2.5">
+            {result && result.ok ? (
+              <>
+                <button type="button" onClick={() => setResult(null)} className="h-12 rounded-2xl border-[1.5px] border-[#BDCFC2] px-5 text-[15px] font-bold hover:bg-paper">Take a new photo</button>
+                <button type="button" onClick={useLetters} data-testid="use-letters" className="h-12 rounded-2xl bg-teal px-6 text-base font-bold text-white hover:bg-teal-dark">Use {usable} letters</button>
+              </>
+            ) : total > 0 ? (
+              <Link href="/handwriting/letters" data-testid="continue-letters" className="flex h-12 items-center rounded-2xl bg-teal px-6 text-base font-bold text-white hover:bg-teal-dark">Clean up my letters →</Link>
+            ) : (
+              <button type="button" disabled className="h-12 rounded-2xl bg-teal px-6 text-base font-bold text-white opacity-50">Use 0 letters</button>
+            )}
+          </div>
+        </div>
       </main>
       {ask && (
         <MixPrompt fontName={ask.font} have={ask.have} haveKind="drawn" adding="letters traced from this photo"
