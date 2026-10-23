@@ -37,7 +37,7 @@ export function DrawStart() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="border-b border-line bg-white px-10 py-4"><Logo /></header>
+      <header className="border-b border-line bg-white px-4 sm:px-10 py-4"><Logo /></header>
       <main className="mx-auto flex w-full max-w-[640px] flex-1 flex-col items-center justify-center gap-4 px-6 text-center" data-testid="draw-start">
         {failed ? (
           <>

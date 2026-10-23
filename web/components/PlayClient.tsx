@@ -126,7 +126,7 @@ export function PlayClient() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="z-30 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white lg:sticky lg:top-0 px-10 py-4">
+      <header className="z-30 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white lg:sticky lg:top-0 px-4 sm:px-10 py-4">
         <Logo />
         <Stepper steps={STEPS} current={step} />
         <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex">
@@ -135,7 +135,7 @@ export function PlayClient() {
       </header>
 
       {step === 1 ? (
-        <main className="mx-auto flex w-full max-w-[1240px] flex-wrap items-start gap-6 px-10 py-8">
+        <main className="mx-auto flex w-full max-w-[1240px] flex-wrap items-start gap-6 px-4 sm:px-10 py-8">
           <section aria-label="Controls" className="flex w-full flex-col gap-6 rounded-3xl border border-line bg-white p-5 lg:w-[320px]">
             <h1 className="font-display text-2xl font-bold">Play with a font</h1>
             <div role="group" aria-label="Presets" className="grid grid-cols-4 gap-1.5">
@@ -215,7 +215,7 @@ export function PlayClient() {
           </aside>
         </main>
       ) : (
-        <main className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-10 py-10">
+        <main className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-4 sm:px-10 py-10">
           <div className="flex flex-col gap-2">
             <h1 className="font-display text-4xl font-bold">Your font is ready</h1>
             <ul className="flex flex-wrap gap-2" aria-label="What you changed">

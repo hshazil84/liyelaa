@@ -104,7 +104,7 @@ export function LevelClient() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="z-30 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white lg:sticky lg:top-0 px-10 py-4">
+      <header className="z-30 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white lg:sticky lg:top-0 px-4 sm:px-10 py-4">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={steps} current={stepIndex(steps, "/handwriting/level", 3)} />
         <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex">
@@ -112,7 +112,7 @@ export function LevelClient() {
         </span>
       </header>
 
-      <main className="mx-auto flex w-full max-w-[1240px] flex-wrap items-start gap-6 px-10 py-8">
+      <main className="mx-auto flex w-full max-w-[1240px] flex-wrap items-start gap-6 px-4 sm:px-10 py-8">
         <section aria-label="Level the letters" className="flex min-w-0 flex-[1_1_700px] flex-col gap-5 rounded-3xl border border-line bg-white p-6">
           <div className="flex flex-col gap-1.5">
             <h1 className="font-display text-[32px] font-bold leading-[1.1]">Level your letters</h1>

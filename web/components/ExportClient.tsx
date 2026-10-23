@@ -178,7 +178,7 @@ export function ExportClient() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="z-30 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white lg:sticky lg:top-0 px-10 py-4">
+      <header className="z-30 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white lg:sticky lg:top-0 px-4 sm:px-10 py-4">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={steps} current={stepIndex(steps, "/handwriting/export", 7)} />
         <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex">
@@ -186,11 +186,11 @@ export function ExportClient() {
         </span>
       </header>
 
-      <main className="mx-auto flex w-full max-w-[1280px] flex-wrap items-start gap-6 px-10 py-8">
+      <main className="mx-auto flex w-full max-w-[1280px] flex-wrap items-start gap-6 px-4 sm:px-10 py-8">
         <section aria-label="Test your font" className="flex min-w-0 flex-[1_1_520px] flex-col gap-4 rounded-3xl border border-line bg-white p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="font-display text-2xl font-bold">Test your font</h1>
-            <div role="tablist" aria-label="Sample text" className="flex gap-1 text-sm font-medium">
+            <div role="tablist" aria-label="Sample text" className="flex flex-wrap gap-1 text-sm font-medium">
               {TABS.map((t) => (
                 <button key={t.id} role="tab" type="button" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
                   className={`rounded-full px-3 py-1.5 ${tab === t.id ? "bg-ink text-white" : "text-muted hover:bg-paper"}`}>

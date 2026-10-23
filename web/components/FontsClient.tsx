@@ -65,11 +65,11 @@ export function FontsClient() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="z-30 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white lg:sticky lg:top-0 px-10 py-4">
+      <header className="z-30 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white lg:sticky lg:top-0 px-4 sm:px-10 py-4">
         <Logo />
         <span className="flex items-center gap-2 text-sm text-muted"><span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser</span>
       </header>
-      <main className="mx-auto flex w-full max-w-[1100px] flex-col gap-6 px-10 py-10">
+      <main className="mx-auto flex w-full max-w-[1100px] flex-col gap-6 px-4 sm:px-10 py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="font-display text-4xl font-bold leading-tight">My fonts</h1>
           <button type="button" data-testid="new-font-page" onClick={() => setMaking(true)} className="h-12 rounded-xl bg-teal px-5 text-base font-bold text-white hover:bg-teal-dark">+ New font</button>

@@ -11,7 +11,7 @@ export type ExtrasTab = (typeof TABS)[number]["id"];
 /** The three parts of the "Spacing and extras" step. Each is optional, so every one can be skipped. */
 export function ExtrasNav({ current }: { current: ExtrasTab }) {
   return (
-    <nav aria-label="Spacing and extras" className="mx-auto flex w-full max-w-[1280px] flex-wrap gap-1 px-10 pt-6 text-sm font-medium">
+    <nav aria-label="Spacing and extras" className="mx-auto flex w-full max-w-[1280px] flex-wrap gap-1 px-4 sm:px-10 pt-6 text-sm font-medium">
       {TABS.map((t) => (
         <Link
           key={t.id}

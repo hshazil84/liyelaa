@@ -147,14 +147,14 @@ export function LigaturesClient() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="z-30 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white lg:sticky lg:top-0 px-10 py-4">
+      <header className="z-30 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white lg:sticky lg:top-0 px-4 sm:px-10 py-4">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={steps} current={stepIndex(steps, "/handwriting/spacing", 6)} />
         <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex"><span className="h-2 w-2 rounded-full bg-teal" />Saved in this browser</span>
       </header>
       <ExtrasNav current="ligatures" />
 
-      <main className="mx-auto flex w-full max-w-[1280px] flex-col gap-5 px-10 py-6">
+      <main className="mx-auto flex w-full max-w-[1280px] flex-col gap-5 px-4 sm:px-10 py-6">
         <section aria-label="Your joined letters" className="flex flex-wrap items-start gap-x-8 gap-y-4 rounded-3xl border border-line bg-white p-5">
           <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-2">
             <h2 className="font-display text-lg font-bold">Your joined letters <span className="font-sans text-base font-medium text-muted" data-testid="lig-count">{ligs.length ? `(${ligs.length})` : ""}</span></h2>
