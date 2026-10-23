@@ -10,7 +10,7 @@ const quiet = "inline-flex min-h-10 items-center px-2.5 text-sm font-bold text-i
 export function HomeHeader() {
   const { ready, user, enabled } = useAuth();
   return (
-    <header className="flex items-center justify-between gap-3 border-b border-line bg-white px-4 py-3 sm:gap-8 sm:px-10 sm:py-4">
+    <header className="flex items-center justify-between gap-3 border-b border-line bg-white px-5 py-3 sm:gap-8 sm:px-10 sm:py-4">
       <Logo />
       <div className="flex items-center gap-1 sm:gap-2">
         <button type="button" className={`${quiet} hidden sm:inline-flex`} data-testid="open-intro" onClick={() => window.dispatchEvent(new Event(INTRO_EVENT))}>How it works</button>

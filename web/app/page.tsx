@@ -80,10 +80,10 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <HomeHeader />
       <IntroModal />
-      <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-9 px-4 py-10 sm:px-10 sm:py-14">
+      <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 sm:gap-9 px-5 py-7 sm:px-10 sm:py-14">
         <div className="flex flex-col gap-2.5">
-          <h1 className="font-display text-5xl font-bold leading-[1.05]">What do you want to do?</h1>
-          <p className="text-lg text-muted">Pick one. You can always come back and try another.</p>
+          <h1 className="font-display text-[34px] font-bold leading-[1.1] [text-wrap:balance] sm:text-5xl sm:leading-[1.05]">What do you want to do?</h1>
+          <p className="text-base text-muted [text-wrap:balance] sm:text-lg">Pick one. You can always come back and try another.</p>
         </div>
         <div className="flex flex-wrap gap-6">
           <Card
