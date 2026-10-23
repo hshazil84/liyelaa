@@ -4,6 +4,7 @@ import { addFont, fontTitle, loadProject, type Project } from "./store";
 /**
  * A project file: the open font's letters, spacing and settings as one file the person keeps.
  * Photos are never stored, so they are not in it. Opening a file adds a new font and never replaces one.
+ * Backups saved from My fonts ("font" kind) have the same body, so both kinds open from every place.
  */
 export const PROJECT_EXT = ".thaanafont";
 const OLD_EXT = ".myakuru";           // files saved before the site was renamed still open
@@ -69,7 +70,7 @@ export async function openProjectFile(file: File): Promise<OpenResult> {
   if (file.size > MAX_BYTES) return bad("That file is too big to be a ThaanaFont project.");
   let body: unknown;
   try { body = JSON.parse(await file.text()); } catch { return bad(`That file is not a ThaanaFont project. Choose a file ending in ${PROJECT_EXT}.`); }
-  if (!isObj(body) || typeof body.app !== "string" || !APP_IDS.includes(body.app) || body.kind !== "project") return bad(`That file is not a ThaanaFont project. Choose a file ending in ${PROJECT_EXT}.`);
+  if (!isObj(body) || typeof body.app !== "string" || !APP_IDS.includes(body.app) || (body.kind !== "project" && body.kind !== "font")) return bad(`That file is not a ThaanaFont project. Choose a file ending in ${PROJECT_EXT}.`);
   if (body.v !== 1) return bad("That project was saved by a newer version of ThaanaFont. Reload the page and try again.");
   const project = clean(body.project);
   if (!project) return bad("That project file is damaged, so it was not opened.");

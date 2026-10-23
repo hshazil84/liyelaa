@@ -317,11 +317,11 @@ export async function exportFont(id: string): Promise<{ filename: string; text: 
   return { filename: `${title.replace(/[\\/:*?"<>|]+/g, "").trim().replace(/\s+/g, "-") || "font"}.thaanafont`, text };
 }
 
-/** Open a backup file as a new font. The open font is put away first. */
+/** Open a backup file as a new font. The open font is put away first. Files from "Save project file" open here too. */
 export async function importFont(text: string): Promise<{ ok: true; title: string } | { ok: false; reason: string }> {
   let data: { app?: string; kind?: string; title?: string; project?: Project };
   try { data = JSON.parse(text); } catch { return { ok: false, reason: "That is not a ThaanaFont backup file." }; }
-  if (typeof data.app !== "string" || !["thaanafont", "myakuru"].includes(data.app) || data.kind !== "font" || !data.project || typeof data.project.glyphs !== "object") {
+  if (typeof data.app !== "string" || !["thaanafont", "myakuru"].includes(data.app) || (data.kind !== "font" && data.kind !== "project") || !data.project || typeof data.project.glyphs !== "object") {
     return { ok: false, reason: "That is not a ThaanaFont backup file." };
   }
   const cur = await ensureActive();

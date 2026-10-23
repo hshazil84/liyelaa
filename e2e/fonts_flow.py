@@ -121,6 +121,19 @@ def main():
         pg.get_by_test_id("confirm-delete").click()
         pg.wait_for_function("() => document.querySelectorAll('[data-testid=font-cards] li').length === 2")
         assert pg.locator("[data-testid=font-cards] li[data-active=true]").count() == 1
+        # a file from "Save project file" (kind "project") opens from My fonts too, and a "font" backup opens from the project input
+        proj = out / "from-account-menu.thaanafont"
+        proj.write_text(json.dumps({"app": "thaanafont", "kind": "project", "v": 1, "savedAt": 0, "project": data["project"]}))
+        pg.goto(f"{WEB}/handwriting/fonts"); pg.wait_for_selector("[data-testid=font-cards] li")
+        before = pg.locator("[data-testid=font-cards] li").count()
+        pg.get_by_test_id("backup-input").set_input_files(str(proj))
+        pg.wait_for_url("**/handwriting/letters")
+        pg.goto(f"{WEB}/handwriting/fonts"); pg.wait_for_selector("[data-testid=font-cards] li")
+        assert pg.locator("[data-testid=font-cards] li").count() == before + 1, "project-kind file did not open from My fonts"
+        pg.goto(f"{WEB}/handwriting/export"); pg.get_by_test_id("project-file").wait_for(state="attached")
+        pg.get_by_test_id("project-file").set_input_files(str(path))
+        pg.wait_for_selector("[data-testid=project-msg]")
+        assert "not a ThaanaFont" not in pg.get_by_test_id("project-msg").inner_text() and pg.get_by_test_id("project-msg").get_attribute("role") == "status", pg.get_by_test_id("project-msg").inner_text()
         assert not errors, errors
         print("fonts flow ok")
         b.close()
