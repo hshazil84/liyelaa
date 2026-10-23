@@ -167,13 +167,6 @@ export function LettersClient() {
             <h2 className="font-display text-base font-bold text-grape">Keep it on the guides</h2>
             <p className="text-sm leading-normal">Draw between Top and Baseline so vowel marks have room above and below.</p>
           </div>
-          <Link
-            href="/handwriting/level"
-            data-testid="continue-level"
-            className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark"
-          >
-            Level the letters <span aria-hidden>→</span>
-          </Link>
         </div>
 
         <section aria-label="Drawing area" className="flex min-w-0 flex-[1_1_520px] flex-col gap-4 rounded-3xl border border-line bg-white p-5">

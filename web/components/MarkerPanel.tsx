@@ -6,8 +6,8 @@ import { UNITS_PER_MM } from "@/lib/handwriting/types";
 const SHAPES: NibShape[] = ["round", "oval", "chisel", "square"];
 const mm = (u: number) => `${(Math.round((u / UNITS_PER_MM) * 10) / 10).toString()} mm`;
 
-/** A sample line drawn with the nib, so every change shows at once. */
-const SAMPLE = Array.from({ length: 50 }, (_, i) => { const t = i / 49; return { x: 160 + t * 560, y: Math.sin(t * Math.PI * 1.15 + 0.2) * 70 - t * 10 }; });
+/** A sample line drawn with the nib, so every change shows at once. Thaana runs right to left, so it starts at the right. */
+const SAMPLE = Array.from({ length: 50 }, (_, i) => { const t = i / 49; return { x: 640 - t * 560, y: Math.sin(t * Math.PI * 1.15 + 0.2) * 70 - t * 10 }; });
 
 function NibIcon({ shape }: { shape: NibShape }) {
   const n = { shape, size: 26, angle: -40, flat: NIB_START[shape].flat, smooth: 0, taper: 0, bleed: 0, dry: 0 };
@@ -33,8 +33,8 @@ export function MarkerPanel({ nib, onNib }: { nib: Nib; onNib: (n: Nib) => void 
   return (
     <div className="flex flex-col gap-4" data-testid="marker-panel">
       <svg viewBox="0 -150 800 300" className="w-full rounded-xl bg-[#F3F9F5]" role="img" aria-label="The nib and a sample line drawn with it" data-testid="nib-preview">
-        <g transform="translate(80 0)"><path d={preview} transform="scale(1,-1)" fill="#264022" /></g>
-        <line x1="150" x2="150" y1="-130" y2="130" stroke="#DCE8DF" strokeWidth="3" />
+        <g transform="translate(720 0)"><path d={preview} transform="scale(1,-1)" fill="#264022" /></g>
+        <line x1="650" x2="650" y1="-130" y2="130" stroke="#DCE8DF" strokeWidth="3" />
         <g transform="scale(1,-1)"><path d={sample} fill="#264022" fillRule="nonzero" /></g>
       </svg>
       <div role="radiogroup" aria-label="Nib shape" className="grid grid-cols-4 gap-2">

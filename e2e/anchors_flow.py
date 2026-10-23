@@ -60,7 +60,7 @@ def main():
             pg.wait_for_selector("[data-testid=saved-summary]")
         pg.get_by_test_id("continue-letters").click()
         pg.wait_for_url("**/handwriting/letters")
-        pg.get_by_test_id("continue-level").click()
+        pg.get_by_test_id("level-here").click()
         pg.wait_for_url("**/handwriting/level")
         pg.get_by_test_id("continue-tails").click()
         pg.wait_for_url("**/handwriting/tails")
