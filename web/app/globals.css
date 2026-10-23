@@ -64,3 +64,9 @@
   :focus-visible { outline: 3px solid #264022; outline-offset: 2px; }
   input[type="range"] { accent-color: #264022; }
 }
+
+/* "More" sections glide open where the browser can animate it, and just open where it can't */
+details { interpolate-size: allow-keywords; }
+details::details-content { block-size: 0; overflow: hidden; transition: block-size .2s ease, content-visibility .2s allow-discrete; }
+details[open]::details-content { block-size: auto; }
+@media (prefers-reduced-motion: reduce) { details::details-content { transition: none; } }

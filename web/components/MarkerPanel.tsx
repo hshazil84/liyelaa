@@ -2,6 +2,7 @@
 
 import { INKS, NIB_LABEL, NIB_START, nibPoly, SIZE_MAX, SIZE_MIN, strokeToD, withShape, type Nib, type NibShape } from "@/lib/handwriting/marker";
 import { UNITS_PER_MM } from "@/lib/handwriting/types";
+import { revealOnOpen } from "@/lib/reveal";
 
 const SHAPES: NibShape[] = ["round", "oval", "chisel", "square"];
 const mm = (u: number) => `${(Math.round((u / UNITS_PER_MM) * 10) / 10).toString()} mm`;
@@ -58,7 +59,7 @@ export function MarkerPanel({ nib, onNib }: { nib: Nib; onNib: (n: Nib) => void 
           ))}
         </div>
       </div>
-      <details className="border-t border-line pt-3" data-testid="marker-more">
+      <details className="border-t border-line pt-3" data-testid="marker-more" onToggle={revealOnOpen}>
         <summary className="cursor-pointer text-sm font-bold">More</summary>
         <div className="mt-3 flex flex-col gap-4">
           {slide("flat", "Flatness", 10, 100, 1, `${nib.flat}%`, nib.shape === "round")}

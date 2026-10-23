@@ -1,5 +1,6 @@
 "use client";
 
+import GHOSTS_JSON from "@/lib/handwriting/ghosts.json";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { inkBox } from "@/lib/handwriting/marks";
 import { MarkerPanel } from "@/components/MarkerPanel";
@@ -15,6 +16,7 @@ import { importOne } from "@/lib/handwriting/svgimport";
 import { IDENTITY, applyShape, isIdentity, type Shape } from "@/lib/handwriting/shape";
 import { contoursToD } from "@/lib/handwriting/svg";
 import { UNITS_PER_MM, type Glyph, type LayoutCell, type Pt, type Seg } from "@/lib/handwriting/types";
+import { revealOnOpen } from "@/lib/reveal";
 
 type Tool = "move" | "pen" | "marker" | "erase";
 type Panel = "tool" | "letter" | "check";
@@ -95,6 +97,8 @@ function ToolIcon({ name }: { name: keyof typeof ICON }) {
  * Edit one letter: move points and handles, add points, draw new shapes with the pen, delete.
  * `key` the component by letter so history starts fresh for each one.
  */
+const GHOSTS = GHOSTS_JSON as Record<string, { d: string; adv: number }>;
+
 export function GlyphEditor({
   cell, glyph, original, onChange, below,
 }: {
@@ -508,12 +512,17 @@ export function GlyphEditor({
 
             {/* the starter letter, only as a hint for a letter that has no drawing yet */}
             {!hasShape && !pen && !live && (
-              // drawn small and scaled up: Safari cuts huge text off at a straight edge
-              <g transform={`translate(${cx} 0) scale(${ghostS * 10} ${-ghostS * 10})`} aria-hidden>
-                <text x={0} y={0} textAnchor="middle" fontSize={100} fontFamily="AKRasmee, NotoThaana, sans-serif" textRendering="geometricPrecision" fill={INK} opacity={0.1}>
-                  {cell.label}
-                </text>
-              </g>
+              // an outline, not text: Safari cuts big text off at a straight edge
+              GHOSTS[cell.label] ? (
+                <path aria-hidden d={GHOSTS[cell.label].d} transform={`translate(${cx - (GHOSTS[cell.label].adv * ghostS) / 2} 0) scale(${ghostS})`} fill={INK} opacity={0.1} />
+              ) : (
+                // joined letters you made yourself have no stored outline: pad the text so nothing hangs past its box
+                <g transform={`translate(${cx} 0) scale(${ghostS * 10} ${-ghostS * 10})`} aria-hidden>
+                  <text x={0} y={0} textAnchor="middle" fontSize={100} fontFamily="AKRasmee, NotoThaana, sans-serif" textRendering="geometricPrecision" fill={INK} opacity={0.1}>
+                    {"\u2003" + cell.label + "\u2003"}
+                  </text>
+                </g>
+              )
             )}
 
             {/* outlines */}
@@ -628,7 +637,7 @@ export function GlyphEditor({
                   <button type="button" disabled={!selSeg || isSmooth(selSeg)} onClick={() => sel && commit(makeSmooth(g, sel.c, sel.s))} className="min-h-[44px] rounded-xl border border-[#BDCFC2] bg-white px-2 text-sm font-bold hover:bg-paper disabled:opacity-40">Curved</button>
                   <button type="button" disabled={!selSeg || (!selSeg.hi.x && !selSeg.hi.y && !selSeg.ho.x && !selSeg.ho.y)} onClick={() => sel && commit(makeCorner(g, sel.c, sel.s))} className="min-h-[44px] rounded-xl border border-[#BDCFC2] bg-white px-2 text-sm font-bold hover:bg-paper disabled:opacity-40">Sharp corner</button>
                 </div>
-                <details className="border-t border-line pt-3">
+                <details className="border-t border-line pt-3" onToggle={revealOnOpen}>
                   <summary className="cursor-pointer text-sm font-bold">More</summary>
                   <div className="mt-3 flex flex-col gap-3">
                     <button type="button" disabled={!sel} onClick={() => sel && commit(reverseContour(g, sel.c))} title="Turns a filled shape into a hole, or a hole into a filled shape" className="min-h-[44px] rounded-xl border border-[#BDCFC2] bg-white px-2 text-sm font-bold hover:bg-paper disabled:opacity-40">Fill ↔ hole</button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { IDENTITY, isIdentity, type Shape } from "@/lib/handwriting/shape";
+import { revealOnOpen } from "@/lib/reveal";
 
 type Num = Exclude<keyof Shape, "flip" | "seed">;
 const SLIDERS: { key: Num; label: string; min: number; max: number; fmt: (v: number) => string }[] = [
@@ -61,7 +62,7 @@ export function ShapePanel({
         </button>
       </div>
 
-      <details className="border-t border-line pt-3" data-testid="shape-more">
+      <details className="border-t border-line pt-3" data-testid="shape-more" onToggle={revealOnOpen}>
         <summary className="cursor-pointer text-sm font-bold">More controls</summary>
         <div className="mt-3 flex flex-col gap-3.5">
           {SLIDERS.map((it) => (
