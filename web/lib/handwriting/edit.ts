@@ -179,6 +179,18 @@ export function transformGlyph(g: Glyph, m: Xform): Glyph {
   return { ...g, contours };
 }
 
+/** Turn a whole letter about (cx, cy), counter-clockwise by `rad` in font space. Handles turn with their points. */
+export function rotateGlyph(g: Glyph, cx: number, cy: number, rad: number): Glyph {
+  const r = (n: number) => Math.round(n * 10) / 10;
+  const c = Math.cos(rad), s = Math.sin(rad);
+  const turn = (x: number, y: number) => ({ x: r(x * c - y * s), y: r(x * s + y * c) });
+  const contours = g.contours.map((ct) => ct.map((sg) => {
+    const p = turn(sg.p.x - cx, sg.p.y - cy);
+    return { p: { x: r(cx + p.x), y: r(cy + p.y) }, hi: turn(sg.hi.x, sg.hi.y), ho: turn(sg.ho.x, sg.ho.y) };
+  }));
+  return { ...g, contours };
+}
+
 /** Keep the advance wide enough for the drawing (letters only). Marks stay zero width. */
 export function fitAdvance(g: Glyph): Glyph {
   if (g.kind === "fili" || !g.contours.length) return g;

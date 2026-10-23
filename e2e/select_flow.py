@@ -118,6 +118,24 @@ def main():
         assert a2 > a0 and a3 > a1 and (a2 - a0) >= w * 0.09, (a0, a1, a2, a3)
         pg.get_by_label("Undo").click(); pg.wait_for_timeout(200)
 
+        # 8b. just outside a corner turns the letter about the middle of its box (not the resize square)
+        ne = pg.get_by_test_id("select-handle-ne").bounding_box(); sw = pg.get_by_test_id("select-handle-sw").bounding_box()
+        reach = ne["width"] / 2
+        nx, ny = ne["x"] + ne["width"] / 2, ne["y"] + ne["height"] / 2
+        mx, my = (nx + sw["x"] + sw["width"] / 2) / 2, (ny + sw["y"] + sw["height"] / 2) / 2
+        k = 1.3 * reach / math.sqrt(2)
+        sxp, syp = nx + k, ny - k                                   # outside the north-east corner
+        vx, vy = sxp - mx, syp - my
+        drag(pg, (sxp, syp), (mx + vy, my - vx))                    # a quarter turn, counter-clockwise on screen
+        b0, b1, b2, b3 = box(pg)
+        print("after a quarter turn the box is", round(b2 - b0), "x", round(b3 - b1), "from", round(w), "x", round(h))
+        assert abs((b2 - b0) - h) < 3 and abs((b3 - b1) - w) < 3, (b0, b1, b2, b3)
+        assert abs((b0 + b2) / 2 - (x0 + x1) / 2) < 2 and abs((b1 + b3) / 2 - (y0 + y1) / 2) < 2, "it turns about the centre"
+        pg.get_by_label("Undo").click(); pg.wait_for_timeout(200)
+        assert box(pg) == (x0, y0, x1, y1), "one undo puts the turn back"
+        # the resize square itself still resizes, and a plain drag inside still moves
+        assert pg.locator("[data-testid^=select-turn-]").count() == 4
+
         # 9. arrow keys nudge the whole letter, Shift nudges further
         pg.get_by_test_id("editor").focus()
         pg.keyboard.press("ArrowRight"); pg.keyboard.press("ArrowRight"); pg.wait_for_timeout(200)

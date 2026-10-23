@@ -8,7 +8,7 @@ import { MarkerPanel } from "@/components/MarkerPanel";
 import { ShapePanel } from "@/components/ShapePanel";
 import {
   addContour, clone, deleteContour, deletePoint, dist, emptyGlyph, fitAdvance, insertPoint, isSmooth,
-  makeCorner, makeSmooth, movePoint, moveHandle, nearestOnOutline, nudge, reverseContour, transformGlyph, type Sel,
+  makeCorner, makeSmooth, movePoint, moveHandle, nearestOnOutline, nudge, reverseContour, rotateGlyph, transformGlyph, type Sel,
 } from "@/lib/handwriting/edit";
 import { addStroke, cleanNib, DEFAULT_NIB, follow, hullsToD, strokeHulls, type Nib } from "@/lib/handwriting/marker";
 import { layout } from "@/lib/handwriting/pipeline";
@@ -32,8 +32,21 @@ type Handle = keyof typeof HANDLES;
 const HANDLE_CURSOR: Record<Handle, string> = { nw: "nwse-resize", se: "nwse-resize", ne: "nesw-resize", sw: "nesw-resize", n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize" };
 type InkBox = { x0: number; y0: number; x1: number; y1: number };
 
+/**
+ * The turn cursor just outside a corner, like Illustrator's selection tool: a curved double arrow that
+ * hugs the corner. One picture per corner, so the arrows follow the corner they belong to.
+ */
+const turnCursor = (deg: number) => {
+  const arc = "M5 16 A11 11 0 0 1 16 5";
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><g transform='rotate(${deg} 12 12)' fill='none' stroke-linecap='round' stroke-linejoin='round'>`
+    + `<path d='${arc}' stroke='#fff' stroke-width='5'/><path d='M2 13 L5 18.5 L10 15' stroke='#fff' stroke-width='5'/><path d='M13 2 L18.5 5 L15 10' stroke='#fff' stroke-width='5'/>`
+    + `<path d='${arc}' stroke='#1d2b1a' stroke-width='2'/><path d='M2 13 L5 18.5 L10 15' stroke='#1d2b1a' stroke-width='2'/><path d='M13 2 L18.5 5 L15 10' stroke='#1d2b1a' stroke-width='2'/></g></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 12 12, grab`;
+};
+const TURN_CURSOR: Record<"nw" | "ne" | "sw" | "se", string> = { ne: turnCursor(0), se: turnCursor(90), sw: turnCursor(180), nw: turnCursor(270) };
+
 type Drag =
-  | { kind: "xf"; mode: "move" | Handle; base: Glyph; box: InkBox; pad: number; start: Pt; off: Pt; started: boolean; sx: number; sy: number }
+  | { kind: "xf"; mode: "move" | "turn" | Handle; base: Glyph; box: InkBox; pad: number; start: Pt; off: Pt; started: boolean; sx: number; sy: number }
   | { kind: "pt" | "hi" | "ho"; c: number; s: number; base: Glyph; started: boolean; sx: number; sy: number; off: Pt }
   | { kind: "pen" }
   | { kind: "marker" }
@@ -394,6 +407,16 @@ export function GlyphEditor({
     svgRef.current!.setPointerCapture(e.pointerId);
   };
 
+  /** A drag that starts just outside a corner turns the letter about the middle of its box. */
+  const onTurnDown = (e: React.PointerEvent, b: InkBox, pad: number) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    if (previewing) return;
+    const at = toFont(e);
+    drag.current = { kind: "xf", mode: "turn", base: g, box: b, pad, start: at, off: { x: 0, y: 0 }, started: false, sx: e.clientX, sy: e.clientY };
+    svgRef.current!.setPointerCapture(e.pointerId);
+  };
+
   const onMove = (e: React.PointerEvent) => {
     const d = drag.current;
     if (!d) return;
@@ -419,6 +442,14 @@ export function GlyphEditor({
       }
       const at = toFont(e);
       if (d.mode === "move") { setG(transformGlyph(d.base, { ax: 0, ay: 0, sx: 1, sy: 1, dx: at.x - d.start.x, dy: at.y - d.start.y })); return; }
+      if (d.mode === "turn") {
+        const cx = (d.box.x0 + d.box.x1) / 2, cy = (d.box.y0 + d.box.y1) / 2;
+        let turn = Math.atan2(at.y - cy, at.x - cx) - Math.atan2(d.start.y - cy, d.start.x - cx);
+        turn = Math.atan2(Math.sin(turn), Math.cos(turn));                                   // the short way round
+        if (e.shiftKey) { const step = Math.PI / 12; turn = Math.round(turn / step) * step; }     // Shift: 15 degree steps
+        setG(rotateGlyph(d.base, cx, cy, turn));
+        return;
+      }
       const [hx, hy] = HANDLES[d.mode], b = d.box;
       const ax = hx === 1 ? b.x0 : hx === -1 ? b.x1 : (b.x0 + b.x1) / 2, ay = hy === 1 ? b.y0 : hy === -1 ? b.y1 : (b.y0 + b.y1) / 2;
       const tx = at.x - d.off.x - hx * d.pad, ty = at.y - d.off.y - hy * d.pad;       // where the grabbed side of the letter itself should be
@@ -519,7 +550,7 @@ export function GlyphEditor({
       ? pen.length < 3 ? "Keep clicking to add dots." : "Click the first dot or press Enter to close."
       : "Click to place dots. Drag to curve."
     : tool === "select"
-    ? (hasShape ? "Drag to move. Drag a corner to resize." : "Nothing drawn yet. Use Brush or Pen, or paste with Ctrl or ⌘ V.")
+    ? (hasShape ? "Drag to move. Drag a corner to resize. Drag just outside a corner to turn it." : "Nothing drawn yet. Use Brush or Pen, or paste with Ctrl or ⌘ V.")
     : tool === "erase"
       ? "Click a dot or a shape to remove it."
       : hasShape
@@ -657,6 +688,15 @@ export function GlyphEditor({
               <g data-testid="select-box">
                 <rect x={selBox.x0 - selPad} y={selBox.y0 - selPad} width={selBox.x1 - selBox.x0 + 2 * selPad} height={selBox.y1 - selBox.y0 + 2 * selPad}
                   fill="transparent" stroke={CORAL} strokeWidth={1.6 * u} strokeDasharray={`${6 * u} ${4 * u}`} style={{ cursor: "move" }} data-testid="select-move" />
+                {(["nw", "ne", "sw", "se"] as const).map((h) => {
+                  const [hx, hy] = HANDLES[h];
+                  const x = (hx === 1 ? selBox.x1 : selBox.x0) + hx * selPad;
+                  const y = (hy === 1 ? selBox.y1 : selBox.y0) + hy * selPad;
+                  const reach = Math.min(20 * u, Math.max(9 * u, Math.min(selBox.x1 - selBox.x0, selBox.y1 - selBox.y0) * 0.28));
+                  // a round zone that sits outside the corner; the resize square's zone is drawn over its inner part
+                  return <circle key={`turn-${h}`} cx={x + hx * 0.7 * reach * 0.7071} cy={y + hy * 0.7 * reach * 0.7071} r={1.3 * reach} fill="transparent"
+                    data-testid={`select-turn-${h}`} style={{ cursor: TURN_CURSOR[h] }} onPointerDown={(e) => onTurnDown(e, selBox, selPad)} />;
+                })}
                 {(Object.keys(HANDLES) as Handle[]).map((h) => {
                   const [hx, hy] = HANDLES[h];
                   const x = (hx === 1 ? selBox.x1 : hx === -1 ? selBox.x0 : (selBox.x0 + selBox.x1) / 2) + hx * selPad;
