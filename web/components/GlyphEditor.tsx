@@ -508,9 +508,12 @@ export function GlyphEditor({
 
             {/* the starter letter, only as a hint for a letter that has no drawing yet */}
             {!hasShape && !pen && !live && (
-              <text transform={`translate(${cx} 0) scale(${ghostS} ${-ghostS}) translate(${-cx} 0)`} x={cx} y={0} textAnchor="middle" fontSize={1000} fontFamily="AKRasmee, NotoThaana, sans-serif" fill={INK} opacity={0.1} aria-hidden>
-                {cell.label}
-              </text>
+              // drawn small and scaled up: Safari cuts huge text off at a straight edge
+              <g transform={`translate(${cx} 0) scale(${ghostS * 10} ${-ghostS * 10})`} aria-hidden>
+                <text x={0} y={0} textAnchor="middle" fontSize={100} fontFamily="AKRasmee, NotoThaana, sans-serif" textRendering="geometricPrecision" fill={INK} opacity={0.1}>
+                  {cell.label}
+                </text>
+              </g>
             )}
 
             {/* outlines */}
