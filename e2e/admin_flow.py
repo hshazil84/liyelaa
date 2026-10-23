@@ -103,6 +103,7 @@ def main():
         pg = page_as("other-token", "aishath@example.mv", OTHER)
         pg.goto(f"{WEB}/admin"); pg.get_by_test_id("admin-gate").wait_for()
         assert "only for the site owner" in pg.get_by_test_id("admin-gate").inner_text(), pg.get_by_test_id("admin-gate").inner_text()
+        assert "Signed in as aishath@example.mv" in pg.inner_text("body")
         assert pg.get_by_test_id("tab-people").count() == 0
         pg.context.close()
         print("gate ok")

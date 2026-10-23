@@ -20,20 +20,23 @@ const TABS: { id: Tab; label: string }[] = [
 export function AdminClient() {
   const { ready, user, enabled } = useAuth();
   const [admin, setAdmin] = useState<boolean | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
 
   useEffect(() => {
     if (!ready) return;
     if (!user) { setAdmin(null); return; }
     let alive = true;
-    rpc<boolean>("is_admin").then((v) => alive && setAdmin(v === true)).catch(() => alive && setAdmin(false));
+    setProblem(null);
+    rpc<boolean>("is_admin").then((v) => alive && setAdmin(v === true)).catch((e: Error) => { if (alive) { setProblem(e.message); setAdmin(false); } });
     return () => { alive = false; };
   }, [ready, user]);
 
   if (!enabled) return <Gate text="Sign-in is not set up here." />;
   if (!ready || (user && admin === null)) return <Gate text="Loading…" />;
   if (!user) return <Gate text="Log in to open the admin." link={{ href: "/login?next=/admin", label: "Log in" }} />;
-  if (!admin) return <Gate text="This page is only for the site owner." link={{ href: "/", label: "Back to ThaanaFont" }} />;
+  if (problem) return <Gate text={`Could not check admin access: ${problem}`} note={`Signed in as ${user.email}`} link={{ href: "/admin", label: "Try again" }} />;
+  if (!admin) return <Gate text="This page is only for the site owner." note={`Signed in as ${user.email}`} link={{ href: "/", label: "Back to ThaanaFont" }} />;
 
   return (
     <div className="flex min-h-screen flex-col" data-testid="admin">
@@ -65,11 +68,12 @@ export function AdminClient() {
   );
 }
 
-function Gate({ text, link }: { text: string; link?: { href: string; label: string } }) {
+function Gate({ text, note, link }: { text: string; note?: string; link?: { href: string; label: string } }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
       <Logo />
-      <p data-testid="admin-gate" className="text-base font-medium">{text}</p>
+      <p data-testid="admin-gate" className="max-w-[48ch] text-base font-medium">{text}</p>
+      {note && <p className="text-[13px] text-muted">{note}</p>}
       {link && <Link href={link.href} className="flex h-11 items-center rounded-xl bg-teal px-5 text-sm font-bold text-white hover:bg-teal-dark">{link.label}</Link>}
     </div>
   );
