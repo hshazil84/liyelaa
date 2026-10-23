@@ -1,4 +1,5 @@
 import { inkBox, snapMark } from "./marks";
+import { LATIN_REFERENCE } from "./latinreference";
 import { REFERENCE } from "./reference";
 import { outlineStrokesLocal } from "./strokes";
 import { LSB, UNITS_PER_MM, type Contour, type Glyph, type Layout, type LayoutCell, type Seg } from "./types";
@@ -146,9 +147,19 @@ export type SizeMode = "fit" | "em";
 
 export type SourceFile = { name: string; text: string };
 
+/** Where a letter's ink sits above and below the baseline: AK Rasmee for Thaana, Inter for English. */
+const refOf = (id: string): [number, number] | undefined => REFERENCE[id] ?? LATIN_REFERENCE[id];
+
 const ID_RE = /(?:U\+|u|uni)?([0-9A-Fa-f]{4,5})(?=\D|$)/;
+const LATIN_NAME = /^(upper|capital|cap|lower|small)[-_ ]?([A-Za-z])$/i;
 export function idFromName(name: string): string | null {
   const base = name.replace(/\.svg$/i, "");
+  // English letters: A.svg and a.svg would be the same file on Windows, so they are named upper-A and lower-a
+  const l = LATIN_NAME.exec(base);
+  if (l) {
+    const ch = /^(upper|capital|cap)$/i.test(l[1]) ? l[2].toUpperCase() : l[2].toLowerCase();
+    return ch.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0");
+  }
   const m = ID_RE.exec(base);
   if (!m) return null;
   return m[1].toUpperCase().padStart(4, "0");
@@ -209,33 +220,57 @@ const f2n = (files: SourceFile[]) => new Map(files.map((f) => [idFromName(f.name
 
 function placeAll(raws: Raw[], layout: Layout, mode: SizeMode, vbHeight: number, names: Map<string, string>, items: Record<string, ImportItem>) {
   const box = (cs: Contour[]) => inkBox({ contours: cs } as Glyph) ?? { x0: 0, y0: 0, x1: 0, y1: 0 };
-  // 1. size: either the template's letter size, or the artboard as a 1000 unit em square
-  let k = 1;
-  const letters = raws.filter((r) => r.cell.kind === "letter" && REFERENCE[r.id]);
-  if (mode === "em" && vbHeight > 0) k = 1000 / vbHeight;
-  else if (letters.length >= 3) {
-    k = 1 / (median(letters.map((r) => { const b = box(r.contours), ref = REFERENCE[r.id]; return (b.y1 - b.y0) / Math.max(1, ref[1] - ref[0]); })) || 1);
-  } else if (vbHeight > 0) k = 1000 / vbHeight;
+  const scaleBy = (cs: Contour[], k: number): Contour[] => cs.map((c) => c.map((s) => ({ p: { x: s.p.x * k, y: s.p.y * k }, hi: { x: s.hi.x * k, y: s.hi.y * k }, ho: { x: s.ho.x * k, y: s.ho.y * k } })));
+  const ratio = (r: Raw) => { const b = box(r.contours), ref = refOf(r.id)!; return (b.y1 - b.y0) / Math.max(1, ref[1] - ref[0]); };
 
-  // 2. baseline: one shared move, so the letters keep their own heights relative to each other
-  const scaled = (r: Raw) => ({ ...r, contours: r.contours.map((c) => c.map((s) => ({ p: { x: s.p.x * k, y: s.p.y * k }, hi: { x: s.hi.x * k, y: s.hi.y * k }, ho: { x: s.ho.x * k, y: s.ho.y * k } }))) });
-  const sc = raws.map(scaled);
-  const scaledLetters = sc.filter((r) => r.cell.kind === "letter" && REFERENCE[r.id]);
-  const writing = median(scaledLetters.map((r) => { const b = box(r.contours), ref = REFERENCE[r.id]; return (b.y1 - b.y0) / Math.max(1, ref[1] - ref[0]); })) || 1;
-  const dy = scaledLetters.length
-    ? median(scaledLetters.map((r) => { const b = box(r.contours), ref = REFERENCE[r.id]; return (writing * (ref[0] + ref[1])) / 2 - (b.y0 + b.y1) / 2; }))
-    : 0;
+  // Thaana letters and English letters are sized and put on the baseline apart: they come from different fonts.
+  const groups = [raws.filter((r) => r.cell.kind !== "latin"), raws.filter((r) => r.cell.kind === "latin")];
+  const placed: { r: Raw; contours: Contour[]; dy: number }[] = [];
+  groups.forEach((group, gi) => {
+    if (!group.length) return;
+    const latin = gi === 1;
+    const refd = group.filter((r) => (latin ? true : r.cell.kind === "letter") && refOf(r.id));
+    // 1. size: the template's letter size, or the artboard as a 1000 unit em square
+    let k = 1;
+    if (mode === "em" && vbHeight > 0) k = 1000 / vbHeight;
+    else if (refd.length >= 3) k = 1 / (median(refd.map(ratio)) || 1);
+    else if (!latin && vbHeight > 0) k = 1000 / vbHeight;
+    const sc = group.map((r) => ({ ...r, contours: scaleBy(r.contours, k) }));
+    const scRef = sc.filter((r) => refd.some((x) => x.id === r.id));
+    // 2. baseline: one shared move, so the letters keep their own heights relative to each other
+    const writing = median(scRef.map(ratio)) || 1;
+    const dy = scRef.length
+      ? median(scRef.map((r) => { const b = box(r.contours), ref = refOf(r.id)!; return (writing * (ref[0] + ref[1])) / 2 - (b.y0 + b.y1) / 2; }))
+      : 0;
+    for (const r of sc) {
+      // English letters with too few neighbours to compare with are fitted one by one, as a pasted letter is
+      if (latin && refd.length < 3 && mode !== "em") {
+        const one = placeOne(r.contours, r.cell);
+        placed.push({ r, contours: one.contours, dy: 0 });
+      } else placed.push({ r, contours: r.contours, dy });
+    }
+  });
 
-  for (const r of sc) {
-    const b = box(r.contours);
+  for (const { r, contours: cs, dy } of placed) {
+    const b = box(cs);
     const isMark = r.cell.kind === "fili";
     const x0 = isMark ? (b.x0 + b.x1) / 2 : b.x0;
     const shift = isMark ? 0 : LSB;
-    const contours = mapContours(r.contours, (p) => ({ x: r1(p.x - x0 + shift), y: r1(p.y + dy) }), 1);
+    const contours = mapContours(cs, (p) => ({ x: r1(p.x - x0 + shift), y: r1(p.y + dy) }), 1);
     const glyph: Glyph = { id: r.id, cp: r.cell.cp, kind: r.cell.kind, contours, adv: isMark ? 0 : Math.round(b.x1 - b.x0 + 2 * LSB), source: "drawn" };
     const prev = items[r.id];
     items[r.id] = { id: r.id, file: names.get(r.id) ?? r.id, status: "ok", glyph: isMark ? snapMark(glyph) : glyph, strokes: prev?.strokes };
   }
+}
+
+/** One letter fitted to its own reference height and put on the baseline (y up). */
+function placeOne(contours: Contour[], cell: LayoutCell): { contours: Contour[] } {
+  const b = inkBox({ contours } as Glyph) ?? { x0: 0, y0: 0, x1: 0, y1: 0 };
+  const ref = refOf(cell.id);
+  const height = Math.max(1, b.y1 - b.y0);
+  const k = ref ? Math.max(1, ref[1] - ref[0]) / height : 1;
+  const dy = ref ? (ref[0] + ref[1]) / 2 - ((b.y0 + b.y1) / 2) * k : -b.y0 * k;
+  return { contours: mapContours(contours, (p) => ({ x: p.x * k, y: r1(p.y * k + dy) }), k) };
 }
 
 /**
@@ -335,7 +370,7 @@ export async function importOne(text: string, cell: LayoutCell): Promise<OneResu
   if (!contours.length) return { ok: false, reason: r.art.text ? "There is text in that artwork. Convert it to outlines first (Type, Create Outlines)." : "I could not find any shapes in that artwork." };
   const flipped = flipY(contours);
   const box = (cs: Contour[]) => inkBox({ contours: cs } as Glyph) ?? { x0: 0, y0: 0, x1: 0, y1: 0 };
-  const b = box(flipped), ref = REFERENCE[cell.id];
+  const b = box(flipped), ref = refOf(cell.id);
   const height = Math.max(1, b.y1 - b.y0);
   const k = ref ? Math.max(1, ref[1] - ref[0]) / height : height > 800 || height < 40 ? 300 / height : 1;
   const isMark = cell.kind === "fili";

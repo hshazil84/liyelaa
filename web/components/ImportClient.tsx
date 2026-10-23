@@ -8,7 +8,8 @@ import { GlyphSvg } from "@/components/GlyphTile";
 import { FontSwitcher } from "@/components/FontSwitcher";
 import { Logo } from "@/components/Logo";
 import { Stepper } from "@/components/Stepper";
-import { layout } from "@/lib/handwriting/pipeline";
+import { ALPHABET_CELLS, withAlphabet } from "@/lib/handwriting/alphabet";
+import { layout as thaanaLayout } from "@/lib/handwriting/pipeline";
 import { DRAW_STEPS } from "@/lib/handwriting/steps";
 import { MixPrompt } from "@/components/MixPrompt";
 import { clearProject, createFont, fontTitle, loadProject, saveGlyphs, sourceMix } from "@/lib/handwriting/store";
@@ -19,8 +20,12 @@ import {
 type Source = { kind: "letter" | "sheet"; name: string; text: string; sheetId?: number };
 type Way = "letters" | "sheet";
 
-const LETTERS = layout.sheets[0].cells;
+// the template with the English alphabet pages added, so one set of rules reads every letter
+const layout = withAlphabet();
+const LETTERS = thaanaLayout.sheets[0].cells;
+const LATIN_IDS = new Set(ALPHABET_CELLS.map((c) => c.id));
 const LABEL = new Map(layout.sheets.flatMap((s) => s.cells).map((c) => [c.id, c.label] as const));
+type Set_ = "thaana" | "english";
 
 const arrowUp = <Icon icon={Upload04Icon} size={30} />;
 
@@ -55,7 +60,9 @@ function Tile({ id, item, target, pickable, onPick, onRemove }: {
       {item?.glyph ? (
         <GlyphSvg glyph={item.glyph} className="h-full w-full p-1.5 pb-4" />
       ) : (
-        <span lang="dv" className={`font-thaana text-[26px] leading-none ${item ? "text-plum" : "text-[#BDCFC2]"}`}>{LABEL.get(id)}</span>
+        LATIN_IDS.has(id)
+          ? <span className={`text-[26px] font-bold leading-none ${item ? "text-plum" : "text-[#BDCFC2]"}`}>{LABEL.get(id)}</span>
+          : <span lang="dv" className={`font-thaana text-[26px] leading-none ${item ? "text-plum" : "text-[#BDCFC2]"}`}>{LABEL.get(id)}</span>
       )}
       <span className={`absolute bottom-1 font-mono text-[10px] leading-none text-muted ${item?.glyph ? "" : "static mt-1"}`}>{id}</span>
       {item && onRemove && (
@@ -73,7 +80,8 @@ export function ImportClient() {
   const [sources, setSources] = useState<Source[]>([]);
   const [mode, setMode] = useState<SizeMode>("fit");
   const [outline, setOutline] = useState(false);
-  const [sheetId, setSheetId] = useState<1 | 2>(1);
+  const [sheetId, setSheetId] = useState<number>(1);
+  const [set, setSet] = useState<Set_>("thaana");
   const [found, setFound] = useState<ImportReport | null>(null);
   const [dropped, setDropped] = useState<string[]>([]);       // letters the person took out of the check grid
   const [busy, setBusy] = useState(false);
@@ -148,7 +156,8 @@ export function ImportClient() {
   }, [found, dropped]);
 
   // a paste goes to the letter picked, or the first one that has nothing yet
-  const nextEmpty = (LETTERS.find((c) => !report?.items[c.id]) ?? LETTERS[0]).id;
+  const CELLS = set === "english" ? ALPHABET_CELLS : LETTERS;
+  const nextEmpty = (CELLS.find((c) => !report?.items[c.id]) ?? CELLS[0]).id;
   const target = picked ?? nextEmpty;
 
   const addPasted = useCallback((text: string) => {
@@ -187,7 +196,9 @@ export function ImportClient() {
   }, [addPasted]);
 
   const summary = useMemo(() => (report ? summarise(report, layout) : null), [report]);
-  const fixes = report ? LETTERS.filter((c) => report.items[c.id]?.status === "fix") : [];
+  const fixes = report ? [...LETTERS, ...ALPHABET_CELLS].filter((c) => report.items[c.id]?.status === "fix") : [];
+  const englishFix = report ? ALPHABET_CELLS.filter((c) => report.items[c.id]?.status === "fix").length : 0;
+  const englishOk = report ? ALPHABET_CELLS.filter((c) => report.items[c.id]?.status === "ok").length : 0;
   const strokeFixes = fixes.filter((c) => report!.items[c.id]?.strokes);
   const otherFixes = fixes.filter((c) => !report!.items[c.id]?.strokes);
   const usable = report ? Object.values(report.items).filter((i) => i.status === "ok" && i.glyph) : [];
@@ -208,8 +219,8 @@ export function ImportClient() {
     await save(false);
   }
 
-  const total = LETTERS.length;
-  const matched = summary?.letters.ok ?? 0;
+  const total = CELLS.length;
+  const matched = set === "english" ? englishOk : summary?.letters.ok ?? 0;
   const targetLabel = LABEL.get(target);
 
   return (
@@ -253,10 +264,10 @@ export function ImportClient() {
           <Label n={2}>{way === "sheet" ? "Add your sheet" : "Add your files"}</Label>
           {way === "sheet" && (
             <div role="group" aria-label="Which page" className="flex flex-wrap gap-2">
-              {([1, 2] as const).map((n) => (
-                <button key={n} type="button" aria-pressed={sheetId === n} onClick={() => setSheetId(n)}
+              {([[1, "Page 1 · Letters"], [2, "Page 2 · Marks"], [91, "Page 3 · A to Z"], [92, "Page 4 · a to z"]] as const).map(([n, label]) => (
+                <button key={n} type="button" aria-pressed={sheetId === n} onClick={() => setSheetId(n)} data-testid={`sheet-${n}`}
                   className={`min-h-10 flex-1 basis-[140px] rounded-xl border-[1.5px] px-4 text-sm font-bold ${sheetId === n ? "border-ink bg-ink text-white" : "border-[#BDCFC2] bg-white hover:bg-paper"}`}>
-                  {n === 1 ? "Page 1 · Letters" : "Page 2 · Marks"}
+                  {label}
                 </button>
               ))}
             </div>
@@ -273,7 +284,7 @@ export function ImportClient() {
             <span className="max-w-[46ch] text-sm leading-snug text-muted">
               {way === "sheet"
                 ? "One SVG with all the letters in template order."
-                : "Name each file with the code under its letter below, like U+0780.svg, so we know which letter it is."}
+                : "Name each file with the code under its letter below, like U+0780.svg. English letters can be upper-A.svg or lower-a.svg."}
             </span>
             <span className="mt-1.5 inline-flex h-11 items-center rounded-[14px] border-[1.5px] border-[#BDCFC2] bg-white px-5 text-[15px] font-bold">{way === "sheet" ? "Choose a file" : "Choose files"}</span>
           </label>
@@ -318,7 +329,12 @@ export function ImportClient() {
               <div className="h-full rounded-full bg-ink" style={{ width: `${(matched / total) * 100}%` }} />
             </div>
             <p className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[14.5px]" data-testid="import-summary">
-              {summary ? (
+              {set === "english" ? (
+                <>
+                  <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-ink" />{englishOk} of {ALPHABET_CELLS.length} English letters matched</span>
+                  {englishFix > 0 && <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-coral" />{englishFix} need a fix</span>}
+                </>
+              ) : summary ? (
                 <>
                   <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-ink" />{summary.letters.ok} of {summary.letters.total} letters matched</span>
                   {summary.letters.fix > 0 && <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-coral" />{summary.letters.fix} need a fix</span>}
@@ -333,11 +349,11 @@ export function ImportClient() {
 
           <div className="rounded-[14px] bg-lilac-soft px-3.5 py-3 text-[14.5px] leading-snug" data-testid="paste-tip">
             {way === "sheet" ? (
-              <b>Press Ctrl or ⌘ V to paste the whole page {sheetId} sheet. Or drop the file above.</b>
+              <b>Press Ctrl or ⌘ V to paste the whole {sheetId > 90 ? "English" : `page ${sheetId}`} sheet. Or drop the file above.</b>
             ) : (
               <>
                 <b>Or paste from Illustrator.</b> Copy a letter, then press Ctrl or ⌘ V. It goes into{" "}
-                <b><span lang="dv" className="font-thaana text-lg">{targetLabel}</span> · U+{target}</b>
+                <b>{set === "english" ? <span className="text-lg">{targetLabel}</span> : <span lang="dv" className="font-thaana text-lg">{targetLabel}</span>} · U+{target}</b>
                 {picked ? "." : ", the next empty one. Click another letter to choose it."}
                 <details className="group mt-1.5">
                   <summary className="flex min-h-9 cursor-pointer list-none items-center font-bold underline underline-offset-4 [&::-webkit-details-marker]:hidden">Paste SVG code instead</summary>
@@ -363,8 +379,17 @@ export function ImportClient() {
             )}
           </div>
 
+          <div role="tablist" aria-label="Which letters" className="flex gap-2">
+            {([["thaana", "Thaana letters"], ["english", "English letters"]] as const).map(([id, label]) => (
+              <button key={id} type="button" role="tab" aria-selected={set === id} data-testid={`set-${id}`} onClick={() => { setSet(id); setPicked(null); }}
+                className={`min-h-10 rounded-xl border-[1.5px] px-4 text-sm font-bold ${set === id ? "border-ink bg-ink text-white" : "border-[#BDCFC2] bg-white hover:bg-paper"}`}>
+                {label}{id === "english" && englishOk > 0 ? ` · ${englishOk}` : ""}
+              </button>
+            ))}
+          </div>
+
           <ul aria-label="Letters" className="grid grid-cols-[repeat(auto-fill,minmax(62px,1fr))] gap-2" data-testid="check-grid">
-            {LETTERS.map((c) => (
+            {CELLS.map((c) => (
               <Tile
                 key={c.id} id={c.id} item={report?.items[c.id]}
                 pickable={way === "letters"} target={way === "letters" && target === c.id}
@@ -380,7 +405,7 @@ export function ImportClient() {
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-paper px-4 py-3 text-[15px]" data-testid="stroke-notice">
                   <span>
                     Strokes found in{" "}
-                    {strokeFixes.map((c, i) => <span key={c.id}><span lang="dv" className="font-thaana text-lg">{c.label}</span>{i < strokeFixes.length - 1 ? " and " : ""}</span>)}
+                    {strokeFixes.map((c, i) => <span key={c.id}>{LATIN_IDS.has(c.id) ? <b>{c.label}</b> : <span lang="dv" className="font-thaana text-lg">{c.label}</span>}{i < strokeFixes.length - 1 ? " and " : ""}</span>)}
                     . Fonts need filled shapes.
                   </span>
                   <button type="button" data-testid="outline-strokes" onClick={() => setOutline(true)}
@@ -389,7 +414,7 @@ export function ImportClient() {
               )}
               {otherFixes.map((c) => (
                 <p key={c.id} className="rounded-xl bg-paper px-4 py-3 text-[15px]">
-                  <span lang="dv" className="font-thaana text-lg">{c.label}</span> · {report.items[c.id]!.reason}
+                  {LATIN_IDS.has(c.id) ? <b>{c.label}</b> : <span lang="dv" className="font-thaana text-lg">{c.label}</span>} · {report.items[c.id]!.reason}
                 </p>
               ))}
               {report.unmatched.length > 0 && (
@@ -397,7 +422,7 @@ export function ImportClient() {
                   Not a letter code, so left out: {report.unmatched.join(", ")}. Name each file like U+0780.svg.
                 </p>
               )}
-              {summary && summary.letters.missing > 0 && (
+              {set === "thaana" && summary && summary.letters.missing > 0 && (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-paper px-4 py-3 text-[15px]">
                   <span>{summary.letters.missing} letter{summary.letters.missing === 1 ? " is" : "s are"} missing. Add them later, or draw them.</span>
                   <Link href="/draw/start" className="flex h-10 items-center rounded-xl border border-[#BDCFC2] bg-white px-4 text-sm font-bold hover:bg-paper">Draw them</Link>
