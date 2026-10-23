@@ -124,6 +124,24 @@ def main():
         pg.get_by_label("Undo").click(); pg.get_by_label("Undo").click(); pg.get_by_label("Undo").click(); pg.wait_for_timeout(200)
         assert box(pg) == (x0, y0, x1, y1)
 
+        # 9b. Ctrl+Z works after clicking blank page space, not only inside the editor
+        drag(pg, (cx, cy), (cx + 40, cy - 30))
+        assert box(pg)[0] > x0 + 10
+        pg.mouse.click(5, 500); pg.keyboard.press("Control+z"); pg.wait_for_timeout(300)
+        assert box(pg) == (x0, y0, x1, y1), "Ctrl+Z undoes from anywhere on the page"
+        pg.keyboard.press("Control+Shift+z"); pg.wait_for_timeout(300)
+        assert box(pg)[0] > x0 + 10, "Ctrl+Shift+Z redoes"
+        pg.keyboard.press("Control+z"); pg.wait_for_timeout(300)
+
+        # 9c. the zoom bar sits under the drawing, not over it, with Clear beside it and a hint for the wheel
+        sv, zb = pg.get_by_test_id("editor-svg").bounding_box(), pg.get_by_label("Zoom in").bounding_box()
+        assert zb["y"] >= sv["y"] + sv["height"] - 1, "zoom bar is below the drawing"
+        cb = pg.get_by_test_id("clear-letter").bounding_box()
+        assert abs((cb["y"] + cb["height"] / 2) - (zb["y"] + zb["height"] / 2)) < 20, "Clear is on the zoom bar row"
+        assert "scroll to zoom" in pg.get_by_test_id("zoom-hint").inner_text()
+        assert pg.get_by_role("tab").count() == 0 or pg.get_by_test_id("tab-letter").count() == 0, "no Tool, Letter, Check tabs"
+        assert pg.get_by_test_id("shape-panel").is_visible(), "Reshape is always showing"
+
         # 10. Edit shows dots and no box; Select brings the box back
         tool(pg, "Edit").click()
         assert pg.locator("[data-node]").count() == 40 and pg.locator("[data-testid=select-box]").count() == 0
