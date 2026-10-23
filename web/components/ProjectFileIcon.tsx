@@ -11,11 +11,11 @@ export function ProjectFileIcon({ size = 40, label = false, className = "" }: { 
   return (
     <svg viewBox="-8 -6 216 272" width={size} height={size * 1.26} className={className} aria-hidden focusable="false" style={{ overflow: "visible" }}>
       <defs>
-        <linearGradient id={`p${u}`} x1="0" y1="0" x2=".6" y2="1"><stop offset="0" stopColor="#FFFFFF" /><stop offset="1" stopColor="#E4EFE8" /></linearGradient>
-        <linearGradient id={`m${u}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#4C7A46" /><stop offset="1" stopColor="#1F381C" /></linearGradient>
+        <linearGradient id={`p${u}`} x1="0" y1="0" x2=".6" y2="1"><stop offset="0" stopColor="#FFFFFF" /><stop offset="1" stopColor="#EEEAF8" /></linearGradient>
+        <linearGradient id={`m${u}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#BBA6F2" /><stop offset="1" stopColor="#8468D2" /></linearGradient>
         <filter id={`s${u}`} x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur in="SourceAlpha" stdDeviation="5" result="b" /><feOffset in="b" dy="5" result="o" />
-          <feFlood floodColor="#264022" floodOpacity=".22" /><feComposite in2="o" operator="in" result="sh" />
+          <feFlood floodColor="#4A3A85" floodOpacity=".2" /><feComposite in2="o" operator="in" result="sh" />
           <feMerge><feMergeNode in="sh" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
         <filter id={`b${u}`} x="-20%" y="-20%" width="140%" height="140%">
@@ -25,18 +25,18 @@ export function ProjectFileIcon({ size = 40, label = false, className = "" }: { 
           <feBlend in="SourceGraphic" in2="di" mode="multiply" />
         </filter>
       </defs>
-      <path d="M34 0H136L200 64V214Q200 248 166 248H34Q0 248 0 214V34Q0 0 34 0Z" fill={`url(#p${u})`} stroke="#CFE3D5" strokeWidth="2" filter={`url(#s${u})`} />
-      <path d="M136 0L200 64H170Q136 64 136 30Z" fill="#D6EADC" stroke="#CFE3D5" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M34 0H136L200 64V214Q200 248 166 248H34Q0 248 0 214V34Q0 0 34 0Z" fill={`url(#p${u})`} stroke="#DDD6EF" strokeWidth="2" filter={`url(#s${u})`} />
+      <path d="M136 0L200 64H170Q136 64 136 30Z" fill="#E6E0F5" stroke="#DDD6EF" strokeWidth="2" strokeLinejoin="round" />
       <g transform="translate(24 70) scale(.86)">
         <path d={MARK} fill={`url(#m${u})`} filter={`url(#b${u})`} />
         {handle && (
-          <g stroke="#7F9A86" fill="#7F9A86">
+          <g stroke="#AC9DD6" fill="#AC9DD6">
             <line x1="70.61" y1="12.36" x2="170.59" y2="2.35" strokeWidth="1.6" />
             <rect x="116.11" y="2.66" width="9.6" height="9.6" transform="translate(32.05 -74.87) rotate(39.29)" fill="#fff" strokeWidth="1.4" />
           </g>
         )}
       </g>
-      {label && <text x="100" y="226" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif" fontWeight="700" fontSize="15" letterSpacing="1.2" fill="#264022" opacity=".6">.thaanafont</text>}
+      {label && <text x="100" y="226" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif" fontWeight="700" fontSize="15" letterSpacing="1.2" fill="#5B4A99" opacity=".6">.thaanafont</text>}
     </svg>
   );
 }
