@@ -603,7 +603,7 @@ export function GlyphEditor({
         </button>
       </div>
       </div>
-      <aside aria-label="Adjust" className="flex w-full flex-col gap-3.5 rounded-2xl border border-line bg-white p-3.5 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:w-[320px] xl:shrink-0 xl:overflow-y-auto">
+      <aside aria-label="Adjust" className="flex w-full flex-col gap-3.5 rounded-2xl border border-line bg-white p-3.5 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:w-[320px] xl:shrink-0 xl:overflow-y-auto">
         <div role="tablist" aria-label="Panels" className="flex gap-1 rounded-xl bg-[#F3F9F5] p-1">
           {([["tool", "Tool"], ["letter", "Letter"], ["check", "Check"]] as const).map(([id, name]) => (
             <button key={id} type="button" role="tab" aria-selected={panel === id} data-testid={`tab-${id}`} onClick={() => setPanel(id)}

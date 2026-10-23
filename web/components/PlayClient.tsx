@@ -126,7 +126,7 @@ export function PlayClient() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-10 py-4">
+      <header className="z-30 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white lg:sticky lg:top-0 px-10 py-4">
         <Logo />
         <Stepper steps={STEPS} current={step} />
         <span className="hidden items-center gap-2 text-sm text-muted 2xl:flex">

@@ -216,7 +216,7 @@ export function ImportClient() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white px-4 py-4 sm:px-10">
+      <header className="z-30 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-line bg-white lg:sticky lg:top-0 px-4 py-4 sm:px-10">
         <div className="flex flex-wrap items-center gap-4"><Logo /><FontSwitcher /></div>
         <Stepper steps={DRAW_STEPS} current={1} />
         <span className="flex items-center gap-4 text-sm text-muted">
