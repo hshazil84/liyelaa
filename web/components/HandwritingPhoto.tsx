@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { Upload04Icon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/Icon";
 import { useCallback, useEffect, useState } from "react";
 import { GlyphTile } from "@/components/GlyphTile";
 import { Loading } from "@/components/Loading";
@@ -134,9 +136,7 @@ export function HandwritingPhoto() {
               onDrop={(e) => { e.preventDefault(); setDrag(false); handleFile(e.dataTransfer.files[0]); }}
               className={`flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-2 rounded-[18px] border-[1.5px] border-dashed px-5 py-5 text-center ${drag ? "border-teal bg-teal-soft" : "border-[#BDCFC2] bg-[#F3F9F5]"}`}
             >
-              <svg width="30" height="30" viewBox="0 0 28 28" fill="none" stroke="#264022" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M14 20V6M8 12l6-6 6 6M5 23h18" />
-              </svg>
+              <Icon icon={Upload04Icon} size={32} />
               <span className="text-[17px] font-bold">Choose a photo, or drop it here</span>
               <span className="max-w-[44ch] text-sm text-muted">Dark marker, daylight, sheet flat, all four black squares in the photo.</span>
             </label>

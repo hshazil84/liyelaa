@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft02Icon, ArrowRight02Icon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/Icon";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GlyphEditor } from "@/components/GlyphEditor";
 import { GlyphSvg } from "@/components/GlyphTile";
@@ -187,14 +189,14 @@ export function LettersClient() {
                 <div className="flex flex-col gap-2.5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <button type="button" disabled={idx <= 0} onClick={() => go(idx - 1, false)} className="flex h-11 items-center gap-2 rounded-xl border border-[#BDCFC2] px-4 text-sm font-bold hover:bg-paper disabled:opacity-40">
-                      <span aria-hidden>←</span>
+                      <Icon icon={ArrowLeft02Icon} size={18} />
                       <span lang="dv" className="font-thaana text-xl leading-none">{idx > 0 ? cells[idx - 1].label : ""}</span>
                       <span className="sr-only">Previous letter</span>
                     </button>
                     <button type="button" disabled={idx >= cells.length - 1 && !glyphs[cell.id]} onClick={() => go(idx + 1, true)} className="flex h-11 min-w-[200px] items-center justify-center gap-2 rounded-xl bg-teal px-5 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-40" data-testid="next">
                       {glyphs[cell.id] ? "Looks good, next" : "Skip, next"}
                       <span lang="dv" className="font-thaana text-xl leading-none">{idx < cells.length - 1 ? cells[idx + 1].label : ""}</span>
-                      <span aria-hidden>→</span>
+                      <Icon icon={ArrowRight02Icon} size={18} />
                     </button>
                   </div>
                   <p className="text-right text-sm text-muted">

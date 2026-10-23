@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight02Icon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/Icon";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExtrasNav } from "@/components/ExtrasNav";
 import { GlyphEditor } from "@/components/GlyphEditor";
@@ -160,7 +162,7 @@ export function ExtrasClient() {
             <p className="text-[12px] leading-snug text-muted">Only your own drawings show here. Gaps are signs you have not drawn.</p>
           </div>
           <Link href="/handwriting/ligatures" data-testid="continue-ligatures" className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark">
-            Next: joined letters <span aria-hidden>→</span>
+            Next: joined letters <Icon icon={ArrowRight02Icon} size={18} />
           </Link>
           <Link href="/handwriting/export" data-testid="skip-export" className="text-center text-sm font-bold text-teal underline underline-offset-4">Skip to test and export</Link>
         </aside>

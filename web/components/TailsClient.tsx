@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight02Icon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/Icon";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { FontSwitcher } from "@/components/FontSwitcher";
 import { Logo } from "@/components/Logo";
@@ -216,7 +218,7 @@ export function TailsClient() {
 
           <Link href="/handwriting/anchors" data-testid="continue-anchors"
             className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark">
-            Place the vowel marks <span aria-hidden>→</span>
+            Place the vowel marks <Icon icon={ArrowRight02Icon} size={18} />
           </Link>
           <Link href="/handwriting/level" className="text-center text-sm font-bold text-teal underline underline-offset-4">Back to level</Link>
         </aside>

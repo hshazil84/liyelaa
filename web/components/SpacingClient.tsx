@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight02Icon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/Icon";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExtrasNav } from "@/components/ExtrasNav";
 import { WordSvg } from "@/components/MarkViews";
@@ -155,7 +157,7 @@ export function SpacingClient() {
             data-testid="continue-extras"
             className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark"
           >
-            Next: signs and punctuation <span aria-hidden>→</span>
+            Next: signs and punctuation <Icon icon={ArrowRight02Icon} size={18} />
           </Link>
         </div>
 

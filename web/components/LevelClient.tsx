@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight02Icon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/Icon";
 import { useEffect, useMemo, useState } from "react";
 import { FontSwitcher } from "@/components/FontSwitcher";
 import { Logo } from "@/components/Logo";
@@ -208,7 +210,7 @@ export function LevelClient() {
           </div>
           <Link href="/handwriting/tails" data-testid="continue-tails"
             className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark">
-            Add cursive tails <span aria-hidden>→</span>
+            Add cursive tails <Icon icon={ArrowRight02Icon} size={18} />
           </Link>
           <Link href="/handwriting/letters" className="text-center text-sm font-bold text-teal underline underline-offset-4">Back to clean up</Link>
         </aside>

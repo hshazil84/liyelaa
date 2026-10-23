@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { Upload04Icon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/Icon";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { GlyphSvg } from "@/components/GlyphTile";
 import { FontSwitcher } from "@/components/FontSwitcher";
@@ -20,11 +22,7 @@ type Way = "letters" | "sheet";
 const LETTERS = layout.sheets[0].cells;
 const LABEL = new Map(layout.sheets.flatMap((s) => s.cells).map((c) => [c.id, c.label] as const));
 
-const arrowUp = (
-  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#264022" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M14 20V6M8 12l6-6 6 6M5 23h18" />
-  </svg>
-);
+const arrowUp = <Icon icon={Upload04Icon} size={30} />;
 
 const card = "flex min-w-0 flex-col gap-4 rounded-3xl border border-line bg-white p-5 sm:p-6";
 

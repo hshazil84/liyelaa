@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight02Icon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/Icon";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Composed, WordSvg } from "@/components/MarkViews";
 import { FontSwitcher } from "@/components/FontSwitcher";
@@ -323,7 +325,7 @@ export function AnchorsClient() {
             href="/handwriting/spacing"
             className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark"
           >
-            Continue to spacing <span aria-hidden>→</span>
+            Continue to spacing <Icon icon={ArrowRight02Icon} size={18} />
           </Link>
         </aside>
       </main>

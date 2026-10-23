@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight02Icon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/Icon";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExtrasNav } from "@/components/ExtrasNav";
 import { GlyphEditor } from "@/components/GlyphEditor";
@@ -327,7 +329,7 @@ export function LigaturesClient() {
             )}
           </div>
           <Link href="/handwriting/export" data-testid="continue-export" className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-teal text-base font-bold text-white hover:bg-teal-dark">
-            Continue to test and export <span aria-hidden>→</span>
+            Continue to test and export <Icon icon={ArrowRight02Icon} size={18} />
           </Link>
         </aside>
         </div>

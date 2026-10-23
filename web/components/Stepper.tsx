@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ArrowDown01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/Icon";
 
 export type Step = { label: string; href?: string };
 
@@ -14,7 +16,7 @@ function PhoneBar({ steps, current }: { steps: Step[]; current: number }) {
           {steps[at].label}
           <small className="block text-xs font-medium text-muted">Step {at + 1} of {steps.length}{next ? ` · next: ${next}` : ""}</small>
         </span>
-        <svg aria-hidden width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#5D797B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 transition-transform group-open:rotate-180"><path d="M3 5l4 4 4-4" /></svg>
+        <Icon icon={ArrowDown01Icon} size={16} className="shrink-0 text-muted transition-transform group-open:rotate-180" />
       </summary>
       <div className="h-1 bg-line"><div className="h-1 bg-ink" style={{ width: `${((at + 1) / steps.length) * 100}%` }} /></div>
       <ol aria-label="All steps" className="flex flex-col gap-0.5 p-1.5">
@@ -56,9 +58,7 @@ export function Stepper({ steps, current }: { steps: Step[]; current: number }) 
               ].join(" ")}
             >
               {done ? (
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M2.5 6.5l2.2 2.2 4.8-5" />
-                </svg>
+                <Icon icon={Tick02Icon} size={14} />
               ) : (
                 i + 1
               )}

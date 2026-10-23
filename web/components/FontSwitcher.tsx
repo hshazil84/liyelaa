@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/Icon";
 import { useEffect, useRef, useState } from "react";
 import { NewFontDialog } from "@/components/NewFontDialog";
 import { fontHome, go } from "@/lib/handwriting/fonts";
@@ -53,7 +55,7 @@ export function FontSwitcher() {
         className="flex h-[42px] max-w-[280px] items-center gap-2.5 rounded-xl border border-[#BDCFC2] bg-white px-3.5 text-[15px] font-bold hover:bg-paper">
         <span className="truncate">{cur.title}</span>
         <span className="hidden whitespace-nowrap text-xs font-medium text-muted sm:inline">{cur.count} of 38 letters</span>
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="flex-none"><path d="M3 5l4 4 4-4" /></svg>
+        <Icon icon={ArrowDown01Icon} size={16} className="flex-none" />
       </button>
       {open && (
         <div role="menu" data-testid="font-menu" style={{ ["--t" as string]: `${top}px` }}
