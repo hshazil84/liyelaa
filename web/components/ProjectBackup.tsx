@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { ProjectFileIcon } from "@/components/ProjectFileIcon";
 import { fontHome, go } from "@/lib/handwriting/fonts";
 import { openProjectFile, saveProjectFile } from "@/lib/handwriting/projectfile";
 import { listFonts, switchFont } from "@/lib/handwriting/store";
@@ -30,7 +31,10 @@ export function ProjectBackup() {
 
   return (
     <div className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5" data-testid="project-backup">
-      <h2 className="font-display text-lg font-bold">Back up this font</h2>
+      <div className="flex items-center gap-3">
+        <ProjectFileIcon size={40} />
+        <h2 className="font-display text-lg font-bold">Back up this font</h2>
+      </div>
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => void save()} data-testid="save-project" className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-teal px-4 py-2 text-[15px] font-bold text-white hover:bg-teal-dark">Save project file</button>
         <button type="button" onClick={() => input.current?.click()} data-testid="open-project" className="flex min-h-11 flex-1 items-center justify-center rounded-xl border border-[#BDCFC2] bg-white px-4 py-2 text-[15px] font-bold hover:bg-paper">Open a project file</button>
