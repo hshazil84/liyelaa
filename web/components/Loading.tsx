@@ -14,13 +14,13 @@ export function Loading({ label, size = 220 }: { label: string; size?: number })
     let anim: { destroy: () => void } | null = null;
     (async () => {
       try {
-        const [{ default: lottie }, data] = await Promise.all([
+        const [{ default: lottie }, { default: data }] = await Promise.all([
           import("lottie-web/build/player/lottie_light"),
-          fetch("/lottie/designer.json").then((r) => r.json()),
+          import("@/lib/lottie/designer.json"),
         ]);
         if (dead || !box.current) return;
         const still = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        const a = lottie.loadAnimation({ container: box.current, renderer: "svg", loop: true, autoplay: !still, animationData: data });
+        const a = lottie.loadAnimation({ container: box.current, renderer: "svg", loop: true, autoplay: !still, animationData: JSON.parse(JSON.stringify(data)) });
         if (still) a.goToAndStop(300, true);
         anim = a;
       } catch {
