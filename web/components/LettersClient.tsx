@@ -187,20 +187,20 @@ export function LettersClient() {
               onChange={(g) => onChange(cell.id, g)}
               below={
                 <div className="flex flex-col gap-2.5">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <button type="button" disabled={idx <= 0} onClick={() => go(idx - 1, false)} className="flex h-11 items-center gap-2 rounded-xl border border-[#BDCFC2] px-4 text-sm font-bold hover:bg-paper disabled:opacity-40">
+                  <div className="flex items-center justify-between gap-2 sm:flex-wrap sm:gap-3">
+                    <button type="button" disabled={idx <= 0} onClick={() => go(idx - 1, false)} className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-[#BDCFC2] px-4 text-sm font-bold hover:bg-paper disabled:opacity-40">
                       <Icon icon={ArrowLeft02Icon} size={18} />
                       <span lang="dv" className="font-thaana text-xl leading-none">{idx > 0 ? cells[idx - 1].label : ""}</span>
                       <span className="sr-only">Previous letter</span>
                     </button>
-                    <button type="button" disabled={idx >= cells.length - 1 && !glyphs[cell.id]} onClick={() => go(idx + 1, true)} className="flex h-11 min-w-[200px] items-center justify-center gap-2 rounded-xl bg-teal px-5 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-40" data-testid="next">
+                    <button type="button" disabled={idx >= cells.length - 1 && !glyphs[cell.id]} onClick={() => go(idx + 1, true)} className="flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-teal px-3 sm:min-w-[200px] sm:flex-none sm:px-5 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-40" data-testid="next">
                       {glyphs[cell.id] ? "Looks good, next" : "Skip, next"}
                       <span lang="dv" className="font-thaana text-xl leading-none">{idx < cells.length - 1 ? cells[idx + 1].label : ""}</span>
                       <Icon icon={ArrowRight02Icon} size={18} />
                     </button>
                   </div>
-                  <p className="text-right text-sm text-muted">
-                    Done with the letters?{" "}
+                  <p className="whitespace-nowrap text-center text-sm text-muted sm:text-right">
+                    <span className="sm:hidden">Done? </span><span className="hidden sm:inline">Done with the letters? </span>
                     <Link href="/handwriting/level" data-testid="level-here" className="font-bold text-teal underline underline-offset-4">Level the letters →</Link>
                   </p>
                 </div>

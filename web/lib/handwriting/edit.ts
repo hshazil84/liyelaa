@@ -165,6 +165,20 @@ export function outlineBounds(contours: Contour[]) {
   return { x0, y0, x1, y1 };
 }
 
+/** Where a whole-letter drag starts from: scale about (ax, ay), then shift by (dx, dy). */
+export type Xform = { ax: number; ay: number; sx: number; sy: number; dx: number; dy: number };
+
+/** Move and resize a whole letter. Points and their handles scale together, so curves keep their shape. */
+export function transformGlyph(g: Glyph, m: Xform): Glyph {
+  const r = (n: number) => Math.round(n * 10) / 10;
+  const contours = g.contours.map((ct) => ct.map((sg) => ({
+    p: { x: r(m.ax + (sg.p.x - m.ax) * m.sx + m.dx), y: r(m.ay + (sg.p.y - m.ay) * m.sy + m.dy) },
+    hi: { x: r(sg.hi.x * m.sx), y: r(sg.hi.y * m.sy) },
+    ho: { x: r(sg.ho.x * m.sx), y: r(sg.ho.y * m.sy) },
+  })));
+  return { ...g, contours };
+}
+
 /** Keep the advance wide enough for the drawing (letters only). Marks stay zero width. */
 export function fitAdvance(g: Glyph): Glyph {
   if (g.kind === "fili" || !g.contours.length) return g;

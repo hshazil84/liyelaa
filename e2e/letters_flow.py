@@ -59,6 +59,7 @@ def main():
             pg.wait_for_selector("[data-testid=saved-summary]")
         pg.get_by_test_id("continue-letters").click()
         pg.wait_for_url("**/handwriting/letters")
+        tool(pg, "Edit").click()                      # a drawn letter opens with Select; dots show under Edit
         pg.wait_for_selector("[data-node]")
         assert "0 of 38" in pg.get_by_test_id("progress").inner_text()
         assert pg.locator("[data-testid=grid] button").count() == 38
@@ -148,6 +149,7 @@ def main():
         # 10. vowel marks and extras tabs
         pg.get_by_role("tab", name="Vowel marks").click()
         assert pg.locator("[data-testid=grid] button").count() == 11
+        tool(pg, "Edit").click()
         pg.wait_for_selector("[data-node]")
         pg.get_by_role("tab", name="Extras").click()
         assert pg.locator("[data-testid=grid] button").count() == 27

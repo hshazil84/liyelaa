@@ -8,7 +8,7 @@ import { ShapePanel } from "@/components/ShapePanel";
 import { SizeCheck } from "@/components/SizeCheck";
 import {
   addContour, clone, deleteContour, deletePoint, dist, emptyGlyph, fitAdvance, insertPoint, isSmooth,
-  makeCorner, makeSmooth, movePoint, moveHandle, nearestOnOutline, nudge, reverseContour, type Sel,
+  makeCorner, makeSmooth, movePoint, moveHandle, nearestOnOutline, nudge, reverseContour, transformGlyph, type Sel,
 } from "@/lib/handwriting/edit";
 import { addStroke, cleanNib, DEFAULT_NIB, follow, hullsToD, strokeHulls, type Nib } from "@/lib/handwriting/marker";
 import { layout } from "@/lib/handwriting/pipeline";
@@ -18,7 +18,7 @@ import { contoursToD } from "@/lib/handwriting/svg";
 import { UNITS_PER_MM, type Glyph, type LayoutCell, type Pt, type Seg } from "@/lib/handwriting/types";
 import { revealOnOpen } from "@/lib/reveal";
 
-type Tool = "move" | "pen" | "marker" | "erase";
+type Tool = "select" | "move" | "pen" | "marker" | "erase";
 type Panel = "tool" | "letter" | "check";
 const NIB_KEY = "thaanafont.nib";
 
@@ -27,7 +27,14 @@ const DESC = -Math.round((layout.guides.writeEnd - layout.guides.baseY) * UNITS_
 const VB_W = 1400, VB_H = 940, VB_Y = -590;                                                 // font y from -350 to 590
 const INK = "#264022", TEAL = "#264022", CORAL = "#FA7E00";
 
+/** The eight handles round a selected letter: [-1 west, 1 east] and [-1 south, 1 north] in font space. */
+const HANDLES = { nw: [-1, 1], n: [0, 1], ne: [1, 1], w: [-1, 0], e: [1, 0], sw: [-1, -1], s: [0, -1], se: [1, -1] } as const;
+type Handle = keyof typeof HANDLES;
+const HANDLE_CURSOR: Record<Handle, string> = { nw: "nwse-resize", se: "nwse-resize", ne: "nesw-resize", sw: "nesw-resize", n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize" };
+type InkBox = { x0: number; y0: number; x1: number; y1: number };
+
 type Drag =
+  | { kind: "xf"; mode: "move" | Handle; base: Glyph; box: InkBox; pad: number; start: Pt; off: Pt; started: boolean; sx: number; sy: number }
   | { kind: "pt" | "hi" | "ho"; c: number; s: number; base: Glyph; started: boolean; sx: number; sy: number; off: Pt }
   | { kind: "pen" }
   | { kind: "marker" }
@@ -47,7 +54,7 @@ function ToolButton({ label, on, disabled, onClick, children }: { label: string;
       aria-pressed={on}
       disabled={disabled}
       onClick={onClick}
-      className={`flex h-10 w-10 items-center justify-center rounded-[10px] border disabled:opacity-40 ${on ? "border-ink bg-ink text-white" : "border-[#BDCFC2] bg-white text-ink hover:bg-paper"}`}
+      className={`flex h-10 w-10 items-center justify-center rounded-[10px] border max-sm:h-auto max-sm:w-11 disabled:opacity-40 ${on ? "border-ink bg-ink text-white" : "border-[#BDCFC2] bg-white text-ink hover:bg-paper"}`}
     >
       {children}
     </button>
@@ -61,7 +68,7 @@ function LabelTool({ label, on, onClick, children }: { label: string; on: boolea
       type="button"
       aria-pressed={on}
       onClick={onClick}
-      className={`flex min-w-[68px] flex-col items-center gap-0.5 rounded-[14px] border-[1.5px] px-2.5 pb-1.5 pt-2 text-[13px] font-bold ${on ? "border-ink bg-ink text-white" : "border-[#BDCFC2] bg-white text-ink hover:bg-paper"}`}
+      className={`flex min-w-0 flex-col items-center gap-0.5 rounded-[14px] border-[1.5px] px-1 pb-1.5 pt-2 text-[12px] font-bold sm:min-w-[68px] sm:px-2.5 sm:text-[13px] ${on ? "border-ink bg-ink text-white" : "border-[#BDCFC2] bg-white text-ink hover:bg-paper"}`}
     >
       {children}
       {label}
@@ -73,6 +80,9 @@ function LabelTool({ label, on, onClick, children }: { label: string; on: boolea
 /** Tool icons: filled 24-unit artwork, so they take the button's text colour. */
 const fillIcon = { width: 24, height: 24, viewBox: "0 0 24 24", fill: "currentColor", "aria-hidden": true } as const;
 const ICON = {
+  select: [
+    "M20.78,9.2,4.69,2.31A1.81,1.81,0,0,0,2.31,4.69l6.9,16.09a1.77,1.77,0,0,0,1.66,1.1H11a1.79,1.79,0,0,0,1.65-1.24l2-6,6-2a1.82,1.82,0,0,0,.14-3.4Zm-.61,2L13.78,13.3a.81.81,0,0,0-.48.48l-2.13,6.39a.28.28,0,0,1-.28.21.3.3,0,0,1-.31-.19h0L3.69,4.1a.3.3,0,0,1,.06-.34A.3.3,0,0,1,4,3.66a.31.31,0,0,1,.13,0l16.09,6.89a.29.29,0,0,1,.19.31A.28.28,0,0,1,20.17,11.17Z",
+  ],
   brush: [
     "M21.75,7.4a4,4,0,0,0-7-2.77L8,12.43a4.39,4.39,0,0,0-2.57,1.62,4.25,4.25,0,0,0-.58,1.42,2.34,2.34,0,0,1-.4,1,2.62,2.62,0,0,1-1.55.84.75.75,0,0,0-.41,1.23,6.51,6.51,0,0,0,4.84,2.27,5.51,5.51,0,0,0,2.07-.39,6,6,0,0,0,3.19-3.31l7.83-6.78A4.06,4.06,0,0,0,21.75,7.4ZM8.78,19a4.55,4.55,0,0,1-4.36-.69,3.42,3.42,0,0,0,1.15-.94,3.54,3.54,0,0,0,.68-1.53,2.48,2.48,0,0,1,.37-.92,2.75,2.75,0,0,1,1.54-1L11,16.79A4.4,4.4,0,0,1,8.78,19Zm10.6-9.84L12,15.6,9.4,13.05l6.45-7.43a2.47,2.47,0,0,1,1.8-.87,2.5,2.5,0,0,1,2.6,2.6A2.47,2.47,0,0,1,19.38,9.15Z",
   ],
@@ -111,7 +121,7 @@ export function GlyphEditor({
   const [g, setG] = useState<Glyph>(() => (glyph ? clone(glyph) : emptyGlyph(cell.id, cell.cp, cell.kind)));
   const [past, setPast] = useState<Glyph[]>([]);
   const [future, setFuture] = useState<Glyph[]>([]);
-  const [tool, setTool] = useState<Tool>(glyph ? "move" : "marker");
+  const [tool, setTool] = useState<Tool>(glyph ? "select" : "marker");
   const [panel, setPanel] = useState<Panel>("tool");
   const [sel, setSel] = useState<Sel>(null);
   const [pen, setPen] = useState<Seg[] | null>(null);
@@ -197,7 +207,7 @@ export function GlyphEditor({
       return;
     }
     commit(r.glyph);
-    setSel(null); setPen(null); setTool("move");
+    setSel(null); setPen(null); setTool("select");
     setNotice("Pasted. Use the sliders on the right to adjust size or weight. Undo brings back the old letter.");
   }, [cell, commit]);
 
@@ -311,6 +321,17 @@ export function GlyphEditor({
       setPen([...(pen ?? []), { p: pos, hi: { x: 0, y: 0 }, ho: { x: 0, y: 0 } }]);
       drag.current = { kind: "pen" };
       svgRef.current!.setPointerCapture(e.pointerId);
+    } else if (tool === "select") {
+      setSel(null);
+      const b = g.contours.length ? inkBox(g) : null, m = 10 * u;
+      if (b && pos.x >= b.x0 - m && pos.x <= b.x1 + m && pos.y >= b.y0 - m && pos.y <= b.y1 + m) {
+        drag.current = { kind: "xf", mode: "move", base: g, box: b, pad: m, start: pos, off: { x: 0, y: 0 }, started: false, sx: e.clientX, sy: e.clientY };
+        svgRef.current!.setPointerCapture(e.pointerId);
+      } else if (cam.z > 1) {
+        const c = centreNow();
+        drag.current = { kind: "pan", sx: e.clientX, sy: e.clientY, cx: c.x, cy: c.y };
+        svgRef.current!.setPointerCapture(e.pointerId);
+      }
     } else if (tool === "move") {
       setSel(null);
       if (cam.z > 1) {            // when zoomed in, dragging empty space moves the view
@@ -341,6 +362,17 @@ export function GlyphEditor({
     svgRef.current!.setPointerCapture(e.pointerId);
   };
 
+  const onHandleDown = (e: React.PointerEvent, h: Handle, b: InkBox, pad: number) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    if (previewing) return;
+    const [hx, hy] = HANDLES[h];
+    const at = toFont(e);
+    const own = { x: (hx === 1 ? b.x1 : hx === -1 ? b.x0 : (b.x0 + b.x1) / 2) + hx * pad, y: (hy === 1 ? b.y1 : hy === -1 ? b.y0 : (b.y0 + b.y1) / 2) + hy * pad };
+    drag.current = { kind: "xf", mode: h, base: g, box: b, pad, start: at, off: { x: at.x - own.x, y: at.y - own.y }, started: false, sx: e.clientX, sy: e.clientY };
+    svgRef.current!.setPointerCapture(e.pointerId);
+  };
+
   const onMove = (e: React.PointerEvent) => {
     const d = drag.current;
     if (!d) return;
@@ -355,6 +387,24 @@ export function GlyphEditor({
       const v = liveRef.current;
       const q = v ? follow(v.pts[v.pts.length - 1], to, nib.smooth, 1.5 * u) : null;
       if (v && q) setLive({ pts: [...v.pts, q], press: [...v.press, pr] });
+      return;
+    }
+    if (d.kind === "xf") {
+      if (!d.started) {
+        if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 3) return;      // a tap, not a drag
+        d.started = true;
+        setPast((p) => [...p.slice(-99), d.base]);
+        setFuture([]);
+      }
+      const at = toFont(e);
+      if (d.mode === "move") { setG(transformGlyph(d.base, { ax: 0, ay: 0, sx: 1, sy: 1, dx: at.x - d.start.x, dy: at.y - d.start.y })); return; }
+      const [hx, hy] = HANDLES[d.mode], b = d.box;
+      const ax = hx === 1 ? b.x0 : hx === -1 ? b.x1 : (b.x0 + b.x1) / 2, ay = hy === 1 ? b.y0 : hy === -1 ? b.y1 : (b.y0 + b.y1) / 2;
+      const tx = at.x - d.off.x - hx * d.pad, ty = at.y - d.off.y - hy * d.pad;       // where the grabbed side of the letter itself should be
+      const ow = (hx === 1 ? b.x1 : b.x0) - ax, oh = (hy === 1 ? b.y1 : b.y0) - ay;
+      let sx = hx === 0 || Math.abs(ow) < 1 ? 1 : (tx - ax) / ow, sy = hy === 0 || Math.abs(oh) < 1 ? 1 : (ty - ay) / oh;
+      if (hx !== 0 && hy !== 0 && !e.shiftKey) { const k = Math.abs(sx - 1) >= Math.abs(sy - 1) ? sx : sy; sx = k; sy = k; }     // a corner keeps the shape, Shift frees it
+      setG(transformGlyph(d.base, { ax, ay, sx: Math.max(0.1, sx), sy: Math.max(0.1, sy), dx: 0, dy: 0 }));
       return;
     }
     const raw = toFont(e);
@@ -415,6 +465,11 @@ export function GlyphEditor({
     if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
     if (e.key === "Enter" && pen) { e.preventDefault(); closePen(); return; }
     if (e.key === "Escape") { setPen(null); setSel(null); setLive(null); drag.current = null; return; }
+    if (tool === "select" && g.contours.length && !previewing) {
+      const st = e.shiftKey ? 20 : 4;
+      const mv: Record<string, [number, number]> = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] };
+      if (mv[e.key]) { e.preventDefault(); commit(transformGlyph(g, { ax: 0, ay: 0, sx: 1, sy: 1, dx: mv[e.key][0], dy: mv[e.key][1] })); return; }
+    }
     if (!sel) return;
     if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); commit(deletePoint(g, sel.c, sel.s)); setSel(null); return; }
     const step = e.shiftKey ? 20 : 4;
@@ -442,6 +497,8 @@ export function GlyphEditor({
     ? pen?.length
       ? pen.length < 3 ? "Keep clicking to add dots." : "Click the first dot or press Enter to close."
       : "Click to place dots. Drag to curve."
+    : tool === "select"
+    ? (hasShape ? "Drag to move. Drag a corner to resize." : "Nothing drawn yet. Use Brush or Pen, or paste with Ctrl or ⌘ V.")
     : tool === "erase"
       ? "Click a dot or a shape to remove it."
       : hasShape
@@ -449,32 +506,39 @@ export function GlyphEditor({
         : "Nothing drawn yet. Use Brush or Pen, or paste with Ctrl or ⌘ V.";
 
   const node = 4 * u, hit = 9 * u, line = 1.4 * u;
+  const selPad = 10 * u;
+  const selBox = tool === "select" && hasShape && !previewing ? inkBox(g) : null;
 
   return (
     <div className="flex flex-col gap-3" onKeyDown={onKey} onKeyUp={(e) => { if (e.key === " ") spaceDown.current = false; }} tabIndex={0} role="group" aria-label="Letter editor" data-testid="editor">
-      <div className="flex flex-wrap items-stretch gap-2" role="toolbar" aria-label="Tools">
-        <LabelTool label="Brush" on={tool === "marker"} onClick={() => { setTool("marker"); setPanel("tool"); setSel(null); setPen(null); }}>
-          <ToolIcon name="brush" />
-        </LabelTool>
-        <LabelTool label="Pen" on={tool === "pen"} onClick={() => { setTool("pen"); setPanel("tool"); setSel(null); setLive(null); }}>
-          <ToolIcon name="pen" />
-        </LabelTool>
-        <LabelTool label="Edit" on={tool === "move"} onClick={() => { setTool("move"); setPanel("tool"); setPen(null); setLive(null); }}>
-          <ToolIcon name="reshape" />
-        </LabelTool>
-        <LabelTool label="Erase" on={tool === "erase"} onClick={() => { setTool("erase"); setPanel("tool"); setPen(null); setSel(null); setLive(null); }}>
-          <ToolIcon name="eraser" />
-        </LabelTool>
-        <span className="flex-1" />
-        <ToolButton label="Undo" disabled={!past.length} onClick={undo}>
-          <svg {...iconProps}><path d="M7 5L3 9l4 4M3 9h9a4 4 0 010 8h-2" /></svg>
-        </ToolButton>
-        <ToolButton label="Redo" disabled={!future.length} onClick={redo}>
-          <svg {...iconProps}><path d="M13 5l4 4-4 4M17 9H8a4 4 0 000 8h2" /></svg>
-        </ToolButton>
+      <div className="grid grid-cols-[1fr_auto] gap-x-1.5 gap-y-3 [grid-template-areas:'tools_tools'_'hint_undo'] sm:gap-x-2 sm:[grid-template-areas:'tools_undo'_'hint_hint']">
+        <div className="grid grid-cols-5 gap-1.5 [grid-area:tools] sm:flex sm:flex-wrap sm:items-stretch sm:gap-2" role="toolbar" aria-label="Tools">
+          <LabelTool label="Select" on={tool === "select"} onClick={() => { setTool("select"); setPanel("tool"); setSel(null); setPen(null); setLive(null); }}>
+            <ToolIcon name="select" />
+          </LabelTool>
+          <LabelTool label="Brush" on={tool === "marker"} onClick={() => { setTool("marker"); setPanel("tool"); setSel(null); setPen(null); }}>
+            <ToolIcon name="brush" />
+          </LabelTool>
+          <LabelTool label="Pen" on={tool === "pen"} onClick={() => { setTool("pen"); setPanel("tool"); setSel(null); setLive(null); }}>
+            <ToolIcon name="pen" />
+          </LabelTool>
+          <LabelTool label="Edit" on={tool === "move"} onClick={() => { setTool("move"); setPanel("tool"); setPen(null); setLive(null); }}>
+            <ToolIcon name="reshape" />
+          </LabelTool>
+          <LabelTool label="Erase" on={tool === "erase"} onClick={() => { setTool("erase"); setPanel("tool"); setPen(null); setSel(null); setLive(null); }}>
+            <ToolIcon name="eraser" />
+          </LabelTool>
+        </div>
+        <div className="flex items-stretch gap-1.5 [grid-area:undo] sm:items-center sm:gap-2" role="group" aria-label="History">
+          <ToolButton label="Undo" disabled={!past.length} onClick={undo}>
+            <svg {...iconProps}><path d="M7 5L3 9l4 4M3 9h9a4 4 0 010 8h-2" /></svg>
+          </ToolButton>
+          <ToolButton label="Redo" disabled={!future.length} onClick={redo}>
+            <svg {...iconProps}><path d="M13 5l4 4-4 4M17 9H8a4 4 0 000 8h2" /></svg>
+          </ToolButton>
+        </div>
+        <p className="flex min-h-[60px] items-center rounded-[14px] bg-lilac-soft px-3.5 py-2.5 text-sm [grid-area:hint] sm:min-h-[40px]" aria-live="polite" data-testid="editor-hint">{hint}</p>
       </div>
-
-      <p className="flex min-h-[60px] items-center rounded-[14px] bg-lilac-soft px-3.5 py-2.5 text-sm sm:min-h-[40px]" aria-live="polite" data-testid="editor-hint">{hint}</p>
 
       <div className="flex flex-wrap items-start gap-4">
       <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-3 xl:sticky xl:top-24 xl:self-start">
@@ -542,7 +606,7 @@ export function GlyphEditor({
             ))}
 
             {/* points */}
-            {tool !== "pen" && tool !== "marker" && showPts && !previewing && g.contours.map((ct, c) => ct.map((sg, s) => {
+            {tool !== "pen" && tool !== "marker" && tool !== "select" && showPts && !previewing && g.contours.map((ct, c) => ct.map((sg, s) => {
               const on = sel?.c === c && sel.s === s;
               return (
                 <g key={`${c}-${s}`}>
@@ -553,7 +617,7 @@ export function GlyphEditor({
             }))}
 
             {/* handles of the selected point */}
-            {tool !== "pen" && tool !== "marker" && showPts && !previewing && sel && selSeg && (["hi", "ho"] as const).map((k) => {
+            {tool !== "pen" && tool !== "marker" && tool !== "select" && showPts && !previewing && sel && selSeg && (["hi", "ho"] as const).map((k) => {
               const h = selSeg[k];
               if (!h.x && !h.y) return null;
               const pos = { x: selSeg.p.x + h.x, y: selSeg.p.y + h.y };
@@ -565,6 +629,26 @@ export function GlyphEditor({
                 </g>
               );
             })}
+
+            {/* the box round the letter, with eight handles, for moving and resizing it */}
+            {selBox && (
+              <g data-testid="select-box">
+                <rect x={selBox.x0 - selPad} y={selBox.y0 - selPad} width={selBox.x1 - selBox.x0 + 2 * selPad} height={selBox.y1 - selBox.y0 + 2 * selPad}
+                  fill="transparent" stroke={CORAL} strokeWidth={1.6 * u} strokeDasharray={`${6 * u} ${4 * u}`} style={{ cursor: "move" }} data-testid="select-move" />
+                {(Object.keys(HANDLES) as Handle[]).map((h) => {
+                  const [hx, hy] = HANDLES[h];
+                  const x = (hx === 1 ? selBox.x1 : hx === -1 ? selBox.x0 : (selBox.x0 + selBox.x1) / 2) + hx * selPad;
+                  const y = (hy === 1 ? selBox.y1 : hy === -1 ? selBox.y0 : (selBox.y0 + selBox.y1) / 2) + hy * selPad;
+                  const reach = Math.min(20 * u, Math.max(9 * u, Math.min(selBox.x1 - selBox.x0, selBox.y1 - selBox.y0) * 0.28));
+                  return (
+                    <g key={h}>
+                      <rect x={x - 5.5 * u} y={y - 5.5 * u} width={11 * u} height={11 * u} rx={2 * u} fill="#fff" stroke={CORAL} strokeWidth={1.8 * u} pointerEvents="none" />
+                      <circle cx={x} cy={y} r={reach} fill="transparent" data-testid={`select-handle-${h}`} style={{ cursor: HANDLE_CURSOR[h] }} onPointerDown={(e) => onHandleDown(e, h, selBox, selPad)} />
+                    </g>
+                  );
+                })}
+              </g>
+            )}
 
             {/* the line being drawn with the marker */}
             {live && <path d={liveD} fill={CORAL} fillOpacity={0.85} fillRule="nonzero" pointerEvents="none" data-testid="marker-live" />}
@@ -649,8 +733,8 @@ export function GlyphEditor({
                 </details>
               </div>
             </div>
-            <div className={tool === "pen" || tool === "erase" ? "" : "invisible"} aria-hidden={tool !== "pen" && tool !== "erase"}>
-              <p className="rounded-xl bg-[#F3F9F5] px-3 py-2.5 text-sm text-muted">Nothing to set for this tool.</p>
+            <div className={tool === "pen" || tool === "erase" || tool === "select" ? "" : "invisible"} aria-hidden={tool !== "pen" && tool !== "erase" && tool !== "select"}>
+              <p className="rounded-xl bg-[#F3F9F5] px-3 py-2.5 text-sm text-muted">{tool === "select" ? "For exact size, width, slant and position, use the Letter tab." : "Nothing to set for this tool."}</p>
             </div>
           </div>
         )}

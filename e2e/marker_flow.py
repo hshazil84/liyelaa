@@ -59,7 +59,7 @@ def main():
         assert tool(pg, "Brush").get_attribute("aria-pressed") == "true"
         assert pg.get_by_test_id("marker-panel").is_visible()
         names = pg.get_by_test_id("editor").get_by_role("toolbar").locator("button").evaluate_all("els => els.map(e => e.innerText.trim())")
-        assert names[:4] == ["Brush", "Pen", "Edit", "Erase"], names
+        assert names[:5] == ["Select", "Brush", "Pen", "Edit", "Erase"], names
         assert pg.get_by_test_id("nib-chisel").get_attribute("aria-checked") == "true"
 
         # a stroke with the round nib is an even line, one shape, saved

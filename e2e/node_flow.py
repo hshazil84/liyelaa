@@ -35,6 +35,7 @@ def main():
         g = {"id": "0780", "cp": [0x780], "kind": "letter", "contours": oval(), "adv": 520, "source": "drawn", "checked": False}
         pg.evaluate(SEED, {"v": 1, "glyphs": {"0780": g}, "updatedAt": 1, "path": "draw"})
         pg.goto(f"{WEB}/handwriting/letters")
+        pg.get_by_test_id("editor").get_by_role("button", name="Edit", exact=True).click()
         pg.wait_for_selector("[data-node='0-10']")
         start = pg.evaluate(READ)["glyphs"]["0780"]["contours"]
         svg = pg.get_by_test_id("editor-svg").bounding_box()

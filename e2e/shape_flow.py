@@ -48,6 +48,7 @@ def main():
         g = {"id": "0780", "cp": [0x780], "kind": "letter", "contours": traced(), "adv": 520, "source": "photo", "checked": False}
         pg.evaluate(SEED, {"v": 1, "glyphs": {"0780": g}, "updatedAt": 1, "path": "photo"})
         pg.goto(f"{WEB}/handwriting/letters")
+        pg.get_by_test_id("editor").get_by_role("button", name="Edit", exact=True).click()
         pg.get_by_test_id("tab-letter").click()
         pg.wait_for_selector("[data-testid=shape-panel]")
         pg.wait_for_selector("[data-node='0-69']")
