@@ -61,6 +61,47 @@ export async function logIn(email: string, password: string): Promise<AuthResult
   }
 }
 
+/** Sends the reset link. Says the same thing whether or not the address has an account. */
+export async function sendReset(email: string): Promise<AuthResult> {
+  const sb = supabase();
+  if (!sb) return { ok: false, message: "Sign-in is not set up yet." };
+  try {
+    const { error } = await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/reset-password` });
+    if (error) return { ok: false, message: friendly(error.message) };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: friendly(e instanceof Error ? e.message : "") };
+  }
+}
+
+/** The reset link brings the person back with a one-off session in the address. Pick it up, then clear it from the bar. */
+export async function openRecoveryLink(): Promise<"ready" | "expired" | "none"> {
+  const sb = supabase();
+  if (!sb) return "none";
+  const h = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  if (h.get("error")) return "expired";
+  const access = h.get("access_token"), refresh = h.get("refresh_token");
+  if (!access || !refresh || h.get("type") !== "recovery") {
+    const { data } = await sb.auth.getSession();   // already opened once and then reloaded
+    return data.session ? "ready" : "none";
+  }
+  const { error } = await sb.auth.setSession({ access_token: access, refresh_token: refresh });
+  window.history.replaceState(null, "", window.location.pathname);
+  return error ? "expired" : "ready";
+}
+
+export async function setNewPassword(password: string): Promise<AuthResult> {
+  const sb = supabase();
+  if (!sb) return { ok: false, message: "Sign-in is not set up yet." };
+  try {
+    const { error } = await sb.auth.updateUser({ password });
+    if (error) return { ok: false, message: error.message.toLowerCase().includes("different") ? "Pick a password you have not used before." : friendly(error.message) };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: friendly(e instanceof Error ? e.message : "") };
+  }
+}
+
 export async function logOut(): Promise<void> {
   try { await supabase()?.auth.signOut(); } catch { /* signed out locally either way */ }
 }

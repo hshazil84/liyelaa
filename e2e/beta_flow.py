@@ -35,11 +35,12 @@ def main():
         pg.goto(WEB)
         assert "beta" in pg.locator("header").inner_text().lower()
         assert "in beta" in pg.get_by_test_id("beta-note").inner_text()
+        pg.get_by_test_id("account-open").click()
         pg.get_by_test_id("feedback-open").click()
         href = pg.get_by_test_id("feedback-email").get_attribute("href")
         assert href.startswith("mailto:hshazil@gmail.com?subject="), href
         pg.keyboard.press("Escape")
-        assert pg.get_by_test_id("feedback-panel").count() == 0
+        assert pg.get_by_test_id("feedback-panel").count() == 0 and pg.get_by_test_id("account-panel").count() == 0
 
         # a slow build says it is still working, then finishes
         def slow(route):

@@ -31,6 +31,9 @@ def handler(route):
     if "/auth/v1/token" in url:
         if mode["login"] == "bad": return send(400, {"error": "invalid_grant", "error_description": "Invalid login credentials", "code": 400, "msg": "Invalid login credentials"})
         return send(200, session(body["email"]))
+    if "/auth/v1/recover" in url:
+        mode["recover_email"] = body.get("email")
+        return send(200, {})
     if "/auth/v1/logout" in url: return route.fulfill(status=204, headers=CORS)
     if "/auth/v1/user" in url: return send(200, user("ada@example.com"))
     return send(404, {})
@@ -109,8 +112,10 @@ with sync_playwright() as p:
     # signed in: home
     pg.goto(BASE + "/"); pg.wait_for_timeout(1500)
     check("no pop-up when signed in", pg.get_by_test_id("intro-modal").count() == 0)
-    check("header shows the email and Log out", pg.get_by_test_id("nav-email").inner_text() == "ada@example.com" and pg.get_by_test_id("nav-logout").is_visible())
+    pg.get_by_test_id("account-open").click()
+    check("the account panel shows the email and Log out", pg.get_by_test_id("nav-email").inner_text() == "ada@example.com" and pg.get_by_test_id("nav-logout").is_visible())
     check("no sign-up button when signed in", pg.get_by_test_id("cta-signup").count() == 0)
+    pg.keyboard.press("Escape")
     pg.get_by_test_id("open-intro").click()
     check("signed-in pop-up has no sign-up button", pg.get_by_test_id("intro-signup").count() == 0 and pg.get_by_test_id("intro-ok").is_visible())
     pg.get_by_test_id("intro-ok").click()
@@ -122,7 +127,7 @@ with sync_playwright() as p:
     check("tools open when signed in", "/signup" not in pg.url and pg.get_by_test_id("auth-wait").count() == 0)
 
     # log out
-    pg.goto(BASE + "/"); pg.get_by_test_id("nav-logout").click()
+    pg.goto(BASE + "/"); pg.get_by_test_id("account-open").click(); pg.get_by_test_id("nav-logout").click()
     pg.get_by_test_id("nav-login").wait_for(timeout=5000)
     check("Log out works", True)
     pg.goto(BASE + "/play"); pg.wait_for_url("**/signup?next=*", timeout=8000)
@@ -141,8 +146,41 @@ with sync_playwright() as p:
     check("log in returns to the page they wanted", True)
     pg.get_by_test_id("auth-wait").wait_for(state="detached", timeout=8000) if pg.get_by_test_id("auth-wait").count() else None
 
+    # forgot password
+    pg.goto(BASE + "/"); pg.get_by_test_id("account-open").click(); pg.get_by_test_id("nav-logout").click(); pg.get_by_test_id("nav-login").wait_for()
+    pg.goto(BASE + "/login")
+    check("Log in page has a Forgot password link", pg.get_by_test_id("forgot-link").is_visible())
+    pg.get_by_test_id("forgot-link").click(); pg.wait_for_url("**/forgot-password")
+    check("forgot page has no password field", pg.get_by_test_id("auth-password").count() == 0)
+    pg.get_by_test_id("auth-submit").click()
+    check("forgot page asks for the email", "email" in pg.get_by_test_id("auth-error").inner_text().lower())
+    pg.get_by_test_id("auth-email").fill("ada@example.com"); pg.get_by_test_id("auth-submit").click()
+    pg.get_by_test_id("auth-notice").wait_for(timeout=5000)
+    check("reset link message is neutral", "If that address has an account" in pg.get_by_test_id("auth-notice").inner_text())
+    check("the reset request carried the email", mode.get("recover_email") == "ada@example.com")
+    check("Back to log in link", pg.get_by_test_id("auth-switch").inner_text() == "Back to log in")
+
+    # the reset link lands here with tokens in the address
+    pg.goto(BASE + "/reset-password"); pg.get_by_test_id("reset-bad").wait_for(timeout=5000)
+    check("opening the reset page with no link says it has expired", "expired" in pg.get_by_test_id("reset-bad").inner_text())
+    tok = jwt("ada@example.com")
+    pg.goto("about:blank")
+    pg.goto(BASE + f"/reset-password#access_token={tok}&refresh_token=r&expires_in=3600&token_type=bearer&type=recovery")
+    pg.get_by_test_id("reset-form").wait_for(timeout=8000)
+    check("a good reset link shows the new password form", True)
+    check("tokens are cleared from the address bar", "access_token" not in pg.url, pg.url)
+    pg.get_by_test_id("reset-password").fill("short"); pg.get_by_test_id("reset-submit").click()
+    check("short new password is refused", "8 characters" in pg.get_by_test_id("auth-error").inner_text())
+    pg.get_by_test_id("reset-password").fill("brand-new-pass1"); pg.get_by_test_id("reset-submit").click()
+    pg.wait_for_url(BASE + "/", timeout=8000)
+    check("saving a new password returns home", True)
+    pg.goto("about:blank")
+    pg.goto(BASE + "/reset-password#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired")
+    pg.get_by_test_id("reset-bad").wait_for(timeout=5000)
+    check("an expired link from Supabase shows the expired message", True)
+
     # next= can never leave the site
-    pg.goto(BASE + "/"); pg.get_by_test_id("nav-logout").click(); pg.get_by_test_id("nav-login").wait_for()
+    pg.goto(BASE + "/"); pg.wait_for_timeout(1500); pg.get_by_test_id("account-open").click(); pg.get_by_test_id("nav-logout").click(); pg.get_by_test_id("nav-login").wait_for()
     pg.goto(BASE + "/login?next=//evil.example.com")
     pg.get_by_test_id("auth-email").fill("ada@example.com"); pg.get_by_test_id("auth-password").fill("longenough1")
     pg.get_by_test_id("auth-submit").click()

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { INTRO_EVENT } from "@/components/IntroModal";
-import { logOut, useAuth } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
 
 const quiet = "inline-flex min-h-10 items-center px-2.5 text-sm font-bold text-ink hover:underline";
 
@@ -18,12 +18,6 @@ export function HomeHeader() {
           <>
             <Link href="/login" className={quiet} data-testid="nav-login">Log in</Link>
             <Link href="/signup" className="inline-flex min-h-10 items-center rounded-xl bg-teal px-4 text-sm font-bold text-white hover:bg-teal-dark" data-testid="nav-signup">Sign up</Link>
-          </>
-        )}
-        {enabled && ready && user && (
-          <>
-            <span className="hidden max-w-[220px] truncate text-sm text-muted md:inline" data-testid="nav-email">{user.email}</span>
-            <button type="button" className={quiet} data-testid="nav-logout" onClick={() => { void logOut(); }}>Log out</button>
           </>
         )}
       </div>

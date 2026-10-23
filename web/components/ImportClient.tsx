@@ -409,7 +409,7 @@ export function ImportClient() {
           )}
         </section>
 
-        <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 rounded-[18px] border border-line bg-white py-3 pl-4 pr-28 sm:pr-4 shadow-[0_-4px_18px_rgba(0,0,0,0.08)]">
+        <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 rounded-[18px] border border-line bg-white py-3 pl-4 pr-20 min-[1140px]:pr-4 shadow-[0_-4px_18px_rgba(0,0,0,0.08)]">
           {saved === null ? (
             <>
               <p className="text-[14.5px] text-muted">

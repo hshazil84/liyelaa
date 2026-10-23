@@ -202,7 +202,7 @@ export function HandwritingPhoto() {
         </div>
 
         {/* bottom right: the one button that moves you on */}
-        <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 rounded-[18px] border border-line bg-white px-4 py-3 shadow-[0_-4px_18px_rgba(0,0,0,.08)]">
+        <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 rounded-[18px] border border-line bg-white py-3 pl-4 pr-20 shadow-[0_-4px_18px_rgba(0,0,0,.08)] min-[1140px]:pr-4">
           {result && result.ok ? (
             <p className="text-[14.5px] text-muted">{usable} letters found.{problems.length > 0 ? ` ${problems.length} need a look afterwards.` : ""}</p>
           ) : total > 0 ? (
