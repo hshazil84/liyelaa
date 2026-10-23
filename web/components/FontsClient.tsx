@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
+import { ProjectFileIcon } from "@/components/ProjectFileIcon";
 import { NewFontDialog } from "@/components/NewFontDialog";
 import { fontHome, go } from "@/lib/handwriting/fonts";
 import { deleteFont, exportFont, importFont, listFonts, renameFont, switchFont, type FontMeta } from "@/lib/handwriting/store";
@@ -83,8 +84,9 @@ export function FontsClient() {
         <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]" data-testid="font-cards">
           {(fonts ?? []).map((f) => (
             <li key={f.id} data-font={f.id} data-active={f.active} className={`flex min-w-0 flex-col gap-3.5 rounded-[20px] bg-white p-4 ${f.active ? "border-[1.5px] border-edge" : "border border-line"}`}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
+              <div className="flex items-start gap-3">
+                <ProjectFileIcon size={40} className="mt-0.5 shrink-0" />
+                <div className="min-w-0 flex-1">
                   {renaming === f.id ? (
                     <form onSubmit={(e) => { e.preventDefault(); rename(f); }} className="flex gap-2">
                       <input aria-label="Font name" data-testid="rename-input" autoFocus value={draft} maxLength={60} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setRenaming(null); }}
