@@ -18,8 +18,8 @@ const config: Config = {
         edge: "#8FA894",
       },
       fontFamily: {
-        display: ["'Hanken Grotesk Variable'", "system-ui", "sans-serif"],
-        sans: ["'DM Sans Variable'", "system-ui", "sans-serif"],
+        display: ["var(--font-hanken)", "system-ui", "sans-serif"],
+        sans: ["var(--font-dmsans)", "system-ui", "sans-serif"],
         thaana: ["AKRasmee", "NotoThaana", "sans-serif"],
         noto: ["NotoThaana", "sans-serif"],
         sangu: ["SanguSuruhee", "sans-serif"],       // variable weight, used where the weight is being shown off
