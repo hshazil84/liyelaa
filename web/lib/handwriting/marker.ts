@@ -57,7 +57,7 @@ export const cleanNib = (x: unknown): Nib => {
 };
 
 type P = [number, number];
-const SC = 100;
+export const SC = 100;
 
 /** The nib's outline around its middle, counter-clockwise, `f` times its size. */
 export function nibPoly(n: Nib, f = 1): P[] {
@@ -123,7 +123,7 @@ export function strokeHulls(pts: Pt[], nib: Nib, press?: number[]): P[][] {
 
 export const hullsToD = (hs: P[][]) => hs.map((h) => `M${h.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join("L")}Z`).join("");
 
-type CP = { X: number; Y: number }[];
+export type CP = { X: number; Y: number }[];
 const toPath = (poly: P[]): CP => poly.map(([x, y]) => ({ X: Math.round(x * SC), Y: Math.round(y * SC) }));
 const shoelace = (poly: P[]) => { let s = 0; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; s += a[0] * b[1] - b[0] * a[1]; } return s / 2; };
 
@@ -235,17 +235,37 @@ export function strokeToD(pts: Pt[], nib: Nib, press?: number[]): string {
 }
 
 /** The letter with the stroke's ink merged in. Shapes the stroke touches become one clean outline; every other shape is left exactly as it was. */
+
+/** The direction the letter's own filled shapes run: 1 counter-clockwise, -1 clockwise. */
+export function glyphSign(g: Glyph): number {
+  let best = 0, sg = 1;
+  for (const ct of g.contours) { const a = area(ct); if (Math.abs(a) > Math.abs(best)) { best = a; sg = Math.sign(a) || 1; } }
+  return sg;
+}
+
+/** Turn ink from Clipper so its filled shapes run the same way as the letter's, and its holes the other way, so it adds instead of cancelling. */
+export function orientInk(ink: CP[], sign: number): CP[] {
+  return ink.map((path) => {
+    const hole = !ClipperLib.Clipper.Orientation(path);
+    const poly = path.map(({ X, Y }) => [X, Y] as P);
+    return Math.sign(shoelace(poly)) !== (hole ? -sign : sign) ? [...path].reverse() : path;
+  });
+}
+
+/** The letter with the stroke's ink merged in. Shapes the stroke touches become one clean outline; every other shape is left exactly as it was. */
 export function addStroke(g: Glyph, hulls: P[][], nib: Nib, pts?: Pt[]): Glyph {
   if (!hulls.length) return g;
-  const sign = (() => {
-    let best = 0, s = 1;
-    for (const ct of g.contours) { const a = area(ct); if (Math.abs(a) > Math.abs(best)) { best = a; s = Math.sign(a) || 1; } }
-    return s;
-  })();
+  const sign = glyphSign(g);
   // the pieces run the same way round as the letter's own filled shapes, so they add to them instead of cancelling
   const ink = styleInk(unionHulls(hulls, sign), pts, nib);
   if (!ink.length) return g;
+  const styled = nib.bleed > 0 || nib.dry > 0;
+  return addInk(g, ink, sign, styled ? 0.4 : 0.5 + nib.size * 0.012, styled);
+}
 
+/** Merge finished ink into the letter. `ink` must already run the letter's way round (see orientInk). */
+export function addInk(g: Glyph, ink: CP[], sign: number, tol: number, styled: boolean): Glyph {
+  if (!ink.length) return g;
   // group each filled shape with the holes inside it, so a stroke that crosses a hole takes the whole shape with it
   const paths = g.contours.map((ct) => toPath(flattenContour(ct, 4)));
   const areas = g.contours.map((ct) => area(ct));
@@ -287,8 +307,6 @@ export function addStroke(g: Glyph, hulls: P[][], nib: Nib, pts?: Pt[]): Glyph {
   c.AddPaths(ink, ClipperLib.PolyType.ptClip, true);
   c.Execute(ClipperLib.ClipType.ctUnion, all, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
 
-  const styled = nib.bleed > 0 || nib.dry > 0;
-  const tol = styled ? 0.4 : 0.5 + nib.size * 0.012;
   const made: Contour[] = [];
   for (const path of all as CP[]) {
     const hole = !ClipperLib.Clipper.Orientation(path);
