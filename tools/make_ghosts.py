@@ -50,5 +50,7 @@ for l in labels:
     o = outline(l)
     if o and o["d"]: out[l] = o
     else: miss.append(l)
+from ghost_art import patch
+out = patch(out)                    # hand-drawn hints replace the font ones
 (ROOT / "web/lib/handwriting/ghosts.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
 print(len(out), "outlined;", "missing:", miss)
