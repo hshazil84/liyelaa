@@ -95,7 +95,35 @@ def main():
         inside, outside = ring("inside"), ring("outside")
         assert outside > inside + 20, f"outside sits wider than inside ({outside} vs {inside})"
 
+
+        # --- a stroke stays a stroke: leaving the pen finishes it, and the Edit tool shows its dots, not outline nodes
+        pg.get_by_test_id("pen-mode-stroke").click()
+        pg.mouse.click(X(0.25), Y(0.3)); pg.mouse.click(X(0.7), Y(0.55)); pg.mouse.click(X(0.5), Y(0.8))
+        ed.get_by_role("button", name="Edit", exact=True).click()           # no Enter pressed
+        assert len(pg.get_by_test_id("glyph-fill").get_attribute("d") or "") > 10, "leaving the pen kept the line"
+        assert pg.get_by_test_id("stroke-dots").count() == 1, "the line shows its dots in Edit"
+        assert pg.locator("[data-node]").count() == 0, "a line has no outline nodes"
+        h0 = pg.get_by_test_id("glyph-fill").bounding_box()["height"]
+        ed.get_by_role("button", name="Select", exact=True).click(); ed.get_by_role("button", name="Edit", exact=True).click()
+        assert pg.get_by_test_id("stroke-dots").count() == 1, "still a line after changing tools"
+        pg.get_by_test_id("stroke-dot").nth(1).click()
+        pg.get_by_test_id("stroke-panel").wait_for()
+        pg.get_by_test_id("pen-weight").evaluate("(el, v) => { const s = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; s.call(el, String(v)); el.dispatchEvent(new Event('input', { bubbles: true })); }", 300)
+        pg.wait_for_timeout(200)
+        h1 = pg.get_by_test_id("glyph-fill").bounding_box()["height"]
+        assert h1 > h0 + 15, f"a heavier weight on a finished line ({h0} to {h1})"
+        pg.get_by_test_id("stroke-curved").click()
+        assert pg.get_by_test_id("stroke-handle-ho").count() == 1, "the dot got curve handles"
+        # dragging a dot reshapes the line
+        dots = pg.get_by_test_id("stroke-dot"); bb = dots.nth(2).bounding_box()
+        d0 = pg.get_by_test_id("glyph-fill").get_attribute("d")
+        pg.mouse.move(bb["x"] + bb["width"] / 2, bb["y"] + bb["height"] / 2); pg.mouse.down(); pg.mouse.move(bb["x"] + 60, bb["y"] - 60, steps=6); pg.mouse.up()
+        assert pg.get_by_test_id("glyph-fill").get_attribute("d") != d0, "dragging a dot changed the line"
+        pg.get_by_test_id("stroke-to-shape").click()
+        assert pg.get_by_test_id("stroke-dots").count() == 0 and pg.locator("[data-node]").count() > 0, "Make it a shape gives outline nodes"
+
         # --- hole in shape mode flips direction but still draws
+        ed.get_by_role("button", name="Pen", exact=True).click()
         pg.get_by_test_id("pen-mode-shape").click()
         pg.get_by_test_id("pen-hole").click()
         assert pg.get_by_test_id("pen-hole").get_attribute("aria-checked") == "true"

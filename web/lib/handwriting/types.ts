@@ -1,3 +1,4 @@
+import type { PenOpts } from "./penstroke";
 export type Pt = { x: number; y: number };
 
 /** One point of a closed outline. Handles are relative to the point, like paper.js. y is up, in font units. */
@@ -20,11 +21,21 @@ export type Layout = {
   sheets: { id: number; title: string; cells: LayoutCell[] }[];
 };
 
+/** A pen line that is still a line: its dots and settings, and the outline it made (also present in `contours`). */
+export type LiveStroke = {
+  dots: Seg[];
+  closed: boolean;
+  sign: number;           // the way round the letter's filled shapes run, 1 or -1
+  o: PenOpts;
+  ink: Contour[];
+};
+
 export type Glyph = {
   id: string;            // hex code point, e.g. "0784"
   cp: number[];
   kind: CellKind;
   contours: Contour[];   // font units, y up, baseline at y = 0
+  strokes?: LiveStroke[];   // pen lines that can still be changed; each one's outline is among `contours`, and a line is let go when anything else changes that outline
   adv: number;           // advance width (0 for marks)
   source?: "photo" | "drawn";   // traced from a photo, or drawn with the pen
   checked?: boolean;     // the person has looked at this one in the clean-up step

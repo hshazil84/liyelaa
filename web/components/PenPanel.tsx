@@ -33,18 +33,11 @@ const CAPS: [PenCap, string][] = [["flat", "Flat"], ["round", "Round"], ["square
 const JOINS: [PenJoin, string][] = [["sharp", "Sharp"], ["round", "Round"], ["bevel", "Bevel"]];
 const ALIGNS: [PenAlign, string][] = [["centre", "Centre"], ["inside", "Inside"], ["outside", "Outside"]];
 
-/** The pen's settings: shape or stroke, and for a stroke its weight, ends, corners and where a closed line sits. */
-export function PenPanel({ o, onO, dots, onUndo, onFinish, onReset }: {
-  o: PenOpts;
-  onO: (o: PenOpts) => void;
-  dots: number;
-  onUndo: () => void;
-  onFinish: (closed: boolean) => void;
-  onReset: () => void;
-}) {
+type Fields = { o: PenOpts; onO: (o: PenOpts) => void };
+
+/** The settings of a line: weight, ends, corners, where a closed line sits, and the fill. Used while drawing and when changing a finished line. */
+export function StrokeFields({ o, onO }: Fields) {
   const set = (p: Partial<PenOpts>) => onO({ ...o, ...p });
-  const stroke = o.mode === "stroke";
-  const sample = stroke ? penStrokeD(SAMPLE, false, o) : "";
   const group = <T extends string>(label: string, key: "cap" | "join" | "align", items: [T, string][], icon: (v: T) => React.ReactNode) => (
     <div className="flex flex-col gap-2">
       <span className={cap}>{label}</span>
@@ -58,6 +51,64 @@ export function PenPanel({ o, onO, dots, onUndo, onFinish, onReset }: {
       </div>
     </div>
   );
+  return (
+    <>
+      <label className="flex flex-col gap-1.5 text-sm font-medium">
+        <span className="flex justify-between"><span>Weight</span><span className="font-normal text-muted" data-testid="pen-weight-value">{mm(o.weight)}</span></span>
+        <input type="range" min={WEIGHT_MIN} max={WEIGHT_MAX} step={1} value={o.weight} aria-label="Weight" data-testid="pen-weight"
+          onChange={(e) => set({ weight: Number(e.target.value) })} className="accent-plum" />
+      </label>
+      {group("Ends", "cap", CAPS, (v) => <CapIcon v={v} />)}
+      {group("Corners", "join", JOINS, (v) => <JoinIcon v={v} />)}
+      <div className="flex flex-col gap-1.5">
+        {group("Line sits", "align", ALIGNS, (v) => <AlignIcon v={v} />)}
+        <span className="text-xs text-muted">For closed lines. An open line always sits on its dots.</span>
+      </div>
+      <label className="flex items-center gap-2 text-sm font-medium">
+        <input type="checkbox" checked={o.fill} data-testid="pen-fill" onChange={(e) => set({ fill: e.target.checked })} className="h-[18px] w-[18px] accent-plum" />
+        Fill the inside of a closed line
+      </label>
+      <details className="border-t border-line pt-3" onToggle={revealOnOpen}>
+        <summary className="cursor-pointer text-sm font-bold">More</summary>
+        <label className="mt-3 flex flex-col gap-1.5 text-sm font-medium">
+          <span className="flex justify-between"><span>Sharp corner limit</span><span className="font-normal text-muted" data-testid="pen-limit-value">{o.limit}</span></span>
+          <input type="range" min={LIMIT_MIN} max={LIMIT_MAX} step={0.5} value={o.limit} aria-label="Sharp corner limit" data-testid="pen-limit"
+            onChange={(e) => set({ limit: Number(e.target.value) })} className="accent-plum" />
+        </label>
+      </details>
+    </>
+  );
+}
+
+/** A finished line picked in the Edit tool: its settings, and what can be done with the line. */
+export function StrokePanel({ o, onO, onCurve, onShape, onDelete, dotIsCurved }: Fields & { onCurve: (curved: boolean) => void; onShape: () => void; onDelete: () => void; dotIsCurved: boolean | null }) {
+  return (
+    <div className="flex flex-col gap-4" data-testid="stroke-panel">
+      <div className="grid grid-cols-2 gap-2">
+        <button type="button" disabled={dotIsCurved === null || dotIsCurved} data-testid="stroke-curved" onClick={() => onCurve(true)} className={plain}>Curved</button>
+        <button type="button" disabled={dotIsCurved === null || !dotIsCurved} data-testid="stroke-sharp" onClick={() => onCurve(false)} className={plain}>Sharp corner</button>
+      </div>
+      <StrokeFields o={o} onO={onO} />
+      <div className="grid grid-cols-2 gap-2 border-t border-line pt-3">
+        <button type="button" data-testid="stroke-to-shape" onClick={onShape} title="The line becomes an ordinary shape you edit point by point" className={plain}>Make it a shape</button>
+        <button type="button" data-testid="stroke-delete" onClick={onDelete} className={plain}>Delete line</button>
+      </div>
+    </div>
+  );
+}
+
+/** The pen's settings: shape or stroke, and for a stroke its weight, ends, corners and where a closed line sits. */
+export function PenPanel({ o, onO, dots, onUndo, onFinish, onReset }: {
+  o: PenOpts;
+  onO: (o: PenOpts) => void;
+  dots: number;
+  onUndo: () => void;
+  onFinish: (closed: boolean) => void;
+  onReset: () => void;
+}) {
+  const set = (p: Partial<PenOpts>) => onO({ ...o, ...p });
+  const stroke = o.mode === "stroke";
+  const sample = stroke ? penStrokeD(SAMPLE, false, o) : "";
   const modes: [PenMode, string][] = [["shape", "Shape"], ["stroke", "Stroke"]];
   return (
     <div className="flex flex-col gap-4" data-testid="pen-panel">
@@ -73,21 +124,7 @@ export function PenPanel({ o, onO, dots, onUndo, onFinish, onReset }: {
           <svg viewBox="0 -150 800 300" className="w-full rounded-xl bg-lilac-soft" role="img" aria-label="A sample line with these settings" data-testid="pen-preview">
             <g transform="scale(1,-1)"><path d={sample} fill={INK} fillRule="nonzero" /></g>
           </svg>
-          <label className="flex flex-col gap-1.5 text-sm font-medium">
-            <span className="flex justify-between"><span>Weight</span><span className="font-normal text-muted" data-testid="pen-weight-value">{mm(o.weight)}</span></span>
-            <input type="range" min={WEIGHT_MIN} max={WEIGHT_MAX} step={1} value={o.weight} aria-label="Weight" data-testid="pen-weight"
-              onChange={(e) => set({ weight: Number(e.target.value) })} className="accent-plum" />
-          </label>
-          {group("Ends", "cap", CAPS, (v) => <CapIcon v={v} />)}
-          {group("Corners", "join", JOINS, (v) => <JoinIcon v={v} />)}
-          <div className="flex flex-col gap-1.5">
-            {group("Line sits", "align", ALIGNS, (v) => <AlignIcon v={v} />)}
-            <span className="text-xs text-muted">For closed lines. An open line always sits on its dots.</span>
-          </div>
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input type="checkbox" checked={o.fill} data-testid="pen-fill" onChange={(e) => set({ fill: e.target.checked })} className="h-[18px] w-[18px] accent-plum" />
-            Fill the inside of a closed line
-          </label>
+          <StrokeFields o={o} onO={onO} />
         </>
       ) : (
         <div role="radiogroup" aria-label="Draw as" className="grid grid-cols-2 gap-2">
@@ -102,17 +139,6 @@ export function PenPanel({ o, onO, dots, onUndo, onFinish, onReset }: {
         <input type="checkbox" checked={o.snap} data-testid="pen-snap" onChange={(e) => set({ snap: e.target.checked })} className="h-[18px] w-[18px] accent-plum" />
         Snap dots to the lines
       </label>
-
-      {stroke && (
-        <details className="border-t border-line pt-3" onToggle={revealOnOpen}>
-          <summary className="cursor-pointer text-sm font-bold">More</summary>
-          <label className="mt-3 flex flex-col gap-1.5 text-sm font-medium">
-            <span className="flex justify-between"><span>Sharp corner limit</span><span className="font-normal text-muted" data-testid="pen-limit-value">{o.limit}</span></span>
-            <input type="range" min={LIMIT_MIN} max={LIMIT_MAX} step={0.5} value={o.limit} aria-label="Sharp corner limit" data-testid="pen-limit"
-              onChange={(e) => set({ limit: Number(e.target.value) })} className="accent-plum" />
-          </label>
-        </details>
-      )}
 
       <div className="grid grid-cols-2 gap-2 border-t border-line pt-3">
         <button type="button" disabled={dots < 1} data-testid="pen-undo" onClick={onUndo} className={plain}>Undo last dot</button>

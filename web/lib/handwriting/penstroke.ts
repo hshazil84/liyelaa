@@ -1,8 +1,8 @@
 import ClipperLib from "clipper-lib";
 import { area } from "./edit";
-import { flattenContour } from "./shape";
+import { fitContour, flattenContour, simplify } from "./shape";
 import { addInk, glyphSign, orientInk, SC, type CP } from "./marker";
-import { UNITS_PER_MM, type Contour, type Glyph, type Seg } from "./types";
+import { UNITS_PER_MM, type Contour, type Glyph, type LiveStroke, type Seg } from "./types";
 
 /**
  * The pen: click dots, drag to curve. It draws either a filled shape (or a hole), or a stroke of a set weight along the dots,
@@ -136,12 +136,114 @@ export function penStrokeD(pen: Seg[], closed: boolean, o: PenOpts): string {
   return penStrokeInk(pen, closed, o).map((p) => `M${p.map(({ X, Y }) => `${(X / SC).toFixed(1)} ${(Y / SC).toFixed(1)}`).join("L")}Z`).join("");
 }
 
-/** The letter with the pen's line merged in. */
+/** The letter with the pen's line merged in, for good. */
 export function addPenStroke(g: Glyph, pen: Seg[], closed: boolean, o: PenOpts): Glyph {
   const ink = penStrokeInk(pen, closed, o);
   if (!ink.length) return g;
   const sign = glyphSign(g);
   return addInk(g, orientInk(ink, sign), sign, 0.5 + o.weight * 0.012, false);
+}
+
+// ---------------------------------------------------------------- lines that stay lines
+
+const r1 = (n: number) => Math.round(n * 10) / 10;
+const seg = (s: Seg): Seg => ({ p: { x: r1(s.p.x), y: r1(s.p.y) }, hi: { x: r1(s.hi.x), y: r1(s.hi.y) }, ho: { x: r1(s.ho.x), y: r1(s.ho.y) } });
+
+/** The line's outline as curves, running the letter's way round. */
+function inkContours(dots: Seg[], closed: boolean, o: PenOpts, sign: number): Contour[] {
+  const out: Contour[] = [];
+  for (const path of orientInk(penStrokeInk(dots, closed, o), sign)) {
+    const hole = !ClipperLib.Clipper.Orientation(path);
+    let poly = path.map(({ X, Y }) => [X / SC, Y / SC] as [number, number]);
+    poly = simplify(poly, 0.5 + o.weight * 0.012);
+    if (poly.length < 3) continue;
+    let a = 0;
+    for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length]; a += p[0] * q[1] - q[0] * p[1]; }
+    if (Math.sign(a) !== (hole ? -sign : sign)) poly = [...poly].reverse();
+    out.push(fitContour(poly, 50).map(seg));
+  }
+  return out;
+}
+
+const key = (ct: Contour) => JSON.stringify(ct);
+
+/**
+ * The pen lines of this letter that are still lines. A line is still a line while its outline is still among the letter's
+ * shapes exactly as it was made; anything that changes that outline (the brush merging into it, a reshape) lets the line go,
+ * and it stays as an ordinary shape. `owner[c]` says which line contour `c` belongs to, or -1.
+ */
+export function liveStrokes(g: Glyph): { live: LiveStroke[]; owner: number[] } {
+  const owner = g.contours.map(() => -1);
+  if (!g.strokes?.length) return { live: [], owner };
+  const keys = g.contours.map(key);
+  const taken = new Set<number>();
+  const live: LiveStroke[] = [];
+  for (const st of g.strokes) {
+    if (!st || !Array.isArray(st.ink) || !Array.isArray(st.dots) || !st.o || typeof st.o !== "object") continue;     // a file from somewhere else may hold anything
+    const at: number[] = [];
+    for (const k of st.ink.map(key)) {
+      const i = keys.findIndex((x, j) => x === k && !taken.has(j) && !at.includes(j));
+      if (i < 0) break;
+      at.push(i);
+    }
+    if (at.length !== st.ink.length) continue;
+    at.forEach((i) => { taken.add(i); owner[i] = live.length; });
+    live.push(st);
+  }
+  return { live, owner };
+}
+
+/** The letter with a new pen line that stays a line. Its outline sits among the shapes without being merged into them. */
+export function addLiveStroke(g: Glyph, dots: Seg[], closed: boolean, o: PenOpts): Glyph {
+  const sign = glyphSign(g);
+  const ink = inkContours(dots, closed, o, sign);
+  if (!ink.length) return g;
+  const { live } = liveStrokes(g);
+  return { ...g, contours: [...g.contours, ...ink], strokes: [...live, { dots: dots.map(seg), closed, sign, o, ink }] };
+}
+
+/** Change line `k`: move its dots, or give it other settings. Its outline is made again. */
+export function updateStroke(g: Glyph, k: number, patch: Partial<Pick<LiveStroke, "dots" | "o">>): Glyph {
+  const { live, owner } = liveStrokes(g);
+  const st = live[k];
+  if (!st) return g;
+  const next = { ...st, ...patch, dots: (patch.dots ?? st.dots).map(seg) };
+  const ink = inkContours(next.dots, next.closed, next.o, next.sign);
+  const rest = g.contours.filter((_, c) => owner[c] !== k);
+  return { ...g, contours: [...rest, ...ink], strokes: live.map((s, i) => (i === k ? { ...next, ink } : s)) };
+}
+
+/** Take line `k` away completely. */
+export function deleteStroke(g: Glyph, k: number): Glyph {
+  const { live, owner } = liveStrokes(g);
+  return { ...g, contours: g.contours.filter((_, c) => owner[c] !== k), strokes: live.filter((_, i) => i !== k) };
+}
+
+/** Turn line `k` into an ordinary shape. Nothing on the board changes. */
+export function bakeStroke(g: Glyph, k: number): Glyph {
+  const { live } = liveStrokes(g);
+  return { ...g, strokes: live.filter((_, i) => i !== k) };
+}
+
+/** A dot's curve handles set so the line runs smoothly through it (or none, for a sharp corner). */
+export function smoothDot(dots: Seg[], i: number, closed: boolean, smooth: boolean): Seg[] {
+  const n = dots.length;
+  const prev = dots[closed ? (i + n - 1) % n : Math.max(0, i - 1)].p, next = dots[closed ? (i + 1) % n : Math.min(n - 1, i + 1)].p;
+  const t = { x: (next.x - prev.x) / 6, y: (next.y - prev.y) / 6 };
+  const hand = smooth ? { ho: { x: r1(t.x), y: r1(t.y) }, hi: { x: r1(-t.x), y: r1(-t.y) } } : { ho: { x: 0, y: 0 }, hi: { x: 0, y: 0 } };
+  return dots.map((d, j) => (j === i ? { ...d, ...hand } : d));
+}
+
+/** The centre line through the dots, as an SVG path. */
+export function dotsD(dots: Seg[], closed: boolean): string {
+  if (!dots.length) return "";
+  let d = `M${dots[0].p.x} ${dots[0].p.y}`;
+  const n = closed ? dots.length : dots.length - 1;
+  for (let i = 0; i < n; i++) {
+    const a = dots[i], b = dots[(i + 1) % dots.length];
+    d += `C${a.p.x + a.ho.x} ${a.p.y + a.ho.y} ${b.p.x + b.hi.x} ${b.p.y + b.hi.y} ${b.p.x} ${b.p.y}`;
+  }
+  return closed ? d + "Z" : d;
 }
 
 /** A new filled shape, or a hole, drawn the right way round for this letter. */

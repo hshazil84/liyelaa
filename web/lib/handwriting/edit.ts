@@ -171,12 +171,14 @@ export type Xform = { ax: number; ay: number; sx: number; sy: number; dx: number
 /** Move and resize a whole letter. Points and their handles scale together, so curves keep their shape. */
 export function transformGlyph(g: Glyph, m: Xform): Glyph {
   const r = (n: number) => Math.round(n * 10) / 10;
-  const contours = g.contours.map((ct) => ct.map((sg) => ({
+  const move = (ct: Contour) => ct.map((sg) => ({
     p: { x: r(m.ax + (sg.p.x - m.ax) * m.sx + m.dx), y: r(m.ay + (sg.p.y - m.ay) * m.sy + m.dy) },
     hi: { x: r(sg.hi.x * m.sx), y: r(sg.hi.y * m.sy) },
     ho: { x: r(sg.ho.x * m.sx), y: r(sg.ho.y * m.sy) },
-  })));
-  return { ...g, contours };
+  }));
+  const contours = g.contours.map(move);
+  // pen lines move with the letter, by the same arithmetic, so each outline still matches its line
+  return g.strokes ? { ...g, contours, strokes: g.strokes.map((st) => ({ ...st, dots: move(st.dots), ink: st.ink.map(move) })) } : { ...g, contours };
 }
 
 /** Turn a whole letter about (cx, cy), counter-clockwise by `rad` in font space. Handles turn with their points. */
@@ -184,11 +186,12 @@ export function rotateGlyph(g: Glyph, cx: number, cy: number, rad: number): Glyp
   const r = (n: number) => Math.round(n * 10) / 10;
   const c = Math.cos(rad), s = Math.sin(rad);
   const turn = (x: number, y: number) => ({ x: r(x * c - y * s), y: r(x * s + y * c) });
-  const contours = g.contours.map((ct) => ct.map((sg) => {
+  const spin = (ct: Contour) => ct.map((sg) => {
     const p = turn(sg.p.x - cx, sg.p.y - cy);
     return { p: { x: r(cx + p.x), y: r(cy + p.y) }, hi: turn(sg.hi.x, sg.hi.y), ho: turn(sg.ho.x, sg.ho.y) };
-  }));
-  return { ...g, contours };
+  });
+  const contours = g.contours.map(spin);
+  return g.strokes ? { ...g, contours, strokes: g.strokes.map((st) => ({ ...st, dots: spin(st.dots), ink: st.ink.map(spin) })) } : { ...g, contours };
 }
 
 /** Keep the advance wide enough for the drawing (letters only). Marks stay zero width. */

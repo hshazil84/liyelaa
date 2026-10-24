@@ -5,14 +5,14 @@ import { X_HEIGHT, isLower } from "@/lib/handwriting/alphabet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { inkBox } from "@/lib/handwriting/marks";
 import { MarkerPanel } from "@/components/MarkerPanel";
-import { PenPanel } from "@/components/PenPanel";
+import { PenPanel, StrokePanel } from "@/components/PenPanel";
 import { ShapePanel } from "@/components/ShapePanel";
 import {
   clone, deleteContour, deletePoint, dist, emptyGlyph, fitAdvance, insertPoint, isSmooth,
   makeCorner, makeSmooth, movePoint, moveHandle, nearestOnOutline, nudge, reverseContour, rotateGlyph, transformGlyph, type Sel,
 } from "@/lib/handwriting/edit";
 import { addStroke, cleanNib, DEFAULT_NIB, follow, hullsToD, strokeHulls, type Nib } from "@/lib/handwriting/marker";
-import { addPenShape, addPenStroke, cleanPen, DEFAULT_PEN, penStrokeD, type PenOpts } from "@/lib/handwriting/penstroke";
+import { addLiveStroke, addPenShape, bakeStroke, cleanPen, DEFAULT_PEN, deleteStroke, dotsD, liveStrokes, penStrokeD, smoothDot, updateStroke, type PenOpts } from "@/lib/handwriting/penstroke";
 import { layout } from "@/lib/handwriting/pipeline";
 import { importOne } from "@/lib/handwriting/svgimport";
 import { IDENTITY, applyShape, isIdentity, type Shape } from "@/lib/handwriting/shape";
@@ -51,6 +51,7 @@ const TURN_CURSOR: Record<"nw" | "ne" | "sw" | "se", string> = { ne: turnCursor(
 type Drag =
   | { kind: "xf"; mode: "move" | "turn" | Handle; base: Glyph; box: InkBox; pad: number; start: Pt; off: Pt; started: boolean; sx: number; sy: number }
   | { kind: "pt" | "hi" | "ho"; c: number; s: number; base: Glyph; started: boolean; sx: number; sy: number; off: Pt }
+  | { kind: "sdot" | "shi" | "sho"; k: number; i: number; base: Glyph; started: boolean; sx: number; sy: number; off: Pt }
   | { kind: "pen" }
   | { kind: "marker" }
   | { kind: "pan"; sx: number; sy: number; cx: number; cy: number };
@@ -140,6 +141,7 @@ export function GlyphEditor({
   const [zoomKey, setZoomKey] = useState("Ctrl");   // the shortcut named in the hint under the drawing
   const [sel, setSel] = useState<Sel>(null);
   const [pen, setPen] = useState<Seg[] | null>(null);
+  const [ssel, setSsel] = useState<{ k: number; i: number } | null>(null);   // a dot of a pen line picked in the Edit tool (i is -1 when only the line is picked)
   const [nib, setNib] = useState<Nib>(DEFAULT_NIB);
   const [penOpts, setPenOpts] = useState<PenOpts>(DEFAULT_PEN);
   const [live, setLiveState] = useState<{ pts: Pt[]; press: number[] } | null>(null);   // the marker line being drawn right now
@@ -194,6 +196,7 @@ export function GlyphEditor({
   const changeNib = (n: Nib) => { setNib(n); try { localStorage.setItem(NIB_KEY, JSON.stringify(n)); } catch { /* not kept, still works */ } };
   const liveD = useMemo(() => (live ? hullsToD(strokeHulls(live.pts, nib, live.press)) : ""), [live, nib]);
   useEffect(() => { try { const t = localStorage.getItem(PEN_KEY); if (t) setPenOpts(cleanPen(JSON.parse(t))); } catch { /* the default pen is fine */ } }, []);
+  const strokes = useMemo(() => liveStrokes(g), [g]);
   const changePen = (o: PenOpts) => { setPenOpts(o); try { localStorage.setItem(PEN_KEY, JSON.stringify(o)); } catch { /* not kept, still works */ } };
   /** The line the pen is drawing, shown as it will look. */
   const penLiveD = useMemo(() => (pen && penOpts.mode === "stroke" && pen.length >= 2 ? penStrokeD(pen, false, penOpts) : ""), [pen, penOpts]);
@@ -336,7 +339,7 @@ export function GlyphEditor({
   /** Finish what the pen is drawing: a stroke needs two dots (three to close it), a shape three. */
   const finishPen = (closed: boolean) => {
     if (pen && pen.length >= (closed ? 3 : 2)) {
-      const next = penOpts.mode === "stroke" ? addPenStroke(g, pen, closed, penOpts) : closed ? addPenShape(g, pen, penOpts.hole) : g;
+      const next = penOpts.mode === "stroke" ? addLiveStroke(g, pen, closed, penOpts) : closed ? addPenShape(g, pen, penOpts.hole) : g;
       if (next !== g) commit(next);
       setSel(null);
     }
@@ -355,6 +358,8 @@ export function GlyphEditor({
     if (xHit !== undefined) x = xHit;
     return { x, y };
   };
+  /** Leaving the pen with dots on the board finishes what is there instead of throwing it away. */
+  const leavePen = () => { if (pen) finishPen(penOpts.mode === "shape"); };
   const undoDot = () => setPen((prev) => (prev && prev.length > 1 ? prev.slice(0, -1) : null));
 
   // ---------------------------------------------------------------- pointer handling
@@ -411,12 +416,38 @@ export function GlyphEditor({
       setSel(null);
       return;
     }
-    setSel({ c, s });
+    setSel({ c, s }); setSsel(null);
     // remember where inside the point the pointer grabbed it, so grabbing off-centre never makes it jump
     const sg = g.contours[c][s], at = toFont(e);
     const own = kind === "pt" ? sg.p : { x: sg.p.x + sg[kind].x, y: sg.p.y + sg[kind].y };
     drag.current = { kind, c, s, base: g, started: false, sx: e.clientX, sy: e.clientY, off: { x: at.x - own.x, y: at.y - own.y } };
     svgRef.current!.setPointerCapture(e.pointerId);
+  };
+
+  const onStrokeDown = (e: React.PointerEvent, kind: "sdot" | "shi" | "sho", k: number, i: number) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    if (previewing) return;
+    setSel(null); setSsel({ k, i });
+    const sg = strokes.live[k]?.dots[i];
+    if (!sg) return;
+    const at = toFont(e);
+    const own = kind === "sdot" ? sg.p : { x: sg.p.x + (kind === "sho" ? sg.ho.x : sg.hi.x), y: sg.p.y + (kind === "sho" ? sg.ho.y : sg.hi.y) };
+    drag.current = { kind, k, i, base: g, started: false, sx: e.clientX, sy: e.clientY, off: { x: at.x - own.x, y: at.y - own.y } };
+    svgRef.current!.setPointerCapture(e.pointerId);
+  };
+
+  // a slider drag is many small changes: they make one step for Undo
+  const strokeEdit = useRef<{ k: number; t: number } | null>(null);
+  const changeStroke = (patch: Parameters<typeof updateStroke>[2]) => {
+    if (!ssel) return;
+    const next = updateStroke(g, ssel.k, patch);
+    const now = Date.now(), again = strokeEdit.current && strokeEdit.current.k === ssel.k && now - strokeEdit.current.t < 800;
+    strokeEdit.current = { k: ssel.k, t: now };
+    if (!again) { commit(next); return; }
+    const fitted = fitAdvance(next);
+    setG(fitted);
+    finish(fitted);
   };
 
   const onHandleDown = (e: React.PointerEvent, h: Handle, b: InkBox, pad: number) => {
@@ -493,13 +524,34 @@ export function GlyphEditor({
       });
       return;
     }
+    if (d.kind === "sdot" || d.kind === "shi" || d.kind === "sho") {
+      if (!d.started) {
+        if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 3) return;
+        d.started = true;
+        setPast((p) => [...p.slice(-99), d.base]);
+        setFuture([]);
+      }
+      const st = liveStrokes(d.base).live[d.k];
+      if (!st) return;
+      const at = { x: Math.round((raw.x - d.off.x) * 10) / 10, y: Math.round((raw.y - d.off.y) * 10) / 10 };
+      const dots = st.dots.map((sg, j) => {
+        if (j !== d.i) return sg;
+        if (d.kind === "sdot") return { ...sg, p: snapDot(at, e.altKey) };
+        const h = { x: Math.round((at.x - sg.p.x) * 10) / 10, y: Math.round((at.y - sg.p.y) * 10) / 10 };
+        const far = { x: -h.x, y: -h.y };
+        return d.kind === "sho" ? { ...sg, ho: h, hi: e.altKey ? sg.hi : far } : { ...sg, hi: h, ho: e.altKey ? sg.ho : far };
+      });
+      setG(updateStroke(d.base, d.k, { dots }));
+      return;
+    }
     if (!d.started) {
       if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 3) return;      // a click, not a drag
       d.started = true;
       setPast((p) => [...p.slice(-99), d.base]);
       setFuture([]);
     }
-    setG(d.kind === "pt" ? movePoint(d.base, d.c, d.s, pos) : moveHandle(d.base, d.c, d.s, d.kind, pos, !e.altKey));
+    const nd = d as Extract<Drag, { kind: "pt" | "hi" | "ho" }>;
+    setG(nd.kind === "pt" ? movePoint(nd.base, nd.c, nd.s, pos) : moveHandle(nd.base, nd.c, nd.s, nd.kind, pos, !e.altKey));
   };
 
   const onUp = () => {
@@ -580,7 +632,7 @@ export function GlyphEditor({
     : tool === "erase"
       ? "Click a dot or a shape to remove it."
       : hasShape
-        ? "Drag any dot to fix the shape."
+        ? (strokes.live.length ? "Drag any dot to fix the shape. Click a line to change its weight and ends." : "Drag any dot to fix the shape.")
         : "Nothing drawn yet. Use Brush or Pen, or paste with Ctrl or ⌘ V.";
 
   const node = 4 * u, hit = 9 * u, line = 1.4 * u;
@@ -591,19 +643,19 @@ export function GlyphEditor({
     <div className="flex flex-col gap-3" onKeyDown={onKey} onKeyUp={(e) => { if (e.key === " ") spaceDown.current = false; }} tabIndex={0} role="group" aria-label="Letter editor" data-testid="editor">
       <div className="grid grid-cols-[1fr_auto] gap-x-1.5 gap-y-3 [grid-template-areas:'tools_tools'_'hint_undo'] sm:gap-x-2 sm:[grid-template-areas:'tools_undo'_'hint_hint']">
         <div className="grid grid-cols-5 gap-1.5 [grid-area:tools] sm:flex sm:flex-wrap sm:items-stretch sm:gap-2" role="toolbar" aria-label="Tools">
-          <LabelTool label="Select" on={tool === "select"} onClick={() => { setTool("select"); setSel(null); setPen(null); setLive(null); }}>
+          <LabelTool label="Select" on={tool === "select"} onClick={() => { leavePen(); setTool("select"); setSel(null); setSsel(null); setLive(null); }}>
             <ToolIcon name="select" />
           </LabelTool>
-          <LabelTool label="Brush" on={tool === "marker"} onClick={() => { setTool("marker"); setSel(null); setPen(null); }}>
+          <LabelTool label="Brush" on={tool === "marker"} onClick={() => { leavePen(); setTool("marker"); setSel(null); setSsel(null); }}>
             <ToolIcon name="brush" />
           </LabelTool>
-          <LabelTool label="Pen" on={tool === "pen"} onClick={() => { setTool("pen"); setSel(null); setLive(null); }}>
+          <LabelTool label="Pen" on={tool === "pen"} onClick={() => { setTool("pen"); setSel(null); setSsel(null); setLive(null); }}>
             <ToolIcon name="pen" />
           </LabelTool>
-          <LabelTool label="Edit" on={tool === "move"} onClick={() => { setTool("move"); setPen(null); setLive(null); }}>
+          <LabelTool label="Edit" on={tool === "move"} onClick={() => { leavePen(); setTool("move"); setLive(null); }}>
             <ToolIcon name="reshape" />
           </LabelTool>
-          <LabelTool label="Erase" on={tool === "erase"} onClick={() => { setTool("erase"); setPen(null); setSel(null); setLive(null); }}>
+          <LabelTool label="Erase" on={tool === "erase"} onClick={() => { leavePen(); setTool("erase"); setSel(null); setSsel(null); setLive(null); }}>
             <ToolIcon name="eraser" />
           </LabelTool>
         </div>
@@ -677,15 +729,17 @@ export function GlyphEditor({
                 fill="transparent"
                 stroke={sel?.c === c ? TEAL : "none"}
                 strokeWidth={2 * u}
-                pointerEvents={tool === "erase" ? "visiblePainted" : "none"}
-                style={{ cursor: tool === "erase" ? "pointer" : undefined }}
+                pointerEvents={tool === "erase" || (tool === "move" && strokes.owner[c] >= 0 && !previewing) ? "visiblePainted" : "none"}
+                style={{ cursor: tool === "erase" ? "pointer" : tool === "move" && strokes.owner[c] >= 0 ? "pointer" : undefined }}
                 data-contour={c}
-                onPointerDown={tool === "erase" ? (e) => { e.stopPropagation(); commit(deleteContour(g, c)); setSel(null); } : undefined}
+                onPointerDown={tool === "erase"
+                  ? (e) => { e.stopPropagation(); commit(strokes.owner[c] >= 0 ? deleteStroke(g, strokes.owner[c]) : deleteContour(g, c)); setSel(null); setSsel(null); }
+                  : tool === "move" && strokes.owner[c] >= 0 ? (e) => { e.stopPropagation(); setSel(null); setSsel({ k: strokes.owner[c], i: -1 }); } : undefined}
               />
             ))}
 
             {/* points */}
-            {tool !== "pen" && tool !== "marker" && tool !== "select" && showPts && !previewing && g.contours.map((ct, c) => ct.map((sg, s) => {
+            {tool !== "pen" && tool !== "marker" && tool !== "select" && showPts && !previewing && g.contours.map((ct, c) => strokes.owner[c] >= 0 ? [] : ct.map((sg, s) => {
               const on = sel?.c === c && sel.s === s;
               return (
                 <g key={`${c}-${s}`}>
@@ -694,6 +748,34 @@ export function GlyphEditor({
                 </g>
               );
             }))}
+
+            {/* pen lines that are still lines: their centre line and dots, in the Edit tool */}
+            {tool === "move" && showPts && !previewing && strokes.live.map((st, k) => (
+              <g key={`line-${k}`} data-testid="stroke-dots">
+                <path d={dotsD(st.dots, st.closed)} fill="none" stroke={CORAL} strokeWidth={line * 1.2} pointerEvents="none" />
+                {st.dots.map((sg, i) => {
+                  const on = ssel?.k === k && ssel.i === i;
+                  return (
+                    <g key={i}>
+                      {on && (["hi", "ho"] as const).map((hk) => {
+                        const h = sg[hk];
+                        if (!h.x && !h.y) return null;
+                        const at = { x: sg.p.x + h.x, y: sg.p.y + h.y };
+                        return (
+                          <g key={hk}>
+                            <line x1={sg.p.x} y1={sg.p.y} x2={at.x} y2={at.y} stroke={CORAL} strokeWidth={line} />
+                            <circle cx={at.x} cy={at.y} r={node} fill="#fff" stroke={CORAL} strokeWidth={line * 1.3} />
+                            <circle cx={at.x} cy={at.y} r={hit} fill="transparent" data-testid={`stroke-handle-${hk}`} style={{ cursor: "grab" }} onPointerDown={(e) => onStrokeDown(e, hk === "ho" ? "sho" : "shi", k, i)} />
+                          </g>
+                        );
+                      })}
+                      <circle cx={sg.p.x} cy={sg.p.y} r={node * 1.15} fill={on ? CORAL : "#fff"} stroke={CORAL} strokeWidth={line * 1.3} pointerEvents="none" />
+                      <circle cx={sg.p.x} cy={sg.p.y} r={hit} fill="transparent" data-testid="stroke-dot" style={{ cursor: "grab" }} onPointerDown={(e) => onStrokeDown(e, "sdot", k, i)} />
+                    </g>
+                  );
+                })}
+              </g>
+            ))}
 
             {/* handles of the selected point */}
             {tool !== "pen" && tool !== "marker" && tool !== "select" && showPts && !previewing && sel && selSeg && (["hi", "ho"] as const).map((k) => {
@@ -799,11 +881,18 @@ export function GlyphEditor({
       </div>
       <aside aria-label="Adjust" className="flex w-full flex-col gap-3.5 rounded-2xl border border-line bg-white p-3.5 xl:w-[320px] xl:shrink-0">
         <section aria-labelledby="tool-title" className="flex flex-col gap-3">
-          <h3 id="tool-title" className="text-xs font-bold uppercase tracking-wider text-muted">{tool === "marker" ? "Brush" : tool === "move" ? "Selected dot" : tool === "pen" ? "Pen" : tool === "erase" ? "Erase" : "Select"}</h3>
+          <h3 id="tool-title" className="text-xs font-bold uppercase tracking-wider text-muted">{tool === "marker" ? "Brush" : tool === "move" ? (ssel && strokes.live[ssel.k] ? "Pen line" : "Selected dot") : tool === "pen" ? "Pen" : tool === "erase" ? "Erase" : "Select"}</h3>
           {/* every tool's panel sits in the same cell, so the box keeps one height when the tool changes */}
         <div>
           {tool === "marker" && <MarkerPanel nib={nib} onNib={changeNib} />}
-          {tool === "move" && (<div>
+          {tool === "move" && ssel && strokes.live[ssel.k] && (
+            <StrokePanel o={strokes.live[ssel.k].o} onO={(o) => changeStroke({ o })}
+              dotIsCurved={ssel.i < 0 ? null : (() => { const d = strokes.live[ssel.k].dots[ssel.i]; return !!(d && (d.hi.x || d.hi.y || d.ho.x || d.ho.y)); })()}
+              onCurve={(curved) => { const st = strokes.live[ssel.k]; if (ssel.i >= 0) changeStroke({ dots: smoothDot(st.dots, ssel.i, st.closed, curved) }); }}
+              onShape={() => { commit(bakeStroke(g, ssel.k)); setSsel(null); }}
+              onDelete={() => { commit(deleteStroke(g, ssel.k)); setSsel(null); }} />
+          )}
+          {tool === "move" && !(ssel && strokes.live[ssel.k]) && (<div>
             <div className="flex flex-col gap-3" data-testid="dot-panel">
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" disabled={!selSeg || isSmooth(selSeg)} onClick={() => sel && commit(makeSmooth(g, sel.c, sel.s))} className="min-h-[44px] rounded-xl border border-[#BDCFC2] bg-white px-2 text-sm font-bold hover:bg-paper disabled:opacity-40">Curved</button>
