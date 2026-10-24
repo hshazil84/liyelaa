@@ -260,12 +260,27 @@ export function addStroke(g: Glyph, hulls: P[][], nib: Nib, pts?: Pt[]): Glyph {
   const ink = styleInk(unionHulls(hulls, sign), pts, nib);
   if (!ink.length) return g;
   const styled = nib.bleed > 0 || nib.dry > 0;
-  return addInk(g, ink, sign, styled ? 0.4 : 0.5 + nib.size * 0.012, styled);
+  return addInk(g, ink, sign, styled ? 0.4 : 0.5 + nib.size * 0.012, styled, true);       // a brush stroke is a shape of its own; Unite joins it to others
+}
+
+/** Ink as outlines running the letter's way round, holes the other way. */
+export function inkToContours(ink: CP[], sign: number, tol: number, styled: boolean): Contour[] {
+  const made: Contour[] = [];
+  for (const path of ink) {
+    const hole = !ClipperLib.Clipper.Orientation(path);
+    let poly = path.map(({ X, Y }) => [X / SC, Y / SC] as P);
+    poly = simplify(poly, tol);
+    if (poly.length < 3) continue;
+    if (Math.sign(shoelace(poly)) !== (hole ? -sign : sign)) poly = [...poly].reverse();
+    made.push(fitContour(poly, styled ? 40 : 50));
+  }
+  return made;
 }
 
 /** Merge finished ink into the letter. `ink` must already run the letter's way round (see orientInk). */
-export function addInk(g: Glyph, ink: CP[], sign: number, tol: number, styled: boolean): Glyph {
+export function addInk(g: Glyph, ink: CP[], sign: number, tol: number, styled: boolean, separate = false): Glyph {
   if (!ink.length) return g;
+  if (separate) return { ...g, contours: [...g.contours, ...inkToContours(ink, sign, tol, styled)] };
   // group each filled shape with the holes inside it, so a stroke that crosses a hole takes the whole shape with it
   const paths = g.contours.map((ct) => toPath(flattenContour(ct, 4)));
   const areas = g.contours.map((ct) => area(ct));

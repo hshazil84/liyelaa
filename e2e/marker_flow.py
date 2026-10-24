@@ -92,7 +92,7 @@ def main():
         tool(pg, "Undo").click(); pg.wait_for_timeout(450)
         assert len(glyph(pg, "0784")["contours"]) == n - 1
 
-        # a stroke across a drawn letter joins it, and the other shapes are untouched
+        # a stroke across a drawn letter is a shape of its own and the letter is untouched; Unite joins them
         pg.reload(); pg.locator('[data-cell="0780"]').click(); pg.wait_for_selector("[data-testid=editor-svg]")
         old = glyph(pg, "0780"); ob = box(old)
         tool(pg, "Brush").click()
@@ -100,13 +100,13 @@ def main():
         mid = ((ob[0] + ob[2]) / 2, (ob[1] + ob[3]) / 2)
         drag(pg, [(mid[0] - 40, mid[1] + 60), (mid[0], mid[1]), (mid[0] + 40, mid[1] - 60)])
         new = glyph(pg, "0780")
-        assert len(new["contours"]) == len(old["contours"]), "touching strokes merge into the shape"
-        assert new["contours"] != old["contours"]
+        assert len(new["contours"]) == len(old["contours"]) + 1, "a touching stroke stays its own shape"
+        assert new["contours"][: len(old["contours"])] == old["contours"], "the letter itself is untouched"
 
-        # a stroke away from the letter is a new shape
+        # a stroke away from the letter is another new shape
         far = (ob[2] + 150, ob[1] + 60)
         drag(pg, [far, (far[0] + 60, far[1] + 80)])
-        assert len(glyph(pg, "0780")["contours"]) == len(old["contours"]) + 1
+        assert len(glyph(pg, "0780")["contours"]) == len(old["contours"]) + 2
 
         # the nib is remembered
         pg.evaluate("document.querySelector('[data-testid=marker-more]').open = true"); pg.wait_for_timeout(900)   # the card glides into view after opening

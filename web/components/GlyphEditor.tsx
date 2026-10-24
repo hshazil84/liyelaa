@@ -3,8 +3,11 @@
 import GHOSTS_JSON from "@/lib/handwriting/ghosts.json";
 import { X_HEIGHT, isLower } from "@/lib/handwriting/alphabet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { arrange, contourSet, deleteObjects, duplicateObjects, hitObject, objectsInRect, objectsOf, pickedBox, type Box as ObjBox } from "@/lib/handwriting/objects";
 import { inkBox } from "@/lib/handwriting/marks";
+import { combine, type Op } from "@/lib/handwriting/pathfinder";
 import { MarkerPanel } from "@/components/MarkerPanel";
+import { CombinePanel } from "@/components/CombinePanel";
 import { PenPanel, StrokePanel } from "@/components/PenPanel";
 import { ShapePanel } from "@/components/ShapePanel";
 import {
@@ -49,7 +52,8 @@ const turnCursor = (deg: number) => {
 const TURN_CURSOR: Record<"nw" | "ne" | "sw" | "se", string> = { ne: turnCursor(0), se: turnCursor(90), sw: turnCursor(180), nw: turnCursor(270) };
 
 type Drag =
-  | { kind: "xf"; mode: "move" | "turn" | Handle; base: Glyph; box: InkBox; pad: number; start: Pt; off: Pt; started: boolean; sx: number; sy: number }
+  | { kind: "xf"; mode: "move" | "turn" | Handle; base: Glyph; box: InkBox; pad: number; start: Pt; off: Pt; started: boolean; sx: number; sy: number; only: Set<number> }
+  | { kind: "marq"; start: Pt; keep: number[]; started: boolean; sx: number; sy: number }
   | { kind: "pt" | "hi" | "ho"; c: number; s: number; base: Glyph; started: boolean; sx: number; sy: number; off: Pt }
   | { kind: "sdot" | "shi" | "sho"; k: number; i: number; base: Glyph; started: boolean; sx: number; sy: number; off: Pt }
   | { kind: "pen" }
@@ -141,6 +145,8 @@ export function GlyphEditor({
   const [zoomKey, setZoomKey] = useState("Ctrl");   // the shortcut named in the hint under the drawing
   const [sel, setSel] = useState<Sel>(null);
   const [pen, setPen] = useState<Seg[] | null>(null);
+  const [osel, setOsel] = useState<number[] | null>(null);        // which objects are picked in Select; null means the letter's only shape, if it has just one
+  const [marq, setMarq] = useState<ObjBox | null>(null);               // the rectangle being dragged to pick shapes
   const [ssel, setSsel] = useState<{ k: number; i: number } | null>(null);   // a dot of a pen line picked in the Edit tool (i is -1 when only the line is picked)
   const [nib, setNib] = useState<Nib>(DEFAULT_NIB);
   const [penOpts, setPenOpts] = useState<PenOpts>(DEFAULT_PEN);
@@ -197,6 +203,9 @@ export function GlyphEditor({
   const liveD = useMemo(() => (live ? hullsToD(strokeHulls(live.pts, nib, live.press)) : ""), [live, nib]);
   useEffect(() => { try { const t = localStorage.getItem(PEN_KEY); if (t) setPenOpts(cleanPen(JSON.parse(t))); } catch { /* the default pen is fine */ } }, []);
   const strokes = useMemo(() => liveStrokes(g), [g]);
+  const objs = useMemo(() => objectsOf(g), [g]);
+  const picked = useMemo(() => (osel ?? (objs.length === 1 ? [0] : [])).filter((i) => i < objs.length), [osel, objs]);
+  const pickedC = useMemo(() => contourSet(objs, picked), [objs, picked]);
   const changePen = (o: PenOpts) => { setPenOpts(o); try { localStorage.setItem(PEN_KEY, JSON.stringify(o)); } catch { /* not kept, still works */ } };
   /** The line the pen is drawing, shown as it will look. */
   const penLiveD = useMemo(() => (pen && penOpts.mode === "stroke" && pen.length >= 2 ? penStrokeD(pen, false, penOpts) : ""), [pen, penOpts]);
@@ -215,8 +224,16 @@ export function GlyphEditor({
     const fitted = next.contours.length ? fitAdvance(next) : next;
     setG(fitted);
     setShape({ ...IDENTITY });
+    if (next.contours.length !== g.contours.length) setOsel(null);
     finish(fitted);
   }, [g, finish]);
+
+  /** Commit a change that made new shapes (they start at contour `from`) and pick them. */
+  const commitNew = (next: Glyph, from: number) => {
+    commit(next);
+    const o = objectsOf(next);
+    setOsel(o.flatMap((ob, i) => (ob.c.some((c) => c >= from) ? [i] : [])));
+  };
 
   const applyShapeNow = () => {
     if (!previewing) return;
@@ -262,12 +279,12 @@ export function GlyphEditor({
   const undo = () => {
     if (!past.length) return;
     const prev = past[past.length - 1];
-    setPast(past.slice(0, -1)); setFuture([g, ...future]); setG(prev); setSel(null); setShape({ ...IDENTITY }); finish(prev);
+    setPast(past.slice(0, -1)); setFuture([g, ...future]); setG(prev); setSel(null); setOsel(null); setSsel(null); setShape({ ...IDENTITY }); finish(prev);
   };
   const redo = () => {
     if (!future.length) return;
     const nxt = future[0];
-    setFuture(future.slice(1)); setPast([...past, g]); setG(nxt); setSel(null); setShape({ ...IDENTITY }); finish(nxt);
+    setFuture(future.slice(1)); setPast([...past, g]); setG(nxt); setSel(null); setOsel(null); setSsel(null); setShape({ ...IDENTITY }); finish(nxt);
   };
 
   // Ctrl or ⌘ Z works anywhere on the page, not only after clicking the drawing. Typing in a box keeps its own undo.
@@ -340,7 +357,7 @@ export function GlyphEditor({
   const finishPen = (closed: boolean) => {
     if (pen && pen.length >= (closed ? 3 : 2)) {
       const next = penOpts.mode === "stroke" ? addLiveStroke(g, pen, closed, penOpts) : closed ? addPenShape(g, pen, penOpts.hole) : g;
-      if (next !== g) commit(next);
+      if (next !== g) commitNew(next, g.contours.length);
       setSel(null);
     }
     setPen(null);
@@ -385,15 +402,28 @@ export function GlyphEditor({
       svgRef.current!.setPointerCapture(e.pointerId);
     } else if (tool === "select") {
       setSel(null);
-      const b = g.contours.length ? inkBox(g) : null, m = 10 * u;
-      if (b && pos.x >= b.x0 - m && pos.x <= b.x1 + m && pos.y >= b.y0 - m && pos.y <= b.y1 + m) {
-        drag.current = { kind: "xf", mode: "move", base: g, box: b, pad: m, start: pos, off: { x: 0, y: 0 }, started: false, sx: e.clientX, sy: e.clientY };
+      const startMove = (list: number[]) => {
+        const b = pickedBox(g, objs, list);
+        if (!b) return false;
+        drag.current = { kind: "xf", mode: "move", base: g, box: b, pad: 10 * u, start: pos, off: { x: 0, y: 0 }, started: false, sx: e.clientX, sy: e.clientY, only: contourSet(objs, list) };
         svgRef.current!.setPointerCapture(e.pointerId);
-      } else if (cam.z > 1) {
-        const c = centreNow();
-        drag.current = { kind: "pan", sx: e.clientX, sy: e.clientY, cx: c.x, cy: c.y };
-        svgRef.current!.setPointerCapture(e.pointerId);
+        return true;
+      };
+      const hit = hitObject(g, objs, pos, 8 * u);
+      if (hit >= 0) {
+        // a shape is picked by pressing it, and goes on to move at once; Shift adds it to the others or takes it off
+        let next = picked;
+        if (e.shiftKey) { next = picked.includes(hit) ? picked.filter((i) => i !== hit) : [...picked, hit]; setOsel(next); if (!next.includes(hit)) return; }
+        else if (!picked.includes(hit)) { next = [hit]; setOsel(next); }
+        startMove(next);
+        return;
       }
+      const b = pickedBox(g, objs, picked), m = 10 * u;
+      if (b && pos.x >= b.x0 - m && pos.x <= b.x1 + m && pos.y >= b.y0 - m && pos.y <= b.y1 + m && startMove(picked)) return;
+      // empty space: drag a rectangle to pick the shapes it touches
+      if (!e.shiftKey) setOsel([]);
+      drag.current = { kind: "marq", start: pos, keep: e.shiftKey ? picked : [], started: false, sx: e.clientX, sy: e.clientY };
+      svgRef.current!.setPointerCapture(e.pointerId);
     } else if (tool === "move") {
       setSel(null);
       if (cam.z > 1) {            // when zoomed in, dragging empty space moves the view
@@ -457,7 +487,7 @@ export function GlyphEditor({
     const [hx, hy] = HANDLES[h];
     const at = toFont(e);
     const own = { x: (hx === 1 ? b.x1 : hx === -1 ? b.x0 : (b.x0 + b.x1) / 2) + hx * pad, y: (hy === 1 ? b.y1 : hy === -1 ? b.y0 : (b.y0 + b.y1) / 2) + hy * pad };
-    drag.current = { kind: "xf", mode: h, base: g, box: b, pad, start: at, off: { x: at.x - own.x, y: at.y - own.y }, started: false, sx: e.clientX, sy: e.clientY };
+    drag.current = { kind: "xf", mode: h, base: g, box: b, pad, start: at, off: { x: at.x - own.x, y: at.y - own.y }, started: false, sx: e.clientX, sy: e.clientY, only: pickedC };
     svgRef.current!.setPointerCapture(e.pointerId);
   };
 
@@ -467,7 +497,7 @@ export function GlyphEditor({
     e.stopPropagation();
     if (previewing) return;
     const at = toFont(e);
-    drag.current = { kind: "xf", mode: "turn", base: g, box: b, pad, start: at, off: { x: 0, y: 0 }, started: false, sx: e.clientX, sy: e.clientY };
+    drag.current = { kind: "xf", mode: "turn", base: g, box: b, pad, start: at, off: { x: 0, y: 0 }, started: false, sx: e.clientX, sy: e.clientY, only: pickedC };
     svgRef.current!.setPointerCapture(e.pointerId);
   };
 
@@ -487,6 +517,15 @@ export function GlyphEditor({
       if (v && q) setLive({ pts: [...v.pts, q], press: [...v.press, pr] });
       return;
     }
+    if (d.kind === "marq") {
+      if (!d.started && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 3) return;
+      d.started = true;
+      const at = toFont(e);
+      const r = { x0: Math.min(d.start.x, at.x), y0: Math.min(d.start.y, at.y), x1: Math.max(d.start.x, at.x), y1: Math.max(d.start.y, at.y) };
+      setMarq(r);
+      setOsel(Array.from(new Set([...d.keep, ...objectsInRect(objs, r)])));
+      return;
+    }
     if (d.kind === "xf") {
       if (!d.started) {
         if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 3) return;      // a tap, not a drag
@@ -495,13 +534,13 @@ export function GlyphEditor({
         setFuture([]);
       }
       const at = toFont(e);
-      if (d.mode === "move") { setG(transformGlyph(d.base, { ax: 0, ay: 0, sx: 1, sy: 1, dx: at.x - d.start.x, dy: at.y - d.start.y })); return; }
+      if (d.mode === "move") { setG(transformGlyph(d.base, { ax: 0, ay: 0, sx: 1, sy: 1, dx: at.x - d.start.x, dy: at.y - d.start.y }, d.only)); return; }
       if (d.mode === "turn") {
         const cx = (d.box.x0 + d.box.x1) / 2, cy = (d.box.y0 + d.box.y1) / 2;
         let turn = Math.atan2(at.y - cy, at.x - cx) - Math.atan2(d.start.y - cy, d.start.x - cx);
         turn = Math.atan2(Math.sin(turn), Math.cos(turn));                                   // the short way round
         if (e.shiftKey) { const step = Math.PI / 12; turn = Math.round(turn / step) * step; }     // Shift: 15 degree steps
-        setG(rotateGlyph(d.base, cx, cy, turn));
+        setG(rotateGlyph(d.base, cx, cy, turn, d.only));
         return;
       }
       const [hx, hy] = HANDLES[d.mode], b = d.box;
@@ -510,7 +549,7 @@ export function GlyphEditor({
       const ow = (hx === 1 ? b.x1 : b.x0) - ax, oh = (hy === 1 ? b.y1 : b.y0) - ay;
       let sx = hx === 0 || Math.abs(ow) < 1 ? 1 : (tx - ax) / ow, sy = hy === 0 || Math.abs(oh) < 1 ? 1 : (ty - ay) / oh;
       if (hx !== 0 && hy !== 0 && !e.shiftKey) { const k = Math.abs(sx - 1) >= Math.abs(sy - 1) ? sx : sy; sx = k; sy = k; }     // a corner keeps the shape, Shift frees it
-      setG(transformGlyph(d.base, { ax, ay, sx: Math.max(0.1, sx), sy: Math.max(0.1, sy), dx: 0, dy: 0 }));
+      setG(transformGlyph(d.base, { ax, ay, sx: Math.max(0.1, sx), sy: Math.max(0.1, sy), dx: 0, dy: 0 }, d.only));
       return;
     }
     const raw = toFont(e);
@@ -562,10 +601,11 @@ export function GlyphEditor({
       setLive(null);
       if (v) {
         const next = addStroke(g, strokeHulls(v.pts, nib, v.press), nib, v.pts);
-        if (next !== g) commit(next);
+        if (next !== g) commitNew(next, g.contours.length);
       }
       return;
     }
+    if (d?.kind === "marq") { setMarq(null); return; }
     if (d && d.kind !== "pen" && d.kind !== "pan" && d.started) {
       const fitted = fitAdvance(g);
       setG(fitted);
@@ -592,11 +632,13 @@ export function GlyphEditor({
     if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
     if (e.key === "Enter" && pen) { e.preventDefault(); finishPen(penOpts.mode === "shape"); return; }
     if (pen && (e.key === "Delete" || e.key === "Backspace")) { e.preventDefault(); undoDot(); return; }
-    if (e.key === "Escape") { setPen(null); setSel(null); setLive(null); drag.current = null; return; }
+    if (e.key === "Escape") { setPen(null); setSel(null); setSsel(null); setOsel([]); setLive(null); setMarq(null); drag.current = null; return; }
     if (tool === "select" && g.contours.length && !previewing) {
       const st = e.shiftKey ? 20 : 4;
       const mv: Record<string, [number, number]> = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] };
-      if (mv[e.key]) { e.preventDefault(); commit(transformGlyph(g, { ax: 0, ay: 0, sx: 1, sy: 1, dx: mv[e.key][0], dy: mv[e.key][1] })); return; }
+      if (mv[e.key] && picked.length) { e.preventDefault(); commit(transformGlyph(g, { ax: 0, ay: 0, sx: 1, sy: 1, dx: mv[e.key][0], dy: mv[e.key][1] }, pickedC)); return; }
+      if ((e.key === "Delete" || e.key === "Backspace") && picked.length) { e.preventDefault(); commit(deleteObjects(g, objs, picked)); return; }
+      if (mod && e.key.toLowerCase() === "a") { e.preventDefault(); setOsel(objs.map((_, i) => i)); return; }
     }
     if (!sel) return;
     if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); commit(deletePoint(g, sel.c, sel.s)); setSel(null); return; }
@@ -628,7 +670,7 @@ export function GlyphEditor({
         : pen.length < 3 ? "Keep clicking to add dots." : "Click the first dot or press Enter to close."
       : penOpts.mode === "stroke" ? "Click to place dots. Drag to curve. The line has the weight set on the right." : "Click to place dots. Drag to curve."
     : tool === "select"
-    ? (hasShape ? "Drag to move. Drag a corner to resize. Drag just outside a corner to turn it." : "Nothing drawn yet. Use Brush or Pen, or paste with Ctrl or ⌘ V.")
+    ? (hasShape ? (objs.length > 1 ? "Click a shape to pick it, Shift+click for more. Drag to move. Drag a corner to resize. Drag just outside a corner to turn it." : "Drag to move. Drag a corner to resize. Drag just outside a corner to turn it.") : "Nothing drawn yet. Use Brush or Pen, or paste with Ctrl or ⌘ V.")
     : tool === "erase"
       ? "Click a dot or a shape to remove it."
       : hasShape
@@ -637,7 +679,7 @@ export function GlyphEditor({
 
   const node = 4 * u, hit = 9 * u, line = 1.4 * u;
   const selPad = 10 * u;
-  const selBox = tool === "select" && hasShape && !previewing ? inkBox(g) : null;
+  const selBox = tool === "select" && hasShape && !previewing ? pickedBox(g, objs, picked) : null;
 
   return (
     <div className="flex flex-col gap-3" onKeyDown={onKey} onKeyUp={(e) => { if (e.key === " ") spaceDown.current = false; }} tabIndex={0} role="group" aria-label="Letter editor" data-testid="editor">
@@ -727,7 +769,7 @@ export function GlyphEditor({
                 key={c}
                 d={contoursToD([ct])}
                 fill="transparent"
-                stroke={sel?.c === c ? TEAL : "none"}
+                stroke={sel?.c === c ? TEAL : tool === "select" && objs.length > 1 && pickedC.has(c) ? CORAL : "none"}
                 strokeWidth={2 * u}
                 pointerEvents={tool === "erase" || (tool === "move" && strokes.owner[c] >= 0 && !previewing) ? "visiblePainted" : "none"}
                 style={{ cursor: tool === "erase" ? "pointer" : tool === "move" && strokes.owner[c] >= 0 ? "pointer" : undefined }}
@@ -819,6 +861,8 @@ export function GlyphEditor({
                 })}
               </g>
             )}
+
+            {marq && <rect x={marq.x0} y={marq.y0} width={marq.x1 - marq.x0} height={marq.y1 - marq.y0} fill={CORAL} fillOpacity={0.08} stroke={CORAL} strokeWidth={1.4 * u} strokeDasharray={`${5 * u} ${4 * u}`} pointerEvents="none" data-testid="marquee" />}
 
             {/* the line being drawn with the marker */}
             {live && <path d={liveD} fill={CORAL} fillOpacity={0.85} fillRule="nonzero" pointerEvents="none" data-testid="marker-live" />}
@@ -912,8 +956,19 @@ export function GlyphEditor({
           </div>
           )}
           {tool === "pen" && <PenPanel o={penOpts} onO={changePen} dots={pen?.length ?? 0} onUndo={undoDot} onFinish={finishPen} onReset={() => setPen(null)} />}
-          {(tool === "erase" || tool === "select") && (
-            <p className="rounded-xl bg-[#F3F9F5] px-3 py-2.5 text-sm text-muted">{tool === "select" ? "For exact size, width, slant and position, use Reshape below." : "Nothing to set for this tool."}</p>
+          {tool === "select" && (
+            <div className="flex flex-col gap-3">
+              <CombinePanel count={picked.length}
+                onCombine={(op: Op) => { const r = combine(g, objs, picked, op); if (r.glyph !== g) commitNew(r.glyph, r.keep); }}
+                onFront={() => commit(arrange(g, objs, picked, true))}
+                onBack={() => commit(arrange(g, objs, picked, false))}
+                onCopy={() => commitNew(duplicateObjects(g, objs, picked, 40, -40), g.contours.length)}
+                onDelete={() => commit(deleteObjects(g, objs, picked))} />
+              <p className="rounded-xl bg-[#F3F9F5] px-3 py-2.5 text-sm text-muted">For exact size, width, slant and position, use Reshape below.</p>
+            </div>
+          )}
+          {tool === "erase" && (
+            <p className="rounded-xl bg-[#F3F9F5] px-3 py-2.5 text-sm text-muted">Nothing to set for this tool.</p>
           )}
         </div>
         </section>

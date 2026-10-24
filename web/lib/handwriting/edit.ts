@@ -169,20 +169,28 @@ export function outlineBounds(contours: Contour[]) {
 export type Xform = { ax: number; ay: number; sx: number; sy: number; dx: number; dy: number };
 
 /** Move and resize a whole letter. Points and their handles scale together, so curves keep their shape. */
-export function transformGlyph(g: Glyph, m: Xform): Glyph {
+/** Whether a pen line goes along when only some contours are being changed: yes if its outline is among them. */
+function movesWith(g: Glyph, st: NonNullable<Glyph["strokes"]>[number], only?: Set<number>): boolean {
+  if (!only) return true;
+  if (!st.ink.length) return false;
+  const k = JSON.stringify(st.ink[0]);
+  return g.contours.some((ct, c) => only.has(c) && JSON.stringify(ct) === k);
+}
+
+export function transformGlyph(g: Glyph, m: Xform, only?: Set<number>): Glyph {
   const r = (n: number) => Math.round(n * 10) / 10;
   const move = (ct: Contour) => ct.map((sg) => ({
     p: { x: r(m.ax + (sg.p.x - m.ax) * m.sx + m.dx), y: r(m.ay + (sg.p.y - m.ay) * m.sy + m.dy) },
     hi: { x: r(sg.hi.x * m.sx), y: r(sg.hi.y * m.sy) },
     ho: { x: r(sg.ho.x * m.sx), y: r(sg.ho.y * m.sy) },
   }));
-  const contours = g.contours.map(move);
-  // pen lines move with the letter, by the same arithmetic, so each outline still matches its line
-  return g.strokes ? { ...g, contours, strokes: g.strokes.map((st) => ({ ...st, dots: move(st.dots), ink: st.ink.map(move) })) } : { ...g, contours };
+  const contours = g.contours.map((ct, c) => (only && !only.has(c) ? ct : move(ct)));
+  // pen lines move with their outline, by the same arithmetic, so each outline still matches its line
+  return g.strokes ? { ...g, contours, strokes: g.strokes.map((st) => (movesWith(g, st, only) ? { ...st, dots: move(st.dots), ink: st.ink.map(move) } : st)) } : { ...g, contours };
 }
 
 /** Turn a whole letter about (cx, cy), counter-clockwise by `rad` in font space. Handles turn with their points. */
-export function rotateGlyph(g: Glyph, cx: number, cy: number, rad: number): Glyph {
+export function rotateGlyph(g: Glyph, cx: number, cy: number, rad: number, only?: Set<number>): Glyph {
   const r = (n: number) => Math.round(n * 10) / 10;
   const c = Math.cos(rad), s = Math.sin(rad);
   const turn = (x: number, y: number) => ({ x: r(x * c - y * s), y: r(x * s + y * c) });
@@ -190,8 +198,8 @@ export function rotateGlyph(g: Glyph, cx: number, cy: number, rad: number): Glyp
     const p = turn(sg.p.x - cx, sg.p.y - cy);
     return { p: { x: r(cx + p.x), y: r(cy + p.y) }, hi: turn(sg.hi.x, sg.hi.y), ho: turn(sg.ho.x, sg.ho.y) };
   });
-  const contours = g.contours.map(spin);
-  return g.strokes ? { ...g, contours, strokes: g.strokes.map((st) => ({ ...st, dots: spin(st.dots), ink: st.ink.map(spin) })) } : { ...g, contours };
+  const contours = g.contours.map((ct, c) => (only && !only.has(c) ? ct : spin(ct)));
+  return g.strokes ? { ...g, contours, strokes: g.strokes.map((st) => (movesWith(g, st, only) ? { ...st, dots: spin(st.dots), ink: st.ink.map(spin) } : st)) } : { ...g, contours };
 }
 
 /** Keep the advance wide enough for the drawing (letters only). Marks stay zero width. */

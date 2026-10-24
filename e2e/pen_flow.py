@@ -32,11 +32,11 @@ def main():
             return bb["width"] * bb["height"]
 
         # the panel takes only the height it needs: Select is short
-        ed.get_by_role("button", name="Select", exact=True).click()
+        ed.get_by_role("button", name="Erase", exact=True).click()
         sel_h = pg.locator("aside[aria-label=Adjust]").bounding_box()["height"]
         ed.get_by_role("button", name="Pen", exact=True).click()
         pg.get_by_test_id("pen-panel").wait_for()
-        assert pg.locator("aside[aria-label=Adjust]").bounding_box()["height"] > sel_h, "the pen panel is taller than select's note"
+        assert pg.locator("aside[aria-label=Adjust]").bounding_box()["height"] > sel_h, "the pen panel is taller than erase's note"
 
         # --- shape: three dots, close with Enter
         for fx, fy in [(0.35, 0.4), (0.6, 0.4), (0.5, 0.65)]:
