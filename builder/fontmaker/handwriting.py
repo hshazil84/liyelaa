@@ -35,6 +35,13 @@ NOTO = ASSETS / "NotoSansThaana-Variable.ttf"
 NOTO_OFL = ASSETS / "OFL-NotoSansThaana.txt"
 INTER = ASSETS / "Inter-Latin-Regular.ttf"          # fills English letters that were not drawn (SIL OFL 1.1, see OFL-Inter.txt)
 LATIN_LETTERS = list(range(0x41, 0x5B)) + list(range(0x61, 0x7B))
+# digits, keyboard punctuation and common symbols the person did not draw (the same set AK Rasmee covers); Inter fills them
+INTER_SYMBOLS = (
+    list(range(0x30, 0x3A)) + [0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x2A, 0x2B, 0x2D, 0x2F, 0x3C, 0x3D, 0x3E, 0x40,
+                               0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60, 0x7B, 0x7C, 0x7D, 0x7E,
+                               0xA5, 0xA8, 0xAF, 0xB1, 0xB4, 0xB7, 0xD7, 0xF7, 0x2DC, 0x201A, 0x201E, 0x2026, 0x20AC, 0x2212]
+)
+INTER_LATIN_KEYS = [0x2C, 0x3B, 0x3F]                # only when typed , ; ? are not turned into the Arabic marks
 LATIN_SCALE = 494 / 727                              # Inter's capitals are 727 tall; the template's top line is 494, so English stands as tall as Thaana
 
 UPEM = 1000
@@ -355,7 +362,8 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
 
     inter_filled: list[int] = []
     if req.fallback == "noto":
-        for it in _inter_items([cp for cp in LATIN_LETTERS if cp not in user]):
+        wanted = LATIN_LETTERS + INTER_SYMBOLS + ([] if req.latin_punctuation else INTER_LATIN_KEYS)
+        for it in _inter_items([cp for cp in wanted if cp not in user]):
             items[it.cps[0]] = it
             inter_filled.append(it.cps[0])
 
@@ -428,7 +436,7 @@ def build_handwriting_font(req: BuildRequest) -> tuple[TTFont, dict]:
     if filled:
         desc += " Letters that were not drawn come from Noto Sans Thaana (SIL OFL 1.1)."
     if inter_filled:
-        desc += " English letters that were not drawn come from Inter (SIL OFL 1.1)."
+        desc += " English letters, digits and symbols that were not drawn come from Inter (SIL OFL 1.1)."
     names = {
         "familyName": name, "styleName": "Regular", "uniqueFontIdentifier": f"{ps}-{req.version}-Regular;thaanafont",
         "fullName": f"{name} Regular", "psName": f"{ps}-Regular", "version": f"Version {req.version}",

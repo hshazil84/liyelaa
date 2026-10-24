@@ -10,7 +10,7 @@ from fontTools.pens.areaPen import AreaPen
 from fontTools.ttLib import TTFont
 
 from fontmaker.handwriting import (
-    BuildRequest, GlyphIn, KernIn, LigatureIn, MarkOffsetIn, Pt, Seg, build_handwriting_font, build_zip,
+    INTER_SYMBOLS, BuildRequest, GlyphIn, KernIn, LigatureIn, MarkOffsetIn, Pt, Seg, build_handwriting_font, build_zip,
 )
 from fontmaker.play import font_bytes
 
@@ -397,16 +397,29 @@ def test_english_letters_not_drawn_come_from_inter_at_thaana_height():
     font, report = build(fallback="noto")
     cmap = font.getBestCmap()
     assert all(c in cmap for c in list(range(0x41, 0x5B)) + list(range(0x61, 0x7B)))
-    assert len(report["filled_from_inter"]) == 52
+    assert len(report["filled_from_inter"]) == 52 + len(INTER_SYMBOLS)
     top = ink(font, cmap[0x48])[3]                      # H, a flat top: the capital height
     assert 485 <= top <= 500, top
     assert ink(font, cmap[0x78])[3] < top               # x is lower than H
 
 
+def test_digits_and_keyboard_symbols_not_drawn_come_from_inter():
+    font, _ = build(fallback="noto")
+    cmap = font.getBestCmap()
+    for ch in "0123456789\"#$%&'*+-/<=>@[\\]^_`{|}~\u00d7\u00f7\u00b1\u2026\u20ac\u2212":
+        assert ord(ch) in cmap, ch
+    assert ink(font, cmap[0x38])[3] <= 505            # digits stand no taller than the letters
+
+
+def test_a_drawn_digit_is_not_replaced_by_inter():
+    font, report = build([G(0x35, [rect(30, 0, 280, 494)], 340)] + BASE_GLYPHS, fallback="noto")
+    assert ink(font, "uni0035") == (30, 0, 280, 494) and "0035" not in report["filled_from_inter"]
+
+
 def test_a_drawn_english_letter_is_not_replaced_by_inter():
     font, report = build([G(0x41, [rect(40, 0, 300, 494)], 380)] + BASE_GLYPHS, fallback="noto")
     assert ink(font, "uni0041") == (40, 0, 300, 494)
-    assert "0041" not in report["filled_from_inter"] and len(report["filled_from_inter"]) == 51
+    assert "0041" not in report["filled_from_inter"] and len(report["filled_from_inter"]) == 51 + len(INTER_SYMBOLS)
 
 
 def test_no_starter_means_no_inter_letters():
