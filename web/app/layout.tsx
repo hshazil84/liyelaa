@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { AccountMenu } from "@/components/AccountMenu";
 import { VisitPing } from "@/components/VisitPing";
+import { WarmLoader } from "@/components/WarmLoader";
 
 // Self-hosted and preloaded, with a fallback sized to match, so the page does not jump when the fonts arrive.
 const hanken = localFont({
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <AccountMenu />
         <VisitPing />
+        <WarmLoader />
       </body>
     </html>
   );

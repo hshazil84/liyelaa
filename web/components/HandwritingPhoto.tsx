@@ -47,6 +47,7 @@ export function HandwritingPhoto() {
     if (!file) return;
     setBusy(true); setError(null); setResult(null);
     try {
+      await new Promise<void>((go) => requestAnimationFrame(() => setTimeout(go, 60)));   // let the waiting animation paint before the heavy work blocks the page
       const r = await processPhoto(file, sheet);
       if (!r.ok) setError(r.reason); else setResult(r);
     } catch (e) {

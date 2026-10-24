@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { copyOf, loadDesigner } from "@/lib/lottie/load";
 
 /**
  * The designer animation with a line of words under it. The animation loads after the words,
@@ -14,13 +15,10 @@ export function Loading({ label, size = 220 }: { label: string; size?: number })
     let anim: { destroy: () => void } | null = null;
     (async () => {
       try {
-        const [{ default: lottie }, { default: data }] = await Promise.all([
-          import("lottie-web/build/player/lottie_light"),
-          import("@/lib/lottie/designer.json"),
-        ]);
+        const { lottie, data } = await loadDesigner();
         if (dead || !box.current) return;
         const still = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        const a = lottie.loadAnimation({ container: box.current, renderer: "svg", loop: true, autoplay: !still, animationData: JSON.parse(JSON.stringify(data)) });
+        const a = lottie.loadAnimation({ container: box.current, renderer: "svg", loop: true, autoplay: !still, animationData: copyOf(data) as object });
         if (still) a.goToAndStop(300, true);
         anim = a;
       } catch {
