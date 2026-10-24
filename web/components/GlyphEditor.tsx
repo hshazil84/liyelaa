@@ -626,20 +626,20 @@ export function GlyphEditor({
             ))}
             {isMark && <line x1={0} x2={0} y1={DESC} y2={TOP} stroke="#BDCFC2" strokeWidth={1 * u} strokeDasharray={`${3 * u} ${4 * u}`} />}
 
-            {/* the starter letter, only as a hint for a letter that has no drawing yet */}
-            {!hasShape && !pen && !live && (
+            {/* the starter letter stays behind the drawing as a guide, before, during and after writing */}
+            {
               // an outline, not text: Safari cuts big text off at a straight edge
               GHOSTS[cell.label] ? (
-                <path aria-hidden d={GHOSTS[cell.label].d} transform={`translate(${cx - (GHOSTS[cell.label].adv * ghostS) / 2} 0) scale(${ghostS})`} fill={INK} opacity={0.1} />
+                <path aria-hidden data-testid="ghost" d={GHOSTS[cell.label].d} transform={`translate(${cx - (GHOSTS[cell.label].adv * ghostS) / 2} 0) scale(${ghostS})`} fill={INK} opacity={0.1} pointerEvents="none" />
               ) : (
                 // joined letters you made yourself have no stored outline: pad the text so nothing hangs past its box
-                <g transform={`translate(${cx} 0) scale(${ghostS * 10} ${-ghostS * 10})`} aria-hidden>
-                  <text x={0} y={0} textAnchor="middle" fontSize={100} fontFamily="AKRasmee, NotoThaana, sans-serif" textRendering="geometricPrecision" fill={INK} opacity={0.1}>
+                <g transform={`translate(${cx} 0) scale(${ghostS * 10} ${-ghostS * 10})`} aria-hidden data-testid="ghost">
+                  <text x={0} y={0} textAnchor="middle" fontSize={100} fontFamily="AKRasmee, NotoThaana, sans-serif" textRendering="geometricPrecision" fill={INK} opacity={0.1} pointerEvents="none">
                     {"\u2003" + cell.label + "\u2003"}
                   </text>
                 </g>
               )
-            )}
+            }
 
             {/* outlines */}
             {/* one fill for the whole letter, so a hole (a dry streak, a chip, the counter of a ring) cuts through like it does in the font */}

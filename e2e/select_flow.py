@@ -65,6 +65,10 @@ def main():
         # 1b. the board fills the whole letter as one shape, so holes cut through like they do in the font
         assert pg.get_by_test_id("glyph-fill").count() == 1
 
+        # 1c. the grey starter letter stays behind a finished drawing as a guide, and never takes a tap
+        assert pg.get_by_test_id("ghost").count() == 1
+        assert pg.get_by_test_id("ghost").evaluate("el => getComputedStyle(el).pointerEvents") == "none"
+
         # 2. a tap on the box changes nothing
         cx, cy = centre(pg, "select-move")
         pg.mouse.click(cx, cy); pg.wait_for_timeout(300)
