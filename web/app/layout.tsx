@@ -26,6 +26,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${hanken.variable} ${dmSans.variable}`}>
+      <head>
+        {/* The Thaana font is used on almost every screen, so it starts loading with the page. */}
+        <link rel="preload" href="/fonts/AKRasmee-2.0.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+      </head>
       <body className="pb-20">
         {children}
         <AccountMenu />
